@@ -1,0 +1,28 @@
+---
+title: "Joins on dates"
+---
+
+# Counting number of subscribers
+
+If you're working with subscription data, one frequent question is "how many subscribtions we had each month?". This is a surprisingly difficult question to answer because you need to count the number of subscribers at the end of each month. This is a great example of a problem that is easy to solve in SQL but cumbersome on the BI end[^1].
+
+The query is a two step process:
+
+* We join a list of months to the subscriptions table in order to "explore" the table at the level of months. Instead of having one row be a subscription, one row is a subscription in a given month. For example, a subscription that was active for three months would show up as three rows.
+* Aggregation - now that the data is at the level of months, we can count the number of subscriptions in each month.
+
+```{.sql .interactive .joins}
+
+with months as (
+            select distinct DATE(date, 'start of month') date
+            from calendar
+           )
+           select date, count(*)
+           from months
+           inner join subscriptions
+            on date between date_from and date_to
+           group by date
+
+```
+
+[^1]: [In Power BI, it's a four step process.](https://community.fabric.microsoft.com/t5/Desktop/Dynamic-Function-To-Count-Values-in-a-Date-Range/td-p/2424354)

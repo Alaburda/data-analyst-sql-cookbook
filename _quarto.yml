@@ -1,0 +1,25 @@
+project:
+  type: book
+
+book:
+  title: "data-analyst-sql-cookbook"
+  author: "Norah Jones"
+  date: "2023-10-18"
+  chapters:
+    - index.qmd
+    - intro.qmd
+    - chapter_1.qmd
+    - summary.qmd
+    - references.qmd
+    - pivoting-and-unpivoting.qmd
+
+bibliography: references.bib
+
+format:
+  html:
+    theme: cosmo
+  pdf:
+    documentclass: scrreprt
+
+
+

@@ -1,0 +1,20 @@
+---
+title: "Occupancy"
+---
+
+If you're in the business of working with objects that can be occupied or available, a metric that you'll likely need to calculate is occupancy. This is a measure of how much time an object is occupied over a given time period. For example, if you have a hotel, you might want to know how many rooms are occupied on a given day. If you have a parking lot, you might want to know how many parking spots are occupied not only on a given day but a given hour.
+
+If you're given the data in a form where the granularity matches the granularity of the occupancy (e.g. the availability of each room on each day), you're probably fine. But usually the data will come in the form of date intervals. This chapter deals the latter type of data.
+
+# Hourly occupancy - SQL Server
+
+If you're using SQL Server, a quick is using [Itzik Ben-Gan's Tally Table](https://sqlperformance.com/2021/01/t-sql-queries/number-series-solutions-1) as described [here](https://stackoverflow.com/questions/66265484/how-do-i-calculate-the-amount-of-time-per-hour-that-table-meets-condition-in-sql). It's fast and will get the job done.
+
+# Hourly occupancy - everyone else
+
+I've tried porting that code to SQLite but the query timed out. Instead, we're going to join an hourly calendar table to our dataset.
+
+```{r}
+
+```
+

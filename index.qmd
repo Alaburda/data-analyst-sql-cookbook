@@ -1,0 +1,9 @@
+# Preface {.unnumbered}
+
+I have a terrible memory for things that I use rarely. When it comes to SQL, there are certain code patterns that are extremely useful for setting up a data model but are basically used once. During the past few years of writing this book, I have also collected some useful tidbits of information that are also VERY valuable to someone starting out as a data analyst. Therefore, this book is called the Data Analyst's SQL Cookbook. I wrote this so that I have all of my useful patterns in one place and so that I can look them up and share them with others.
+
+This book is also open-sourced - your input is most welcome! If you have a useful SQL pattern that you would like to share, please submit a pull request to the GitHub repository. If you have a question or comment, please submit an issue to the GitHub repository.
+
+This book was born out of a need to collect SQL queries that were too infrequently used to be memorized but too frequently used to be looked up. The queries are organized by topic and are meant to be used as a reference. The book is also meant to be a living document that will be updated as new queries are discovered and old queries are improved.
+
+Furthermore, these SQL patterns are not universally known! I have found that many developers are not aware of these patterns and are reinventing the wheel when they encounter these problems. I hope that this book will help to spread these patterns and make them more widely known. My team has been victim to the same problem - we found a solution on StackOverflow only to find a better solution a year down the line.

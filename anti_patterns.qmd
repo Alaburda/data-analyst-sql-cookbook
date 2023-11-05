@@ -1,0 +1,46 @@
+---
+title: "Anti-Patterns"
+---
+
+# Using OR in joins
+
+Just because you can use an OR statement in a SQL query, doesn't mean you have to - in practice, the query optimizer may not correctly [interpret what you're doing](https://stackoverflow.com/questions/5901791/is-having-an-or-in-an-inner-join-condition-a-bad-idea). See the query plan for this:
+
+```{sql}
+
+explain query plan
+select * from subscriptions inner join vip on vip.id = plan_autorenew or vip.id = plan_legacy
+
+```
+
+```{sql}
+
+explain query plan
+with tmp as (
+           select *, 
+           case when plan_autorenew = 1 then 1 when plan_legacy = 1 then 1 end as plan_vip 
+           from subscriptions
+           )
+           select *
+           from tmp
+           inner join vip on vip.id = plan_vip
+
+```
+
+```{sql}
+
+explain query plan select * from subscriptions inner join vip on plan_autorenew = vip.id and plan_legacy is null union all select * from subscriptions inner join vip on plan_legacy = vip.id and plan_autorenew is null
+
+```
+
+# Using UNION where UNION ALL is sufficient
+
+UNION deduplicates data after the join, which is a waste of resources if you know that the data is already unique. Use UNION ALL instead.
+
+# GROUP BY vs. DISTINCT vs. EXISTS
+
+EXISTS is the fastest but also most verbose way of returning unique values in a table. See the following:
+
+
+
+

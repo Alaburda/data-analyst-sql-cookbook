@@ -1,0 +1,48 @@
+---
+title: "Creating Intervals"
+---
+
+Whatever industry you're in, you likely have fact data with timestamps that need to be collected into intervals.
+
+# Consecutive dates
+
+# Dates with gaps no larger than specified 
+
+# Grouping consecutive statuses
+
+```{.sql .interactive .islands}
+
+           with tmp as (
+           select
+           *,
+           row_number() over (order by Date) as row_rank,
+           row_number() over (partition by status order by Date) as rank,
+           row_number() over (order by Date)-row_number() over (partition by status order by Date) as rank_diff
+           from data order by Date)
+           select rank_diff, min(Date), max(Date) from tmp
+           group by status, rank_diff
+
+```
+
+# Overlapping date ranges
+
+```{.sql .interactive .islands}
+
+SELECT
+ *,
+ CASE WHEN Grouping.PreviousEndDate < StartDate THEN 1 ELSE 0 END AS WAT,
+ CASE WHEN Grouping.PreviousEndDate >= StartDate THEN 0 ELSE 1 END AS IslandStartInd,
+ SUM (CASE WHEN Grouping.PreviousEndDate >= StartDate THEN 0 ELSE 1 END) OVER (ORDER BY Grouping.RN) AS IslandId
+FROM
+ (SELECT
+  ROW_NUMBER () OVER (ORDER BY Name, StartDate, EndDate) AS RN,
+  Name,
+  StartDate,
+  EndDate,
+  MAX(EndDate) OVER (PARTITION BY Name ORDER BY StartDate, EndDate ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS PreviousEndDate,
+ FROM
+  OverlappingDateRanges) Grouping
+
+```
+
+
