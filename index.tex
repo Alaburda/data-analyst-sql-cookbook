@@ -1,0 +1,509 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
+%
+\documentclass[
+  letterpaper,
+  DIV=11,
+  numbers=noendperiod]{scrreprt}
+
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else  
+    % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\setcounter{secnumdepth}{5}
+% Make \paragraph and \subparagraph free-standing
+\ifx\paragraph\undefined\else
+  \let\oldparagraph\paragraph
+  \renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+  \let\oldsubparagraph\subparagraph
+  \renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{241,243,245}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.40,0.45,0.13}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.13,0.47,0.30}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{\textit{#1}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
+\newcommand{\ExtensionTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.28,0.35,0.67}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.46,0.62}{#1}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
+\newcommand{\NormalTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.68,0.00,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{\textcolor[rgb]{0.00,0.23,0.31}{#1}}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.13,0.47,0.30}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.13,0.47,0.30}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.07,0.07,0.07}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.13,0.47,0.30}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.37,0.37,0.37}{\textit{#1}}}
+
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\newlength{\cslhangindent}
+\setlength{\cslhangindent}{1.5em}
+\newlength{\csllabelwidth}
+\setlength{\csllabelwidth}{3em}
+\newlength{\cslentryspacingunit} % times entry-spacing
+\setlength{\cslentryspacingunit}{\parskip}
+\newenvironment{CSLReferences}[2] % #1 hanging-ident, #2 entry spacing
+ {% don't indent paragraphs
+  \setlength{\parindent}{0pt}
+  % turn on hanging indent if param 1 is 1
+  \ifodd #1
+  \let\oldpar\par
+  \def\par{\hangindent=\cslhangindent\oldpar}
+  \fi
+  % set entry spacing
+  \setlength{\parskip}{#2\cslentryspacingunit}
+ }%
+ {}
+\usepackage{calc}
+\newcommand{\CSLBlock}[1]{#1\hfill\break}
+\newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{#1}}
+\newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{#1}\break}
+\newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
+
+\KOMAoption{captions}{tableheading}
+\makeatletter
+\makeatother
+\makeatletter
+\@ifpackageloaded{bookmark}{}{\usepackage{bookmark}}
+\makeatother
+\makeatletter
+\@ifpackageloaded{caption}{}{\usepackage{caption}}
+\AtBeginDocument{%
+\ifdefined\contentsname
+  \renewcommand*\contentsname{Table of contents}
+\else
+  \newcommand\contentsname{Table of contents}
+\fi
+\ifdefined\listfigurename
+  \renewcommand*\listfigurename{List of Figures}
+\else
+  \newcommand\listfigurename{List of Figures}
+\fi
+\ifdefined\listtablename
+  \renewcommand*\listtablename{List of Tables}
+\else
+  \newcommand\listtablename{List of Tables}
+\fi
+\ifdefined\figurename
+  \renewcommand*\figurename{Figure}
+\else
+  \newcommand\figurename{Figure}
+\fi
+\ifdefined\tablename
+  \renewcommand*\tablename{Table}
+\else
+  \newcommand\tablename{Table}
+\fi
+}
+\@ifpackageloaded{float}{}{\usepackage{float}}
+\floatstyle{ruled}
+\@ifundefined{c@chapter}{\newfloat{codelisting}{h}{lop}}{\newfloat{codelisting}{h}{lop}[chapter]}
+\floatname{codelisting}{Listing}
+\newcommand*\listoflistings{\listof{codelisting}{List of Listings}}
+\makeatother
+\makeatletter
+\@ifpackageloaded{caption}{}{\usepackage{caption}}
+\@ifpackageloaded{subcaption}{}{\usepackage{subcaption}}
+\makeatother
+\makeatletter
+\@ifpackageloaded{tcolorbox}{}{\usepackage[skins,breakable]{tcolorbox}}
+\makeatother
+\makeatletter
+\@ifundefined{shadecolor}{\definecolor{shadecolor}{rgb}{.97, .97, .97}}
+\makeatother
+\makeatletter
+\makeatother
+\makeatletter
+\makeatother
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same} % disable monospaced font for URLs
+\hypersetup{
+  pdftitle={data-analyst-sql-cookbook},
+  pdfauthor={Norah Jones},
+  colorlinks=true,
+  linkcolor={blue},
+  filecolor={Maroon},
+  citecolor={Blue},
+  urlcolor={Blue},
+  pdfcreator={LaTeX via pandoc}}
+
+\title{data-analyst-sql-cookbook}
+\author{Norah Jones}
+\date{2023-10-18}
+
+\begin{document}
+\maketitle
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[interior hidden, sharp corners, boxrule=0pt, borderline west={3pt}{0pt}{shadecolor}, enhanced, breakable, frame hidden]}{\end{tcolorbox}}\fi
+
+\renewcommand*\contentsname{Table of contents}
+{
+\hypersetup{linkcolor=}
+\setcounter{tocdepth}{2}
+\tableofcontents
+}
+\bookmarksetup{startatroot}
+
+\hypertarget{preface}{%
+\chapter*{Preface}\label{preface}}
+\addcontentsline{toc}{chapter}{Preface}
+
+\markboth{Preface}{Preface}
+
+I have a terrible memory for things that I use rarely. When it comes to
+SQL, there are certain code patterns that are extremely useful for
+setting up a data model but are basically used once. During the past few
+years of writing this book, I have also collected some useful tidbits of
+information that are also VERY valuable to someone starting out as a
+data analyst. Therefore, this book is called the Data Analyst's SQL
+Cookbook. I wrote this so that I have all of my useful patterns in one
+place and so that I can look them up and share them with others.
+
+This book is also open-sourced - your input is most welcome! If you have
+a useful SQL pattern that you would like to share, please submit a pull
+request to the GitHub repository. If you have a question or comment,
+please submit an issue to the GitHub repository.
+
+This book was born out of a need to collect SQL queries that were too
+infrequently used to be memorized but too frequently used to be looked
+up. The queries are organized by topic and are meant to be used as a
+reference. The book is also meant to be a living document that will be
+updated as new queries are discovered and old queries are improved.
+
+Furthermore, these SQL patterns are not universally known! I have found
+that many developers are not aware of these patterns and are reinventing
+the wheel when they encounter these problems. I hope that this book will
+help to spread these patterns and make them more widely known. My team
+has been victim to the same problem - we found a solution on
+StackOverflow only to find a better solution a year down the line.
+
+\bookmarksetup{startatroot}
+
+\hypertarget{introduction}{%
+\chapter{Introduction}\label{introduction}}
+
+\bookmarksetup{startatroot}
+
+\hypertarget{introduction-1}{%
+\chapter{Introduction}\label{introduction-1}}
+
+This is a book created from markdown and executable code.
+
+See Knuth (1984) for additional discussion of literate programming.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+
+\KeywordTok{select} \OperatorTok{*} \KeywordTok{from}\NormalTok{ playlists;}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\DecValTok{1} \SpecialCharTok{+} \DecValTok{1}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+[1] 2
+\end{verbatim}
+
+\bookmarksetup{startatroot}
+
+\hypertarget{untitled}{%
+\chapter{Untitled}\label{untitled}}
+
+\bookmarksetup{startatroot}
+
+\hypertarget{intersecting-dates}{%
+\chapter{Intersecting Dates}\label{intersecting-dates}}
+
+Let's say you have a table of subscribtion that all different start and
+end dates. How would you filter down a list of subscriptions to show
+those that were active within a time range? In other words, how do you
+find rows that have intersecting dates?
+
+For example, here are all subscribers that had active subscriptions in
+2023:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+
+\KeywordTok{select} \OperatorTok{*}
+\KeywordTok{from}\NormalTok{ subscribers}
+\KeywordTok{where}\NormalTok{ date\_from }\OperatorTok{\textless{}=} \StringTok{\textquotesingle{}2023{-}12{-}31\textquotesingle{}}
+\KeywordTok{and}\NormalTok{ date\_to }\OperatorTok{\textgreater{}=} \StringTok{\textquotesingle{}2023{-}01{-}01\textquotesingle{}}
+\end{Highlighting}
+\end{Shaded}
+
+\bookmarksetup{startatroot}
+
+\hypertarget{calculating-date-ranges-based-on-gaps}{%
+\chapter{Calculating date ranges based on
+gaps}\label{calculating-date-ranges-based-on-gaps}}
+
+Let's say we have subscriptions but we need to show a start date and an
+end date of gaps between subscriptions. For example, if I subscribed
+from 2023-01-01 to 2023-05-31 and then from 2023-07-01 to 2023-12-31, I
+would want to return a row that said I was not a subscriber from
+2023-06-01 to 2023-06-30.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{SELECT}   
+\NormalTok{  seqval }\OperatorTok{+} \DecValTok{1} \KeywordTok{AS}\NormalTok{ start\_range,   }
+\NormalTok{  (}
+    \KeywordTok{SELECT} 
+      \FunctionTok{MIN}\NormalTok{(B.seqval)    }
+    \KeywordTok{FROM}\NormalTok{ dbo.NumSeq }\KeywordTok{AS}\NormalTok{ B    }
+    \KeywordTok{WHERE}\NormalTok{ B.seqval }\OperatorTok{\textgreater{}}\NormalTok{ A.seqval}
+\NormalTok{    ) }\OperatorTok{{-}} \DecValTok{1} \KeywordTok{AS}\NormalTok{ end\_range }
+\KeywordTok{FROM}\NormalTok{ dbo.NumSeq }\KeywordTok{AS}\NormalTok{ A }
+\KeywordTok{WHERE} \KeywordTok{NOT} \KeywordTok{EXISTS}\NormalTok{ (}
+  \KeywordTok{SELECT} \OperatorTok{*} \KeywordTok{FROM}\NormalTok{ dbo.NumSeq }\KeywordTok{AS}\NormalTok{ B    }
+  \KeywordTok{WHERE}\NormalTok{ B.seqval }\OperatorTok{=}\NormalTok{ A.seqval }\OperatorTok{+} \DecValTok{1}\NormalTok{)}
+\KeywordTok{AND}\NormalTok{ seqval }\OperatorTok{\textless{}}\NormalTok{ (}\KeywordTok{SELECT} \FunctionTok{MAX}\NormalTok{(seqval) }\KeywordTok{FROM}\NormalTok{ dbo.NumSeq);}
+\end{Highlighting}
+\end{Shaded}
+
+This solution is based on subqueries. In order to understand it you
+should first focus on the filtering activity in the WHERE clause and
+then proceed to the activity in the SELECT list. The purpose of the NOT
+EXISTS predicate in the WHERE clause is to filter only points that are a
+point before a gap. You can identify a point before a gap when you see
+that for such a point, the value plus 1 doesn't exist in the sequence.
+The purpose of the second predicate in the WHERE clause is to filter out
+the maximum value from the sequence because it represents the point
+before infinity, which does not concern us.
+
+\bookmarksetup{startatroot}
+
+\hypertarget{sessionization}{%
+\chapter{Sessionization}\label{sessionization}}
+
+\bookmarksetup{startatroot}
+
+\hypertarget{islands-problem}{%
+\chapter{Islands Problem}\label{islands-problem}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+
+\KeywordTok{SELECT} 
+  \FunctionTok{MIN}\NormalTok{(seqval) }\KeywordTok{AS}\NormalTok{ start\_range, }
+  \FunctionTok{MAX}\NormalTok{(seqval) }\KeywordTok{AS}\NormalTok{ end\_range }
+\KeywordTok{FROM}\NormalTok{ (}
+  \KeywordTok{SELECT} 
+\NormalTok{    seqval, }
+\NormalTok{    seqval }\OperatorTok{{-}} \FunctionTok{ROW\_NUMBER}\NormalTok{() }\KeywordTok{OVER}\NormalTok{ (}\KeywordTok{ORDER} \KeywordTok{BY}\NormalTok{ seqval) }\KeywordTok{AS}\NormalTok{ grp}
+  \KeywordTok{FROM}\NormalTok{ dbo.NumSeq}
+\NormalTok{  ) }\KeywordTok{AS}\NormalTok{ D }\KeywordTok{GROUP} \KeywordTok{BY}\NormalTok{ grp;}
+\end{Highlighting}
+\end{Shaded}
+
+\bookmarksetup{startatroot}
+
+\hypertarget{section}{%
+\chapter{}\label{section}}
+
+\bookmarksetup{startatroot}
+
+\hypertarget{summary}{%
+\chapter{Summary}\label{summary}}
+
+In summary, this book has no content whatsoever.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\DecValTok{1} \SpecialCharTok{+} \DecValTok{1}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+[1] 2
+\end{verbatim}
+
+\bookmarksetup{startatroot}
+
+\hypertarget{references}{%
+\chapter*{References}\label{references}}
+\addcontentsline{toc}{chapter}{References}
+
+\markboth{References}{References}
+
+\hypertarget{refs}{}
+\begin{CSLReferences}{1}{0}
+\leavevmode\vadjust pre{\hypertarget{ref-knuth84}{}}%
+Knuth, Donald E. 1984. {``Literate Programming.''} \emph{Comput. J.} 27
+(2): 97--111. \url{https://doi.org/10.1093/comjnl/27.2.97}.
+
+\end{CSLReferences}
+
+\bookmarksetup{startatroot}
+
+\hypertarget{pivoting-and-unpivoting}{%
+\chapter{Pivoting and Unpivoting}\label{pivoting-and-unpivoting}}
+
+At this point it's likely you're using a database that supports pivoting
+and unpivoting but it's good to know how to do it yourself.
+
+\bookmarksetup{startatroot}
+
+\hypertarget{pivoting}{%
+\chapter{Pivoting}\label{pivoting}}
+
+The most basic way to pivot is to use a CASE statement for each column
+you want to pivot.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+
+\KeywordTok{select} 
+\NormalTok{  ts\_id,}
+  \FunctionTok{sum}\NormalTok{(}\ControlFlowTok{case} \ControlFlowTok{when}\NormalTok{ ts\_year }\OperatorTok{=} \DecValTok{2020} \ControlFlowTok{then}\NormalTok{ ts\_value }\ControlFlowTok{end}\NormalTok{) }\KeywordTok{as}\NormalTok{ ts\_2020,}
+  \FunctionTok{sum}\NormalTok{(}\ControlFlowTok{case} \ControlFlowTok{when}\NormalTok{ ts\_year }\OperatorTok{=} \DecValTok{2021} \ControlFlowTok{then}\NormalTok{ ts\_value }\ControlFlowTok{end}\NormalTok{) }\KeywordTok{as}\NormalTok{ ts\_2021}
+\KeywordTok{from}\NormalTok{ yearly\_values\_long}
+\KeywordTok{group} \KeywordTok{by}\NormalTok{ ts\_id}
+\end{Highlighting}
+\end{Shaded}
+
+\bookmarksetup{startatroot}
+
+\hypertarget{advanced-pivoting}{%
+\chapter{Advanced Pivoting}\label{advanced-pivoting}}
+
+Why I like pivoting in SQL is that I can create arbitrary case when
+statements to control how my data is pivoted:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+
+\KeywordTok{select} 
+\NormalTok{  ts\_id,}
+  \FunctionTok{sum}\NormalTok{(}\ControlFlowTok{case} \ControlFlowTok{when}\NormalTok{ ts\_year }\OperatorTok{=} \DecValTok{2020} \KeywordTok{and}\NormalTok{ ts\_value }\OperatorTok{\textgreater{}} \FloatTok{0.5} \ControlFlowTok{then}\NormalTok{ ts\_value }\ControlFlowTok{end}\NormalTok{) }\KeywordTok{as}\NormalTok{ ts\_2020,}
+  \FunctionTok{sum}\NormalTok{(}\ControlFlowTok{case} \ControlFlowTok{when}\NormalTok{ ts\_year }\OperatorTok{=} \DecValTok{2021} \KeywordTok{and}\NormalTok{ ts\_value }\OperatorTok{\textgreater{}} \FloatTok{0.5} \ControlFlowTok{then}\NormalTok{ ts\_value }\ControlFlowTok{end}\NormalTok{) }\KeywordTok{as}\NormalTok{ ts\_2021}
+\KeywordTok{from}\NormalTok{ yearly\_values\_long}
+\KeywordTok{group} \KeywordTok{by}\NormalTok{ ts\_id}
+\end{Highlighting}
+\end{Shaded}
+
+\bookmarksetup{startatroot}
+
+\hypertarget{unpivoting}{%
+\chapter{Unpivoting}\label{unpivoting}}
+
+I wish you don't ever need to unpivot manually in SQL. A universal way
+to unpivot in SQL is to take each column of interest and do a UNION ALL.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+
+\KeywordTok{select} 
+\NormalTok{  ts\_id, }
+  \StringTok{\textquotesingle{}2020\textquotesingle{}} \KeywordTok{as}\NormalTok{ ts\_year, }
+\NormalTok{  [}\DecValTok{2020}\NormalTok{] }\KeywordTok{as}\NormalTok{ ts\_value}
+\KeywordTok{from}\NormalTok{ yearly\_values\_wide}
+\KeywordTok{union} \KeywordTok{all}
+\KeywordTok{select} 
+\NormalTok{  ts\_id, }
+  \StringTok{\textquotesingle{}2021\textquotesingle{}} \KeywordTok{as}\NormalTok{ ts\_year, }
+\NormalTok{  [}\DecValTok{2021}\NormalTok{] }\KeywordTok{as}\NormalTok{ ts\_value}
+\KeywordTok{from}\NormalTok{ yearly\_values\_wide}
+
+\end{Highlighting}
+\end{Shaded}
+
+\bookmarksetup{startatroot}
+
+\hypertarget{references-1}{%
+\chapter{References}\label{references-1}}
+
+https://sqlperformance.com/2019/09/t-sql-queries/t-sql-pitfalls-pivoting-unpivoting
+
+
+
+\end{document}
