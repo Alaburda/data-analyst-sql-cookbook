@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>The Data Analyst SQL Cookbook - 4&nbsp; Pivoting and Unpivoting</title>
+<title>The Data Analyst SQL Cookbook - 5&nbsp; Pivoting and Unpivoting</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -64,7 +64,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./references.html" rel="prev">
+<link href="./filtering.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -111,7 +111,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-      <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./pivoting-and-unpivoting.html"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></a></li></ol></nav>
+      <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./pivoting-and-unpivoting.html"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></a></li></ol></nav>
       <a class="flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
       </a>
       <button type="button" class="btn quarto-search-button" aria-label="" onclick="window.quartoOpenSearch();">
@@ -168,8 +168,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./filtering.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Filtering</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
   </div>
 </li>
     </ul>
@@ -182,10 +188,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#pivoting" id="toc-pivoting" class="nav-link active" data-scroll-target="#pivoting"><span class="header-section-number">5</span> Pivoting</a></li>
-  <li><a href="#advanced-pivoting" id="toc-advanced-pivoting" class="nav-link" data-scroll-target="#advanced-pivoting"><span class="header-section-number">6</span> Advanced Pivoting</a></li>
-  <li><a href="#unpivoting" id="toc-unpivoting" class="nav-link" data-scroll-target="#unpivoting"><span class="header-section-number">7</span> Unpivoting</a></li>
-  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">8</span> References</a></li>
+  <li><a href="#pivoting" id="toc-pivoting" class="nav-link active" data-scroll-target="#pivoting"><span class="header-section-number">6</span> Pivoting</a></li>
+  <li><a href="#advanced-pivoting" id="toc-advanced-pivoting" class="nav-link" data-scroll-target="#advanced-pivoting"><span class="header-section-number">7</span> Advanced Pivoting</a></li>
+  <li><a href="#unpivoting" id="toc-unpivoting" class="nav-link" data-scroll-target="#unpivoting"><span class="header-section-number">8</span> Unpivoting</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">9</span> References</a></li>
   </ul>
 </nav>
     </div>
@@ -194,7 +200,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></h1>
+<h1 class="title"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></h1>
 </div>
 
 
@@ -210,8 +216,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 <p>At this point it’s likely you’re using a database that supports pivoting and unpivoting but it’s good to know how to do it yourself.</p>
-<section id="pivoting" class="level1" data-number="5">
-<h1 data-number="5"><span class="header-section-number">5</span> Pivoting</h1>
+<section id="pivoting" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> Pivoting</h1>
 <p>The most basic way to pivot is to use a CASE statement for each column you want to pivot.</p>
 <div class="interactive-sql">
 <div class="sourceCode" id="cb1"><pre class="sourceCode sql interactive pivot code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a></span>
@@ -223,8 +229,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">group</span> <span class="kw">by</span> ts_id</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="advanced-pivoting" class="level1" data-number="6">
-<h1 data-number="6"><span class="header-section-number">6</span> Advanced Pivoting</h1>
+<section id="advanced-pivoting" class="level1" data-number="7">
+<h1 data-number="7"><span class="header-section-number">7</span> Advanced Pivoting</h1>
 <p>Why I like pivoting in SQL is that I can create arbitrary case when statements to control how my data is pivoted:</p>
 <div class="interactive-sql">
 <div class="sourceCode" id="cb2"><pre class="sourceCode sql interactive pivot code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a></span>
@@ -236,8 +242,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="kw">group</span> <span class="kw">by</span> ts_id</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="unpivoting" class="level1" data-number="7">
-<h1 data-number="7"><span class="header-section-number">7</span> Unpivoting</h1>
+<section id="unpivoting" class="level1" data-number="8">
+<h1 data-number="8"><span class="header-section-number">8</span> Unpivoting</h1>
 <p>I wish you don’t ever need to unpivot manually in SQL. A universal way to unpivot in SQL is to take each column of interest and do a UNION ALL.</p>
 <div class="interactive-sql">
 <div class="sourceCode" id="cb3"><pre class="sourceCode sql interactive pivot code-with-copy"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a></span>
@@ -255,8 +261,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="references" class="level1" data-number="8">
-<h1 data-number="8"><span class="header-section-number">8</span> References</h1>
+<section id="references" class="level1" data-number="9">
+<h1 data-number="9"><span class="header-section-number">9</span> References</h1>
 <p>https://sqlperformance.com/2019/09/t-sql-queries/t-sql-pitfalls-pivoting-unpivoting</p>
 
 
@@ -500,8 +506,8 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./references.html" class="pagination-link">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">References</span>
+      <a href="./filtering.html" class="pagination-link">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Filtering</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
