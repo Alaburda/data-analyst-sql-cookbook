@@ -3,8 +3,8 @@ project:
   output-dir: docs
 
 book:
-  title: "data-analyst-sql-cookbook"
-  author: "Norah Jones"
+  title: "The Data Analyst SQL Cookbook"
+  author: "Paulius Alaburda"
   date: "2023-10-18"
   chapters:
     - index.qmd

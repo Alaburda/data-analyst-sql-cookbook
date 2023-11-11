@@ -1,0 +1,23 @@
+---
+title: "Filtering"
+filters:
+  - interactive-sql
+databases:
+  - name: subscribers
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/subscribers.db"
+---
+
+Everyone starts out with filtering using the WHERE clause but there's more to it than just specifying columns and their conditions.   
+
+# Anti joins
+
+Anti joins are a type of join where you return only rows that do not match any row in a given table. For example, let's say you have users who have done one time purchases but who have no subscription service. You want to send a marketing email to users who don't have a subscription service yet but have done a one time purchase.
+
+```{.sql .interactive .subscribers}
+
+
+```
+
+# Filtering on the ON clause
+
+
