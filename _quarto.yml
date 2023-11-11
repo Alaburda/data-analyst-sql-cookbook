@@ -12,6 +12,7 @@ book:
     - chapter_1.qmd
     - summary.qmd
     - references.qmd
+    - filtering.qmd
     - pivoting-and-unpivoting.qmd
 
 bibliography: references.bib
