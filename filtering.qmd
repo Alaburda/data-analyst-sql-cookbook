@@ -20,4 +20,39 @@ Anti joins are a type of join where you return only rows that do not match any r
 
 # Filtering on the ON clause
 
+You can use the ON clause in joins to do neat things, such as:
+
+## Joining only to certain rows in the main table
+
+The left join clause `and created_channel = 2` ensures that the join only happens 
+
+```{.sql .interactive .subscribers}
+
+select 
+  users.*,
+  subscribers.subscription_type
+from users
+left join subscribers
+  on user_id = users.id
+  and created_channel = 2
+where exists (select * from subscribers where users.id = subscribers.user_id)
+limit 10
+
+```
+
+## Joining only certain rows from another table
+
+```{.sql .interactive .subscribers}
+
+select 
+  users.*,
+  subscribers.subscription_type
+from users
+left join subscribers
+  on user_id = users.id
+  and subscription_type = 2
+where exists (select * from subscribers where users.id = subscribers.user_id)
+limit 10
+
+```
 

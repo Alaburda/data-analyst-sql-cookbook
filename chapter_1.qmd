@@ -1,14 +1,20 @@
 ---
-title: "Untitled"
+title: "Queries with Dates"
+filters:
+  - interactive-sql
+databases:
+  - name: subscribers
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/subscribers.db"
+
 ---
 
 # Intersecting Dates
 
-Let's say you have a table of subscribtion that all different start and end dates. How would you filter down a list of subscriptions to show those that were active within a time range? In other words, how do you find rows that have intersecting dates?
+Let's say you have a table of subscription that all different start and end dates. How would you filter down a list of subscriptions to show those that were active within a time range? In other words, how do you find rows that have intersecting dates?
 
 For example, here are all subscribers that had active subscriptions in 2023:
 
-```{.sql .interactive .chinook}
+```{.sql .interactive .subscribers}
 
 select *
 from subscribers

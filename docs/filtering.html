@@ -190,7 +190,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#anti-joins" id="toc-anti-joins" class="nav-link active" data-scroll-target="#anti-joins"><span class="header-section-number">5</span> Anti joins</a></li>
-  <li><a href="#filtering-on-the-on-clause" id="toc-filtering-on-the-on-clause" class="nav-link" data-scroll-target="#filtering-on-the-on-clause"><span class="header-section-number">6</span> Filtering on the ON clause</a></li>
+  <li><a href="#filtering-on-the-on-clause" id="toc-filtering-on-the-on-clause" class="nav-link" data-scroll-target="#filtering-on-the-on-clause"><span class="header-section-number">6</span> Filtering on the ON clause</a>
+  <ul class="collapse">
+  <li><a href="#joining-only-to-certain-rows-in-the-main-table" id="toc-joining-only-to-certain-rows-in-the-main-table" class="nav-link" data-scroll-target="#joining-only-to-certain-rows-in-the-main-table"><span class="header-section-number">6.1</span> Joining only to certain rows in the main table</a></li>
+  <li><a href="#joining-only-certain-rows-from-another-table" id="toc-joining-only-certain-rows-from-another-table" class="nav-link" data-scroll-target="#joining-only-certain-rows-from-another-table"><span class="header-section-number">6.2</span> Joining only certain rows from another table</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -224,10 +228,42 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="filtering-on-the-on-clause" class="level1" data-number="6">
 <h1 data-number="6"><span class="header-section-number">6</span> Filtering on the ON clause</h1>
+<p>You can use the ON clause in joins to do neat things, such as:</p>
+<section id="joining-only-to-certain-rows-in-the-main-table" class="level2" data-number="6.1">
+<h2 data-number="6.1" class="anchored" data-anchor-id="joining-only-to-certain-rows-in-the-main-table"><span class="header-section-number">6.1</span> Joining only to certain rows in the main table</h2>
+<p>The left join clause <code>and created_channel = 2</code> ensures that the join only happens</p>
+<div class="interactive-sql">
+<div class="sourceCode" id="cb2"><pre class="sourceCode sql interactive subscribers code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  users.<span class="op">*</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  subscribers.subscription_type</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> users</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">left</span> <span class="kw">join</span> subscribers</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">on</span> user_id <span class="op">=</span> users.<span class="kw">id</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">and</span> created_channel <span class="op">=</span> <span class="dv">2</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="kw">where</span> <span class="kw">exists</span> (<span class="kw">select</span> <span class="op">*</span> <span class="kw">from</span> subscribers <span class="kw">where</span> users.<span class="kw">id</span> <span class="op">=</span> subscribers.user_id)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="kw">limit</span> <span class="dv">10</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="joining-only-certain-rows-from-another-table" class="level2" data-number="6.2">
+<h2 data-number="6.2" class="anchored" data-anchor-id="joining-only-certain-rows-from-another-table"><span class="header-section-number">6.2</span> Joining only certain rows from another table</h2>
+<div class="interactive-sql">
+<div class="sourceCode" id="cb3"><pre class="sourceCode sql interactive subscribers code-with-copy"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  users.<span class="op">*</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  subscribers.subscription_type</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> users</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="kw">left</span> <span class="kw">join</span> subscribers</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">on</span> user_id <span class="op">=</span> users.<span class="kw">id</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">and</span> subscription_type <span class="op">=</span> <span class="dv">2</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="kw">where</span> <span class="kw">exists</span> (<span class="kw">select</span> <span class="op">*</span> <span class="kw">from</span> subscribers <span class="kw">where</span> users.<span class="kw">id</span> <span class="op">=</span> subscribers.user_id)</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="kw">limit</span> <span class="dv">10</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
 
 
 <sqlime-db name="subscribers" path="https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/subscribers.db"></sqlime-db>
 <sqlime-examples db="subscribers" selector="div.interactive-sql pre.subscribers code" editable=""></sqlime-examples>
+</section>
 </section>
 
 </main> <!-- /main -->
