@@ -1,8 +1,22 @@
 library(lubridate)
 library(tibble)
+library(RSQLite)
 
 
 con <- dbConnect(RSQLite::SQLite(), "db/subscribers.db")
+
+calendar <- tibble(date = as.character(seq(as.Date('2023-01-01'),as.Date('2024-01-01'),by = 1)),
+                         full_date_description = format(date, format="%Y m. %B %d d."),
+                         day_of_week = wday(date, label=FALSE, week_start = 1),
+                         day_of_week_name = wday(date, label=TRUE, abbr = FALSE),
+                         calendar_iso_week = isoweek(date),
+                         calendar_week = week(date),
+                         calendar_month = month(date),
+                         calendar_month_name = month(date, label = TRUE, abbr = FALSE),
+                         calendar_quarter = quarter(date),
+                         calendar_quarter_name = paste0("Q",quarter(date)),
+                         calendar_year = year(date),
+                         is_weekday = as.integer(wday(date, week_start = 1) < 6))
 
 users <- data.frame(id = 1:100000,
                     created_channel = sample(c(1:5), size = 100000, replace = TRUE),
@@ -26,26 +40,7 @@ dbWriteTable(con, "subscribers", subscriptions, overwrite = TRUE)
 
 dbWriteTable(con, "users", users, overwrite = TRUE)
 
+dbWriteTable(con, "calendar", calendar, overwrite = TRUE)
+
 dbDisconnect(con)
-
-tic()
-dbGetQuery(con, "explain query plan
-           select *
-           from users
-           left join subscribers
-            on subscribers.id = users.id
-           where subscribers.id is null")
-toc()
-
-tic()
-dbGetQuery(con, "explain query plan
-           select *
-           from users
-           where id not in (select id from subscribers)")
-toc()
-
-dbGetQuery(con, "explain query plan
-           select *
-           from users
-           where not exists (select * from subscribers where subscribers.id = users.id)")
 

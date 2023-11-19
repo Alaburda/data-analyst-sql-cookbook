@@ -10,7 +10,7 @@ databases:
 
 # Intersecting Dates
 
-Let's say you have a table of subscription that all different start and end dates. How would you filter down a list of subscriptions to show those that were active within a time range? In other words, how do you find rows that have intersecting dates?
+Let's say you have a table of subscriptions that all different start and end dates. How would you filter down a list of subscriptions to show those that were active within a time range? In other words, how do you find rows that have intersecting dates?
 
 For example, here are all subscribers that had active subscriptions in 2023:
 
@@ -18,10 +18,49 @@ For example, here are all subscribers that had active subscriptions in 2023:
 
 select *
 from subscribers
-where date_from <= '2023-12-31'
-and date_to >= '2023-01-01'
+where subscription_valid_from <= '2023-12-31'
+and subscription_valid_to >= '2023-01-01'
 
 ```
+
+This query works when thinking in terms of sets. A subscription whose start date is later than our range's end date is not in scope (i.e. date_from > '2023-12-31'). So we can write the inverse of this, i.e. date_from <= '2023-12-31'. The same goes for subscriptions that end before our range of interest.
+
+# Counting Active Date Ranges
+
+If you have a SCD2 type dimension like subscriptions, a common question might be to provide the number of active subscriptions for each day, week, month or year. It's best to use a calendar table like this:
+
+```{.sql .interactive .subscribers}
+
+select
+  date,
+  count(*) as number_of_subscribers
+from calendar
+inner join subscribers
+  on date >= subscription_valid_from
+  and date <= subscription_valid_to
+group by date
+
+
+```
+
+You can also build a query without using a calendar table:
+
+```{.sql .interactive .subscribers}
+
+with d as (
+      select validfrom as dte, 1 as inc
+      from t
+      union all
+      select validto, -1
+      from t
+     )
+select dte, sum(sum(inc)) over (order by dte)
+from d
+group by dte
+order by dte;
+
+```
+
 
 # Calculating date ranges based on gaps
 

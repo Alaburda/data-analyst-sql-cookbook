@@ -9,11 +9,10 @@ book:
   chapters:
     - index.qmd
     - intro.qmd
-    - chapter_1.qmd
-    - summary.qmd
-    - references.qmd
+    - queries_with_dates.qmd
     - filtering.qmd
     - pivoting-and-unpivoting.qmd
+    - references.qmd
 
 bibliography: references.bib
 
