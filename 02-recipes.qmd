@@ -1,0 +1,3 @@
+# SQL Recipes
+
+This is the goodie part of the book, enjoy!

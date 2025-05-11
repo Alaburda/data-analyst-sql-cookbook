@@ -1,4 +1,7 @@
 # References {.unnumbered}
 
 ::: {#refs}
+
+https://stackoverflow.com/questions/3270338/confused-about-itzik-ben-gans-logical-query-processing-order-in-his-sql-server
+
 :::

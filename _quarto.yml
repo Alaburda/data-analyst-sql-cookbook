@@ -8,10 +8,19 @@ book:
   date: "2023-10-18"
   chapters:
     - index.qmd
-    - intro.qmd
-    - queries_with_dates.qmd
-    - filtering.qmd
-    - pivoting-and-unpivoting.qmd
+    - 01-basics.qmd
+    - part: Data Modelling Techniques
+      chapters:
+        - factless_fact_tables.qmd
+        - ragged_depth_hierarchies.qmd
+    - part: 02-recipes.qmd
+      chapters:
+        - 03-joins.qmd
+        - queries_with_dates.qmd
+        - pivoting-and-unpivoting.qmd
+        - data-warehouse-recipes.qmd
+        - filtering.qmd
+    - goodies.qmd
     - references.qmd
 
 bibliography: references.bib

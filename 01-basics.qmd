@@ -1,0 +1,115 @@
+---
+title: "The Basics"
+---
+
+# The Basics
+
+You could find this section in probably any SQL book - feel free to skip it if you feel comfortable with SQL!
+
+
+## SELECT
+
+I wish I could write something smart when writing anything between the SELECT and FROM keywords!
+
+## JOINS and WHERE
+
+There are entire chapters devoted to joins and a variety of interesting dialects. However, knowing LEFT and INNER joins gets you 95% of the way there. A great illustration of how joins work can be found in R for Data Science https://r4ds.hadley.nz/joins.html. Lately I've been thinking of joins and where statements interchangeably because you can express the same result in two different ways. For example, this query would return a combination of rows from the two tables:
+
+```{sql}
+#| eval: false
+
+select *
+from coffee
+join coffee_brewing
+
+```
+
+
+
+
+The Join and WHERE clauses are fun because they are VERY interchangeable. When you write
+
+select *
+from fart
+join fart2
+
+You're essentially doing multiplication because it's a cross join that combines all rows from fart to all rows from fart2. Usually you don't want the full possible set of combinations but only a certain set. One typical way to constrain the output set is to only output rows that have a common value between two tables - it's typically a primary key and foreign key combo but it could be anything else. Anyway, the typical way to JOIN tables is like this:
+
+select *
+from fart
+join fart2
+  on fart.id = fart2.id
+  
+What we're essentially doing is saying "hey, give me a set of rows from these two tables where the id column matches". where the id column matches... WAIT, THIS IS ALSO LEGAL SQL
+
+select *
+from fart
+join fart2
+where fart.id = fart2.id
+
+Congrats, we've just discovered the ANSI-89 standard of SQL! ANSI-89 compliant SQL looks like this:
+
+select *
+from fart, fart2
+where fart.id = fart2.id
+
+This is because joins and where accomplish the same thing - they constrain the output set. Of course, the order of operations makes so that the join is done first and then the where clause is applied so you can't just WHERE your way through when using ANSI-92 SQL.
+
+Anyway, the inverse is also neat - since both JOIN and WHERE accept clauses that constrain, you can just pass an operation to the JOIN:
+
+select *
+from fart
+left join fart2
+  on fart.id = fart2.id
+  and fart2.smell = 'bad'
+
+This pattern is especially useful when you want to "append" values from the second table but only when some condition is met. For example, maybe I would like to show all clients but only add their contact info if they have accepted to our marketing agreeement terms.
+
+The order of operation is also useful when running the ANTI JOIN
+
+select *
+from fart
+left join fart2
+  on fart.id = fart2.id
+where fart2.id is null
+
+The join happens first - so we can visualise in our head that some values are joined, some are not. Then, we can filter on the resulting set and only keep rows that didn't find a match in table 2. This is called an anti join.
+
+### 1=1
+
+The set theory perspective makes WHERE 1=1 straightforward - you're just saying 
+
+
+
+
+## GROUP BY
+
+I LOVE grouping in SQL because most other programming tools will only let you run a function on the grouped set. But noone is stopping you from running conditional counts in SQL!
+
+select
+  count(*),
+  sum(case when fart = 'smelly' then 1 else 0 end) as smelly_farts
+from farts
+
+In theory, I could accomplish the same thing in other programming languages by creating columns that I could count/sum but come on, that's wasteful.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  
+  
+

@@ -1,0 +1,19 @@
+# Useful Resources
+
+This is an ongoing list of things I have found useful and you may find useful too!
+
+## Tools
+
+* [DBeaver](https://dbeaver.io/) - just a great SQL client that supports a lot of databases
+* [DB Fiddle](https://www.db-fiddle.com/) - an online sandbox to run your SQL queries
+* [SQLime](https://sqlime.org/) - another online sandbox to write queries
+* [DuckDB Local UI](https://duckdb.org/2025/03/12/duckdb-ui) - haven't tested it yet but looks neat so far
+
+## Learning Resources
+
+* [Advanced SQL Puzzles](https://github.com/smpetersgithub/AdvancedSQLPuzzles)
+* [Use the Index, Luke](https://use-the-index-luke.com/)
+
+## Reading material
+
+https://www.scattered-thoughts.net/writing/against-sql/

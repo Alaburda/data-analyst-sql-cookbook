@@ -1,0 +1,66 @@
+# Factless Fact Tables
+
+If I wanted to show the number of subscriptions that were active for each month in my favourite BI tool, I would be in trouble. In Power BI, I would have to resort to [a multi-line DAX formula](https://community.fabric.microsoft.com/t5/Power-BI-Community-Blog/HR-Analytics-Active-Employee-Hire-and-Termination-trend/ba-p/882970). In Tableau, [the options have 8 steps in them](https://help.salesforce.com/s/articleView?id=001458045&type=1). I couldn't even find a tutorial for Looker. Luckily, Factless Fact Tables sidestep these solutions altogether so that your BI tool only has to do a simple count.
+
+Kimball defines Factless Fact Tables as a [table of dimensional entities coming together at a moment in time](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/factless-fact-table/). Now that's one eldritch definition! In human terms, the **raison d'être** of these tables comes from the need to count whether a thing existed at a point in time. It's best to show the technique using an example.
+
+Let's say I have a table of subscriptions that looks like this:
+
+```{r}
+
+library(duckdb)
+
+con <- dbConnect(duckdb::duckdb(), ":memory:")
+
+dbExecute(con, "CREATE TABLE subscriptions (id INTEGER, start_date DATE, end_date DATE);")
+
+
+```
+
+Whenever we want to count something, it's best to count it using a fact table. However, subscriptions are a SCD2 type dimension and you want to count whether they existed between the `start_date` and `end_date`. Counting becomes trivial if the date range is expanded into their dedicated rows. For example, if I were building a monthly fact table, the first id would be 6 rows and my second id would be 4 rows because they were active subscriptions during those months. In order to build it, it's best to have a calendar table so that we could perform a cross join using a `BETWEEN` statement.
+
+## SQL code
+
+```{sql}
+
+
+
+```
+
+
+
+## How is this different from snapshot fact tables?
+
+You may have heard about snapshot fact tables - they are VERY similar to factless fact tables. In fact, if you saved snapshots of active subscriptions for each month, you'd end up with the same table! The different comes down to implementation: snapshots are run on a regular basis to create the final dataset, a factless fact table can be recreated from scratch.
+
+
+
+Kimball defines Factless Fact Tables as a [table of dimensional entities coming together at a moment in time](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/factless-fact-table/). Now that's one eldtrich definition! In human terms, the **raison d'être** of these tables comes from the need to count whether a thing existed at a point in time. And if that definition is too vague, here's an exercise - try showing how many subscribers you had on a monthly basis. For example, let's say I had 10 subscriptions that were each active between January and December of last year, how would you show those 10 subscriptions for each month of the year? In Power BI, you need to resort to [a multi-line DAX formula](https://community.fabric.microsoft.com/t5/Power-BI-Community-Blog/HR-Analytics-Active-Employee-Hire-and-Termination-trend/ba-p/882970). In Tableau, [the options have 8 steps in them](https://help.salesforce.com/s/articleView?id=001458045&type=1). Factless fact tables sidestep these solution altogether so that all you need is a simple count.   
+
+Factless fact tables can be built by combining your SCD2 type table (i.e. data that has an end date and a start date) with a calendar table (a date dimension). Here's how to do it in SQL:
+
+```{sql}
+
+-- This is a factless fact table that counts the number of active subscribers
+-- in a given month. It uses a date dimension to get the months and a subscriber
+-- dimension to get the subscribers. The factless fact table is created by
+
+```
+
+
+in your favourite BI tool
+
+Factless fact tables solve this problem by showing whether a thing existed for a given time point. For example, if we were to build a factless table on a monthly granularity, a Netflix subscriber whose subscription starts at 2025-01-01 and ends at 2025-12-31 would show up as 12 rows, one for each of the months in a year. As a result, if you were to put your months on an x-axis, you could just do a count of rows from this table along the y axis. And it's not just subscribers - it works on any table that has a start date and an end date[^1]. Factless fact tables allow you to keep the modeling and KPI layer relatively simple - learning to build and use them is extremely helpful.
+
+## Sample SQL
+
+```{sql}
+-- This is a factless fact table that counts the number of active subscribers
+-- in a given month. It uses a date dimension to get the months and a subscriber
+-- dimension to get the subscribers. The factless fact table is created by
+select
+
+```
+
+
+[^1]: Essentially, if it's a SCD2 type dimension.

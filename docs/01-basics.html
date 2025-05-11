@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>4&nbsp; Pivoting and Unpivoting – The Data Analyst SQL Cookbook</title>
+<title>1&nbsp; The Basics – The Data Analyst SQL Cookbook</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,40 +20,6 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
-/* CSS for syntax highlighting */
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode > span { color: inherit; text-decoration: inherit; }
-div.sourceCode { margin: 1em 0; }
-pre.sourceCode { margin: 0; }
-@media screen {
-div.sourceCode { overflow: auto; }
-}
-@media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
-}
-pre.numberSource code
-  { counter-reset: source-line 0; }
-pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
-pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-  }
-pre.numberSource { margin-left: 3em;  padding-left: 4px; }
-div.sourceCode
-  {   }
-@media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
-}
 </style>
 
 
@@ -64,8 +30,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./references.html" rel="next">
-<link href="./filtering.html" rel="prev">
+<link href="./02-recipes.html" rel="next">
+<link href="./index.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -75,7 +41,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/quarto-contrib/interactive-sql-1.0.0/interactive-sql.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -103,9 +68,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
-<script src="https://unpkg.com/@antonz/sqlite@3.40.0/dist/sqlite3.js"></script>
-<script src="https://unpkg.com/sqlime@0.1.3/dist/sqlime-db.js"></script>
-<script src="https://unpkg.com/sqlime@0.1.3/dist/sqlime-examples.js"></script>
 
 
 </head>
@@ -119,7 +81,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./pivoting-and-unpivoting.html"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./01-basics.html"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">The Basics</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -152,28 +114,45 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./intro.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Introduction</span></span></a>
+  <a href="./01-basics.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">The Basics</span></span></a>
   </div>
 </li>
-        <li class="sidebar-item">
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="./02-recipes.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">SQL Recipes</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-joins_on_dates.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Joins on dates</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./queries_with_dates.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
   </div>
 </li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./filtering.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Filtering</span></span></a>
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Filtering</span></span></a>
   </div>
 </li>
-        <li class="sidebar-item">
+          <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
+  <a href="./pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
   </div>
 </li>
+      </ul>
+  </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./references.html" class="sidebar-item-text sidebar-link">
@@ -190,10 +169,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#pivoting" id="toc-pivoting" class="nav-link active" data-scroll-target="#pivoting"><span class="header-section-number">5</span> Pivoting</a></li>
-  <li><a href="#advanced-pivoting" id="toc-advanced-pivoting" class="nav-link" data-scroll-target="#advanced-pivoting"><span class="header-section-number">6</span> Advanced Pivoting</a></li>
-  <li><a href="#unpivoting" id="toc-unpivoting" class="nav-link" data-scroll-target="#unpivoting"><span class="header-section-number">7</span> Unpivoting</a></li>
-  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">8</span> References</a></li>
+  <li><a href="#the-basics" id="toc-the-basics" class="nav-link active" data-scroll-target="#the-basics"><span class="header-section-number">2</span> The Basics</a>
+  <ul class="collapse">
+  <li><a href="#joins-and-where" id="toc-joins-and-where" class="nav-link" data-scroll-target="#joins-and-where"><span class="header-section-number">2.1</span> JOINS and WHERE</a>
+  <ul class="collapse">
+  <li><a href="#section" id="toc-section" class="nav-link" data-scroll-target="#section"><span class="header-section-number">2.1.1</span> 1=1</a></li>
+  </ul></li>
+  <li><a href="#group-by" id="toc-group-by" class="nav-link" data-scroll-target="#group-by"><span class="header-section-number">2.2</span> GROUP BY</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -202,7 +185,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></h1>
+<h1 class="title"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">The Basics</span></h1>
 </div>
 
 
@@ -219,59 +202,39 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>At this point it’s likely you’re using a database that supports pivoting and unpivoting but it’s good to know how to do it yourself.</p>
-<section id="pivoting" class="level1" data-number="5">
-<h1 data-number="5"><span class="header-section-number">5</span> Pivoting</h1>
-<p>The most basic way to pivot is to use a CASE statement for each column you want to pivot.</p>
-<div class="interactive-sql">
-<div class="sourceCode" id="cb1"><pre class="sourceCode sql interactive pivot code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  ts_id,</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(<span class="cf">case</span> <span class="cf">when</span> ts_year <span class="op">=</span> <span class="dv">2020</span> <span class="cf">then</span> ts_value <span class="cf">end</span>) <span class="kw">as</span> ts_2020,</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(<span class="cf">case</span> <span class="cf">when</span> ts_year <span class="op">=</span> <span class="dv">2021</span> <span class="cf">then</span> ts_value <span class="cf">end</span>) <span class="kw">as</span> ts_2021</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> yearly_values_long</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">group</span> <span class="kw">by</span> ts_id</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
+<section id="the-basics" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> The Basics</h1>
+<p>You could find this section in probably any SQL book - feel free to skip it if you feel comfortable with SQL!</p>
+<section id="joins-and-where" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="joins-and-where"><span class="header-section-number">2.1</span> JOINS and WHERE</h2>
+<p>The Join and WHERE clauses are fun because they are VERY interchangeable. When you write</p>
+<p>select * from fart join fart2</p>
+<p>You’re essentially doing multiplication because it’s a cross join that combines all rows from fart to all rows from fart2. Usually you don’t want the full possible set of combinations but only a certain set. One typical way to constrain the output set is to only output rows that have a common value between two tables - it’s typically a primary key and foreign key combo but it could be anything else. Anyway, the typical way to JOIN tables is like this:</p>
+<p>select * from fart join fart2 on fart.id = fart2.id</p>
+<p>What we’re essentially doing is saying “hey, give me a set of rows from these two tables where the id column matches”. where the id column matches… WAIT, THIS IS ALSO LEGAL SQL</p>
+<p>select * from fart join fart2 where fart.id = fart2.id</p>
+<p>Congrats, we’ve just discovered the ANSI-89 standard of SQL! ANSI-89 compliant SQL looks like this:</p>
+<p>select * from fart, fart2 where fart.id = fart2.id</p>
+<p>This is because joins and where accomplish the same thing - they constrain the output set. Of course, the order of operations makes so that the join is done first and then the where clause is applied so you can’t just WHERE your way through when using ANSI-92 SQL.</p>
+<p>Anyway, the inverse is also neat - since both JOIN and WHERE accept clauses that constrain, you can just pass an operation to the JOIN:</p>
+<p>select * from fart left join fart2 on fart.id = fart2.id and fart2.smell = ‘bad’</p>
+<p>This pattern is especially useful when you want to “append” values from the second table but only when some condition is met. For example, maybe I would like to show all clients but only add their contact info if they have accepted to our marketing agreeement terms.</p>
+<p>The order of operation is also useful when running the ANTI JOIN</p>
+<p>select * from fart left join fart2 on fart.id = fart2.id where fart2.id is null</p>
+<p>The join happens first - so we can visualise in our head that some values are joined, some are not. Then, we can filter on the resulting set and only keep rows that didn’t find a match in table 2. This is called an anti join.</p>
+<section id="section" class="level3" data-number="2.1.1">
+<h3 data-number="2.1.1" class="anchored" data-anchor-id="section"><span class="header-section-number">2.1.1</span> 1=1</h3>
+<p>The set theory perspective makes WHERE 1=1 straightforward - you’re just saying</p>
 </section>
-<section id="advanced-pivoting" class="level1" data-number="6">
-<h1 data-number="6"><span class="header-section-number">6</span> Advanced Pivoting</h1>
-<p>Why I like pivoting in SQL is that I can create arbitrary case when statements to control how my data is pivoted:</p>
-<div class="interactive-sql">
-<div class="sourceCode" id="cb2"><pre class="sourceCode sql interactive pivot code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  ts_id,</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(<span class="cf">case</span> <span class="cf">when</span> ts_year <span class="op">=</span> <span class="dv">2020</span> <span class="kw">and</span> ts_value <span class="op">&gt;</span> <span class="fl">0.5</span> <span class="cf">then</span> ts_value <span class="cf">end</span>) <span class="kw">as</span> ts_2020,</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(<span class="cf">case</span> <span class="cf">when</span> ts_year <span class="op">=</span> <span class="dv">2021</span> <span class="kw">and</span> ts_value <span class="op">&gt;</span> <span class="fl">0.5</span> <span class="cf">then</span> ts_value <span class="cf">end</span>) <span class="kw">as</span> ts_2021</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> yearly_values_long</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="kw">group</span> <span class="kw">by</span> ts_id</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
 </section>
-<section id="unpivoting" class="level1" data-number="7">
-<h1 data-number="7"><span class="header-section-number">7</span> Unpivoting</h1>
-<p>I wish you don’t ever need to unpivot manually in SQL. A universal way to unpivot in SQL is to take each column of interest and do a UNION ALL.</p>
-<div class="interactive-sql">
-<div class="sourceCode" id="cb3"><pre class="sourceCode sql interactive pivot code-with-copy"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  ts_id, </span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">'2020'</span> <span class="kw">as</span> ts_year, </span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  [<span class="dv">2020</span>] <span class="kw">as</span> ts_value</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> yearly_values_wide</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="kw">union</span> <span class="kw">all</span></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  ts_id, </span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="st">'2021'</span> <span class="kw">as</span> ts_year, </span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  [<span class="dv">2021</span>] <span class="kw">as</span> ts_value</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> yearly_values_wide</span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-</section>
-<section id="references" class="level1" data-number="8">
-<h1 data-number="8"><span class="header-section-number">8</span> References</h1>
-<p>https://sqlperformance.com/2019/09/t-sql-queries/t-sql-pitfalls-pivoting-unpivoting</p>
+<section id="group-by" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="group-by"><span class="header-section-number">2.2</span> GROUP BY</h2>
+<p>I LOVE grouping in SQL because most other programming tools will only let you run a function on the grouped set. But noone is stopping you from running conditional counts in SQL!</p>
+<p>select count(*), sum(case when fart = ‘smelly’ then 1 else 0 end) as smelly_farts from farts</p>
+<p>In theory, I could accomplish the same thing in other programming languages by creating columns that I could count/sum but come on, that’s wasteful.</p>
 
 
-<sqlime-db name="pivot" path="https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/pivot.db"></sqlime-db>
-<sqlime-examples db="pivot" selector="div.interactive-sql pre.pivot code" editable=""></sqlime-examples>
+</section>
 </section>
 
 </main> <!-- /main -->
@@ -697,13 +660,13 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./filtering.html" class="pagination-link" aria-label="Filtering">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Filtering</span></span>
+      <a href="./index.html" class="pagination-link" aria-label="Preface">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Preface</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./references.html" class="pagination-link" aria-label="References">
-        <span class="nav-page-text">References</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./02-recipes.html" class="pagination-link" aria-label="SQL Recipes">
+        <span class="nav-page-text">SQL Recipes</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -712,5 +675,4 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 
 
 
-<script src="site_libs/quarto-contrib/interactive-sql-1.0.0/interactive-sql.js"></script>
 </body></html>

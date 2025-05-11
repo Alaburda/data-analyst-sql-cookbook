@@ -4,41 +4,182 @@
     "href": "index.html",
     "title": "The Data Analyst SQL Cookbook",
     "section": "",
-    "text": "Preface\nI have a terrible memory for things that I use rarely. When it comes to SQL, there are certain code patterns that are extremely useful when doing data modelling. But there’s only so many data models you need to build before actually using them. I wrote this so that I have all of my useful patterns in one place with the benefit of sharing this with you.\nAlso, these SQL patterns are not universally known! I have found that many developers reinvent the wheel or use suboptimal queries. My team has been victim to the same problem - we once found a solution on StackOverflow only to find a better solution a year later."
-  },
-  {
-    "objectID": "pivoting-and-unpivoting.html",
-    "href": "pivoting-and-unpivoting.html",
-    "title": "5  Pivoting and Unpivoting",
-    "section": "",
-    "text": "At this point it’s likely you’re using a database that supports pivoting and unpivoting but it’s good to know how to do it yourself.\n\n6 Pivoting\nThe most basic way to pivot is to use a CASE statement for each column you want to pivot.\n\n\nselect \n  ts_id,\n  sum(case when ts_year = 2020 then ts_value end) as ts_2020,\n  sum(case when ts_year = 2021 then ts_value end) as ts_2021\nfrom yearly_values_long\ngroup by ts_id\n\n\n\n7 Advanced Pivoting\nWhy I like pivoting in SQL is that I can create arbitrary case when statements to control how my data is pivoted:\n\n\nselect \n  ts_id,\n  sum(case when ts_year = 2020 and ts_value &gt; 0.5 then ts_value end) as ts_2020,\n  sum(case when ts_year = 2021 and ts_value &gt; 0.5 then ts_value end) as ts_2021\nfrom yearly_values_long\ngroup by ts_id\n\n\n\n8 Unpivoting\nI wish you don’t ever need to unpivot manually in SQL. A universal way to unpivot in SQL is to take each column of interest and do a UNION ALL.\n\n\nselect \n  ts_id, \n  '2020' as ts_year, \n  [2020] as ts_value\nfrom yearly_values_wide\nunion all\nselect \n  ts_id, \n  '2021' as ts_year, \n  [2021] as ts_value\nfrom yearly_values_wide\n\n\n\n\n9 References\nhttps://sqlperformance.com/2019/09/t-sql-queries/t-sql-pitfalls-pivoting-unpivoting"
-  },
-  {
-    "objectID": "filtering.html",
-    "href": "filtering.html",
-    "title": "4  Filtering",
-    "section": "",
-    "text": "5 Anti joins\nAnti joins are a type of join where you return only rows that do not match any row in a given table. For example, let’s say you have users who have done one time purchases but who have no subscription service. You want to send a marketing email to users who don’t have a subscription service yet but have done a one time purchase.\nYou can use the ON clause in joins to do neat things, such as:"
-  },
-  {
-    "objectID": "filtering.html#joining-only-to-certain-rows-in-the-main-table",
-    "href": "filtering.html#joining-only-to-certain-rows-in-the-main-table",
-    "title": "4  Filtering",
-    "section": "6.1 Joining only to certain rows in the main table",
-    "text": "6.1 Joining only to certain rows in the main table\nThe left join clause and created_channel = 2 ensures that the join only happens\n\n\nselect \n  users.*,\n  subscribers.subscription_type\nfrom users\nleft join subscribers\n  on user_id = users.id\n  and created_channel = 2\nwhere exists (select * from subscribers where users.id = subscribers.user_id)\nlimit 10"
-  },
-  {
-    "objectID": "filtering.html#joining-only-certain-rows-from-another-table",
-    "href": "filtering.html#joining-only-certain-rows-from-another-table",
-    "title": "4  Filtering",
-    "section": "6.2 Joining only certain rows from another table",
-    "text": "6.2 Joining only certain rows from another table\n\n\nselect \n  users.*,\n  subscribers.subscription_type\nfrom users\nleft join subscribers\n  on user_id = users.id\n  and subscription_type = 2\nwhere exists (select * from subscribers where users.id = subscribers.user_id)\nlimit 10"
+    "text": "Preface\nI have a terrible memory for things that I use rarely. When it comes to SQL, there are certain code patterns that are extremely useful when doing data modelling. But there’s only so many data models you need to build before actually using them. I wrote this so that I have all of my useful patterns in one place with the benefit of sharing this with you.\nThis book was born out of a need to collect SQL queries that were too infrequently used to be memorized but too frequently used to be looked up. The queries are organized by topic and are meant to be used as a reference. The book is also meant to be a living document that will be updated as new queries are discovered and old queries are improved.\nFurthermore, these SQL patterns are not universally known! I have found that many developers are not aware of these patterns and are reinventing the wheel when they encounter these problems. I hope that this book will help to spread these patterns and make them more widely known. My team has been victim to the same problem - we found a solution on StackOverflow only to find a better solution a year down the line.\nThe impetus to writing this book was that I couldn’t find a book that I could throw at a fresh data analyst and say “here, this will get you up to speed on SQL”. The book initially was supposed to be a collection of SQL queries that my team used frequently or infrequently. Think of it as a SQL cookbook of sorts - it contains recipes that are useful but not so common that you’d learn them by heart. However, I also realised that having a single resource for SQL is better than two so I added an introduction to SQL as well.\nPart one of the book is exactly that - basics presented in a concise manner to get you up to speed on running queries as an analyst. Part two is the cookbook - the queries are loosely grouped around the types of problems they solve. For example, queries for working with time series will be in the same chapter. Loosely is a load-bearing word here - I would like to find a more natural way of organising the material but the recipes are going to be useful depending on your area. You might not even find a use for some of the queries in this book!\nTo make this book really useful, the book uses the interactive SQL extension for Quarto. All the code chunks you find in the book are executable. Have fun!",
+    "crumbs": [
+      "Preface"
+    ]
   },
   {
     "objectID": "intro.html",
     "href": "intro.html",
     "title": "1  Introduction",
     "section": "",
-    "text": "2 Introduction\nThis is a book created from markdown and executable code.\nSee Knuth (1984) for additional discussion of literate programming.\n\n\nselect * from playlists;\n\n\n1 + 1\n\n[1] 2\n\n\n\n\n\n\n\n\nKnuth, Donald E. 1984. “Literate Programming.” Comput. J. 27 (2): 97–111. https://doi.org/10.1093/comjnl/27.2.97."
+    "text": "2 Introduction\nThe impetus to writing this book was that I couldn’t find a book that I could throw at a fresh data analyst and say “here, this will get you up to speed on SQL”. The book initially was supposed to be a collection of SQL queries that my team used frequently or infrequently. Think of it as a SQL cookbook of sorts - it contains recipes that are useful but not so common that you’d learn them by heart. However, I also realised that having a single resource for SQL is better than two so I added an introduction to SQL as well.\nPart one of the book is exactly that - basics presented in a concise manner to get you up to speed on running queries as an analyst. Part two is the cookbook - the queries are loosely grouped around the types of problems they solve. For example, queries for working with time series will be in the same chapter. Loosely is a load-bearing word here - I would like to find a more natural way of organising the material but the recipes are going to be useful depending on your area. You might not even find a use for some of the queries in this book!\nTo make this book really useful, the book uses the interactive SQL extension for Quarto. All the code chunks you find in the book are executable. Have fun!",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Introduction</span>"
+    ]
+  },
+  {
+    "objectID": "queries_with_dates.html",
+    "href": "queries_with_dates.html",
+    "title": "2  Queries with Dates",
+    "section": "",
+    "text": "3 Intersecting Dates\nLet’s say you have a table of subscriptions that all different start and end dates. How would you filter down a list of subscriptions to show those that were active within a time range? In other words, how do you find rows that have intersecting dates?\nFor example, here are all subscribers that had active subscriptions in 2023:\n\n\nselect *\nfrom subscribers\nwhere subscription_valid_from &lt;= '2023-12-31'\nand subscription_valid_to &gt;= '2023-01-01'\n\nThis query works when thinking in terms of sets. A subscription whose start date is later than our range’s end date is not in scope (i.e. date_from &gt; ‘2023-12-31’). So we can write the inverse of this, i.e. date_from &lt;= ‘2023-12-31’. The same goes for subscriptions that end before our range of interest.\n\n\n4 Counting Active Date Ranges\nIf you have a SCD2 type dimension like subscriptions, a common question might be to provide the number of active subscriptions for each day, week, month or year. It’s best to use a calendar table like this:\n\n\nselect\n  date,\n  count(*) as number_of_subscribers\nfrom calendar\ninner join subscribers\n  on date &gt;= subscription_valid_from\n  and date &lt;= subscription_valid_to\ngroup by date\n\n\nYou can also build a query without using a calendar table:\n\n\nwith d as (\n      select validfrom as dte, 1 as inc\n      from t\n      union all\n      select validto, -1\n      from t\n     )\nselect dte, sum(sum(inc)) over (order by dte)\nfrom d\ngroup by dte\norder by dte;\n\n\n\n5 Calculating date ranges based on gaps\nLet’s say we have subscriptions but we need to show a start date and an end date of gaps between subscriptions. For example, if I subscribed from 2023-01-01 to 2023-05-31 and then from 2023-07-01 to 2023-12-31, I would want to return a row that said I was not a subscriber from 2023-06-01 to 2023-06-30.\n\nSELECT   \n  seqval + 1 AS start_range,   \n  (\n    SELECT \n      MIN(B.seqval)    \n    FROM dbo.NumSeq AS B    \n    WHERE B.seqval &gt; A.seqval\n    ) - 1 AS end_range \nFROM dbo.NumSeq AS A \nWHERE NOT EXISTS (\n  SELECT * FROM dbo.NumSeq AS B    \n  WHERE B.seqval = A.seqval + 1)\nAND seqval &lt; (SELECT MAX(seqval) FROM dbo.NumSeq);\n\nThis solution is based on subqueries. In order to understand it you should first focus on the filtering activity in the WHERE clause and then proceed to the activity in the SELECT list. The purpose of the NOT EXISTS predicate in the WHERE clause is to filter only points that are a point before a gap. You can identify a point before a gap when you see that for such a point, the value plus 1 doesn’t exist in the sequence. The purpose of the second predicate in the WHERE clause is to filter out the maximum value from the sequence because it represents the point before infinity, which does not concern us.\n\n\n6 Sessionization\n\n\n7 Islands Problem\n\n\nSELECT \n  MIN(seqval) AS start_range, \n  MAX(seqval) AS end_range \nFROM (\n  SELECT \n    seqval, \n    seqval - ROW_NUMBER() OVER (ORDER BY seqval) AS grp\n  FROM dbo.NumSeq\n  ) AS D GROUP BY grp;\n\n\n\n8",
+    "crumbs": [
+      "SQL Recipes",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Queries with Dates</span>"
+    ]
+  },
+  {
+    "objectID": "filtering.html",
+    "href": "filtering.html",
+    "title": "3  Filtering",
+    "section": "",
+    "text": "4 Anti joins\nAnti joins are a type of join where you return only rows that do not match any row in a given table. For example, let’s say you have users who have done one time purchases but who have no subscription service. You want to send a marketing email to users who don’t have a subscription service yet but have done a one time purchase.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Filtering</span>"
+    ]
+  },
+  {
+    "objectID": "filtering.html#joining-only-to-certain-rows-in-the-main-table",
+    "href": "filtering.html#joining-only-to-certain-rows-in-the-main-table",
+    "title": "3  Filtering",
+    "section": "5.1 Joining only to certain rows in the main table",
+    "text": "5.1 Joining only to certain rows in the main table\nThe left join clause and created_channel = 2 ensures that the join only happens\n\n\nselect \n  users.*,\n  subscribers.subscription_type\nfrom users\nleft join subscribers\n  on user_id = users.id\n  and created_channel = 2\nwhere exists (select * from subscribers where users.id = subscribers.user_id)\nlimit 10",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Filtering</span>"
+    ]
+  },
+  {
+    "objectID": "filtering.html#joining-only-certain-rows-from-another-table",
+    "href": "filtering.html#joining-only-certain-rows-from-another-table",
+    "title": "3  Filtering",
+    "section": "5.2 Joining only certain rows from another table",
+    "text": "5.2 Joining only certain rows from another table\n\n\nselect \n  users.*,\n  subscribers.subscription_type\nfrom users\nleft join subscribers\n  on user_id = users.id\n  and subscription_type = 2\nwhere exists (select * from subscribers where users.id = subscribers.user_id)\nlimit 10",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Filtering</span>"
+    ]
+  },
+  {
+    "objectID": "pivoting-and-unpivoting.html",
+    "href": "pivoting-and-unpivoting.html",
+    "title": "4  Pivoting and Unpivoting",
+    "section": "",
+    "text": "At this point it’s likely you’re using a database that supports pivoting and unpivoting but it’s good to know how to do it yourself.\n\n5 Pivoting\nThe most basic way to pivot is to use a CASE statement for each column you want to pivot.\n\n\nselect \n  ts_id,\n  sum(case when ts_year = 2020 then ts_value end) as ts_2020,\n  sum(case when ts_year = 2021 then ts_value end) as ts_2021\nfrom yearly_values_long\ngroup by ts_id\n\n\n\n6 Advanced Pivoting\nWhy I like pivoting in SQL is that I can create arbitrary case when statements to control how my data is pivoted:\n\n\nselect \n  ts_id,\n  sum(case when ts_year = 2020 and ts_value &gt; 0.5 then ts_value end) as ts_2020,\n  sum(case when ts_year = 2021 and ts_value &gt; 0.5 then ts_value end) as ts_2021\nfrom yearly_values_long\ngroup by ts_id\n\n\n\n7 Unpivoting\nI wish you don’t ever need to unpivot manually in SQL. A universal way to unpivot in SQL is to take each column of interest and do a UNION ALL.\n\n\nselect \n  ts_id, \n  '2020' as ts_year, \n  [2020] as ts_value\nfrom yearly_values_wide\nunion all\nselect \n  ts_id, \n  '2021' as ts_year, \n  [2021] as ts_value\nfrom yearly_values_wide\n\n\n\n\n8 References\nhttps://sqlperformance.com/2019/09/t-sql-queries/t-sql-pitfalls-pivoting-unpivoting",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Pivoting and Unpivoting</span>"
+    ]
+  },
+  {
+    "objectID": "01-basics.html",
+    "href": "01-basics.html",
+    "title": "1  The Basics",
+    "section": "",
+    "text": "2 The Basics\nYou could find this section in probably any SQL book - feel free to skip it if you feel comfortable with SQL!",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>The Basics</span>"
+    ]
+  },
+  {
+    "objectID": "02-recipes.html",
+    "href": "02-recipes.html",
+    "title": "SQL Recipes",
+    "section": "",
+    "text": "This is the goodie part of the book, enjoy!",
+    "crumbs": [
+      "SQL Recipes"
+    ]
+  },
+  {
+    "objectID": "references.html",
+    "href": "references.html",
+    "title": "References",
+    "section": "",
+    "text": "https://stackoverflow.com/questions/3270338/confused-about-itzik-ben-gans-logical-query-processing-order-in-his-sql-server",
+    "crumbs": [
+      "References"
+    ]
+  },
+  {
+    "objectID": "01-basics.html#joins-and-where",
+    "href": "01-basics.html#joins-and-where",
+    "title": "1  The Basics",
+    "section": "2.1 JOINS and WHERE",
+    "text": "2.1 JOINS and WHERE\nThe Join and WHERE clauses are fun because they are VERY interchangeable. When you write\nselect * from fart join fart2\nYou’re essentially doing multiplication because it’s a cross join that combines all rows from fart to all rows from fart2. Usually you don’t want the full possible set of combinations but only a certain set. One typical way to constrain the output set is to only output rows that have a common value between two tables - it’s typically a primary key and foreign key combo but it could be anything else. Anyway, the typical way to JOIN tables is like this:\nselect * from fart join fart2 on fart.id = fart2.id\nWhat we’re essentially doing is saying “hey, give me a set of rows from these two tables where the id column matches”. where the id column matches… WAIT, THIS IS ALSO LEGAL SQL\nselect * from fart join fart2 where fart.id = fart2.id\nCongrats, we’ve just discovered the ANSI-89 standard of SQL! ANSI-89 compliant SQL looks like this:\nselect * from fart, fart2 where fart.id = fart2.id\nThis is because joins and where accomplish the same thing - they constrain the output set. Of course, the order of operations makes so that the join is done first and then the where clause is applied so you can’t just WHERE your way through when using ANSI-92 SQL.\nAnyway, the inverse is also neat - since both JOIN and WHERE accept clauses that constrain, you can just pass an operation to the JOIN:\nselect * from fart left join fart2 on fart.id = fart2.id and fart2.smell = ‘bad’\nThis pattern is especially useful when you want to “append” values from the second table but only when some condition is met. For example, maybe I would like to show all clients but only add their contact info if they have accepted to our marketing agreeement terms.\nThe order of operation is also useful when running the ANTI JOIN\nselect * from fart left join fart2 on fart.id = fart2.id where fart2.id is null\nThe join happens first - so we can visualise in our head that some values are joined, some are not. Then, we can filter on the resulting set and only keep rows that didn’t find a match in table 2. This is called an anti join.\n\n2.1.1 1=1\nThe set theory perspective makes WHERE 1=1 straightforward - you’re just saying",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>The Basics</span>"
+    ]
+  },
+  {
+    "objectID": "01-basics.html#group-by",
+    "href": "01-basics.html#group-by",
+    "title": "1  The Basics",
+    "section": "2.2 GROUP BY",
+    "text": "2.2 GROUP BY\nI LOVE grouping in SQL because most other programming tools will only let you run a function on the grouped set. But noone is stopping you from running conditional counts in SQL!\nselect count(*), sum(case when fart = ‘smelly’ then 1 else 0 end) as smelly_farts from farts\nIn theory, I could accomplish the same thing in other programming languages by creating columns that I could count/sum but come on, that’s wasteful.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>The Basics</span>"
+    ]
+  },
+  {
+    "objectID": "03-joins_on_dates.html",
+    "href": "03-joins_on_dates.html",
+    "title": "2  Joins on dates",
+    "section": "",
+    "text": "3 Counting number of subscribers\nIf you’re working with subscription data, one frequent question is “how many subscribtions we had each month?”. This is a surprisingly difficult question to answer because you need to count the number of subscribers at the end of each month. This is a great example of a problem that is easy to solve in SQL but cumbersome on the BI end1.\nThe query is a two step process:",
+    "crumbs": [
+      "SQL Recipes",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Joins on dates</span>"
+    ]
+  },
+  {
+    "objectID": "03-joins_on_dates.html#footnotes",
+    "href": "03-joins_on_dates.html#footnotes",
+    "title": "2  Joins on dates",
+    "section": "",
+    "text": "In Power BI, it’s a four step process.↩︎",
+    "crumbs": [
+      "SQL Recipes",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Joins on dates</span>"
+    ]
+  },
+  {
+    "objectID": "01-basics.html#select",
+    "href": "01-basics.html#select",
+    "title": "1  The Basics",
+    "section": "2.1 SELECT",
+    "text": "2.1 SELECT\nI wish I could write something smart when writing anything between the SELECT and FROM keywords!",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>The Basics</span>"
+    ]
+  },
+  {
+    "objectID": "goodies.html",
+    "href": "goodies.html",
+    "title": "6  Useful Resources",
+    "section": "",
+    "text": "6.1 Tools",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Useful Resources</span>"
+    ]
+  },
+  {
+    "objectID": "goodies.html#tools",
+    "href": "goodies.html#tools",
+    "title": "6  Useful Resources",
+    "section": "",
+    "text": "DBeaver - just a great SQL client that supports a lot of databases\nDB Fiddle - an online sandbox to run your SQL queries\nDuckDB Local UI - haven’t tested it yet but looks neat so far",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Useful Resources</span>"
+    ]
+  },
+  {
+    "objectID": "goodies.html#learning-resources",
+    "href": "goodies.html#learning-resources",
+    "title": "6  Useful Resources",
+    "section": "6.2 Learning Resources",
+    "text": "6.2 Learning Resources\n\nAdvanced SQL Puzzles\nUse the Index, Luke",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Useful Resources</span>"
+    ]
   }
 ]

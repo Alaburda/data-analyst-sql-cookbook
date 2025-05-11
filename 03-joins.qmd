@@ -1,8 +1,8 @@
 ---
-title: "Joins on dates"
+title: "Joins"
 ---
 
-# Counting number of subscribers
+## Counting number of subscribers
 
 If you're working with subscription data, one frequent question is "how many subscribtions we had each month?". This is a surprisingly difficult question to answer because you need to count the number of subscribers at the end of each month. This is a great example of a problem that is easy to solve in SQL but cumbersome on the BI end[^1].
 
@@ -26,3 +26,14 @@ with months as (
 ```
 
 [^1]: [In Power BI, it's a four step process.](https://community.fabric.microsoft.com/t5/Desktop/Dynamic-Function-To-Count-Values-in-a-Date-Range/td-p/2424354)
+
+## Rolling "As of" Joins
+
+Rolling joins are essentially non-equi joins that only return the "closest" row. R users may be familliar with this technique as Rolling Joins, DuckDB and Snowflake refers to these as "ASOF" joins: https://duckdb.org/docs/stable/guides/sql_features/asof_join.html
+
+These operations are incredibly useful when working with attribution. For example, two customer representatives performed a sale and marked it in the CRM but you need to attribute the sale to the sale that was performed first.  
+
+
+
+
+
