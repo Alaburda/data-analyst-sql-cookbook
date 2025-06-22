@@ -1,7 +1,0 @@
-# Ragged Depth Hierarchies
-
-Companies have layers. A business line probably has their own division that has multiple departaments which have multiple units and so on. As long as the layers are fixed, life is great: you can simply model this as a wide table. However, reality resists simplicity: some unit probably reports directly to the head of division or maybe subunits exist in some departments but don't exist in others. Hierarchies come in all shapes and sizes.
-
-Furthermore, let's say you're trying to count team expenses. You have expenses for individual employees but your stakeholders wants to rollup those expenses at any level. How would you do it?
-
-https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/ragged-variable-depth-hierarchy/

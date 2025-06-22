@@ -4,7 +4,7 @@
     "href": "index.html",
     "title": "The Data Analyst SQL Cookbook",
     "section": "",
-    "text": "Preface\nI have a terrible memory for things that I use rarely. When it comes to SQL, there are certain code patterns that are extremely useful when doing data modelling. But there’s only so many data models you need to build before actually using them. I wrote this so that I have all of my useful patterns in one place with the benefit of sharing this with you.\nThis book was born out of a need to collect SQL queries that were too infrequently used to be memorized but too frequently used to be looked up. The queries are organized by topic and are meant to be used as a reference. The book is also meant to be a living document that will be updated as new queries are discovered and old queries are improved.\nFurthermore, these SQL patterns are not universally known! I have found that many developers are not aware of these patterns and are reinventing the wheel when they encounter these problems. I hope that this book will help to spread these patterns and make them more widely known. My team has been victim to the same problem - we found a solution on StackOverflow only to find a better solution a year down the line.\nThe impetus to writing this book was that I couldn’t find a book that I could throw at a fresh data analyst and say “here, this will get you up to speed on SQL”. The book initially was supposed to be a collection of SQL queries that my team used frequently or infrequently. Think of it as a SQL cookbook of sorts - it contains recipes that are useful but not so common that you’d learn them by heart. However, I also realised that having a single resource for SQL is better than two so I added an introduction to SQL as well.\nPart one of the book is exactly that - basics presented in a concise manner to get you up to speed on running queries as an analyst. Part two is the cookbook - the queries are loosely grouped around the types of problems they solve. For example, queries for working with time series will be in the same chapter. Loosely is a load-bearing word here - I would like to find a more natural way of organising the material but the recipes are going to be useful depending on your area. You might not even find a use for some of the queries in this book!\nTo make this book really useful, the book uses the interactive SQL extension for Quarto. All the code chunks you find in the book are executable. Have fun!",
+    "text": "Preface\nI have a terrible memory for things that I use rarely. When it comes to SQL, there are certain code patterns that are extremely useful when doing data modelling. But there’s only so many data models you need to build before actually using them. I wrote this so that I have all of my useful patterns in one place with the benefit of sharing this with you.\nThis book was born out of a need to collect SQL queries that were too infrequently used to be memorized but too frequently used to be looked up. The queries are organized by topic and are meant to be used as a reference. The book is also meant to be a living document that will be updated as new queries are discovered and old queries are improved.\nFurthermore, these SQL patterns are not universally known! I have found that many developers are not aware of these patterns and are reinventing the wheel when they encounter these problems. I hope that this book will help to spread these patterns and make them more widely known. My team has been victim to the same problem - we found a solution on StackOverflow only to find a better solution a year down the line.\nThe impetus to writing this book was that I couldn’t find a book that I could throw at a fresh data analyst and say “here, this will get you up to speed on SQL”. The book initially was supposed to be a collection of SQL queries that my team used frequently or infrequently. Think of it as a SQL cookbook of sorts - it contains recipes that are useful but not so common that you’d learn them by heart. However, I also realised that having a single resource for SQL is better than two so I added an introduction to SQL as well.\nPart one of the book is exactly that - basics presented in a concise manner to get you up to speed on running queries as an analyst. Part two is the cookbook - the queries are loosely grouped around the types of problems they solve. For example, queries for working with time series will be in the same chapter. Loosely is a load-bearing word here - I would like to find a more natural way of organising the material but the recipes are going to be useful depending on your area. You might not even find a use for some of the queries in this book!\nThere’s also another, secret, part - building Data Models. A lot of Data Analysts forgo building a star schema and just whack the raw data with whatever tool they’re most comfortable with. It’s not necessarily a bad practice or anything but I prefer building out my data model so that it meets two criteria:\n\nIt’s expressive - relatively simple SQL queries are required to get different calculations, i.e. I don’t need to use exotic SQL when all I want is a count or a sum\nIt’s\n\nIf the model is expressive and X, then there’s a few neat things that get solved:\n\nYou no longer need to write complicated Calculated Fields or DAX queries - that means the calculations are simpler and more portable.\nThis means you have less lock-in - if for some reason you need to switch BI vendors, your data model drives most of the logic.\nAn expressive data model also lets you double check if the result in your Data Warehouse and your BI tool matches\n\nWhenever I build a data model (or semantic layer whatever you wanna call it), I try to build it in a way that my main metrics can be calculated using simple SQL queries like counting rows or SUM’ing a column. Achieving this nets you a few neat things:\n\nYou can check your metric definition inside your Data Warehouse and your BI tool\nYou have less vendor lock-in and can switch BI tools if need be\n\nMy favourite example is how Power BI has an unwieldy query for calculating the number of subscriptions for each month, i.e. showing the change of active SCD2 type rows. In a data model, this is solved by building a factless fact table. And you really really need to know this as a data analyst - I strongly believe that only the analyst can build the semantic layer because the semantic layer is driven by the metrics and questions that need answering. If your tables in the Data Warehouse are not built in a way that helps you answer questions and build your main KPIs, your data analysts are going to build out their logic in the BI tool or somewhere else entirely. This chapter is recipes targeted towards building tables inside of a Data Warehouse.\nTo make this book really useful, the book uses the interactive SQL extension for Quarto. All the code chunks you find in the book are executable. Have fun!\nI like data modeling because it introduces clarity and a common language between data analysts. If all reports follow some sane dimension and fact structure, you can probably onboard a new data analyst faster than to reports that do not. However, I understand why people despise Kimball’s techniques and embrace stuff like one-big-table (OBTs). Have you seen the list of techniques listed on KImball’s website? Half of these names don’t make sense to me. If I have a calendar table that is used as a filter on two fact tables, suddenly it’s called a “conformed” dimension? If I define multiple relationships between my dimension and fact tables, it’s called a “role playing” dimension now? That’s too much lingo for my tastes. The data modeling chapter contains techniques that I have found useful with sample SQL code to show how they could be applied.",
     "crumbs": [
       "Preface"
     ]
@@ -104,8 +104,8 @@
     "objectID": "01-basics.html#joins-and-where",
     "href": "01-basics.html#joins-and-where",
     "title": "1  The Basics",
-    "section": "2.1 JOINS and WHERE",
-    "text": "2.1 JOINS and WHERE\nThe Join and WHERE clauses are fun because they are VERY interchangeable. When you write\nselect * from fart join fart2\nYou’re essentially doing multiplication because it’s a cross join that combines all rows from fart to all rows from fart2. Usually you don’t want the full possible set of combinations but only a certain set. One typical way to constrain the output set is to only output rows that have a common value between two tables - it’s typically a primary key and foreign key combo but it could be anything else. Anyway, the typical way to JOIN tables is like this:\nselect * from fart join fart2 on fart.id = fart2.id\nWhat we’re essentially doing is saying “hey, give me a set of rows from these two tables where the id column matches”. where the id column matches… WAIT, THIS IS ALSO LEGAL SQL\nselect * from fart join fart2 where fart.id = fart2.id\nCongrats, we’ve just discovered the ANSI-89 standard of SQL! ANSI-89 compliant SQL looks like this:\nselect * from fart, fart2 where fart.id = fart2.id\nThis is because joins and where accomplish the same thing - they constrain the output set. Of course, the order of operations makes so that the join is done first and then the where clause is applied so you can’t just WHERE your way through when using ANSI-92 SQL.\nAnyway, the inverse is also neat - since both JOIN and WHERE accept clauses that constrain, you can just pass an operation to the JOIN:\nselect * from fart left join fart2 on fart.id = fart2.id and fart2.smell = ‘bad’\nThis pattern is especially useful when you want to “append” values from the second table but only when some condition is met. For example, maybe I would like to show all clients but only add their contact info if they have accepted to our marketing agreeement terms.\nThe order of operation is also useful when running the ANTI JOIN\nselect * from fart left join fart2 on fart.id = fart2.id where fart2.id is null\nThe join happens first - so we can visualise in our head that some values are joined, some are not. Then, we can filter on the resulting set and only keep rows that didn’t find a match in table 2. This is called an anti join.\n\n2.1.1 1=1\nThe set theory perspective makes WHERE 1=1 straightforward - you’re just saying",
+    "section": "2.2 JOINS and WHERE",
+    "text": "2.2 JOINS and WHERE\nThere are entire chapters devoted to joins and a variety of interesting dialects. However, knowing LEFT and INNER joins gets you 95% of the way there. A great illustration of how joins work can be found in R for Data Science https://r4ds.hadley.nz/joins.html. Lately I’ve been thinking of joins and where statements interchangeably because you can express the same result in two different ways. For example, this query would return a combination of rows from the two tables:\n\nselect *\nfrom coffee\njoin coffee_brewing\n\nThe Join and WHERE clauses are fun because they are VERY interchangeable. When you write\nselect * from fart join fart2\nYou’re essentially doing multiplication because it’s a cross join that combines all rows from fart to all rows from fart2. Usually you don’t want the full possible set of combinations but only a certain set. One typical way to constrain the output set is to only output rows that have a common value between two tables - it’s typically a primary key and foreign key combo but it could be anything else. Anyway, the typical way to JOIN tables is like this:\nselect * from fart join fart2 on fart.id = fart2.id\nWhat we’re essentially doing is saying “hey, give me a set of rows from these two tables where the id column matches”. where the id column matches… WAIT, THIS IS ALSO LEGAL SQL\nselect * from fart join fart2 where fart.id = fart2.id\nCongrats, we’ve just discovered the ANSI-89 standard of SQL! ANSI-89 compliant SQL looks like this:\nselect * from fart, fart2 where fart.id = fart2.id\nThis is because joins and where accomplish the same thing - they constrain the output set. Of course, the order of operations makes so that the join is done first and then the where clause is applied so you can’t just WHERE your way through when using ANSI-92 SQL.\nAnyway, the inverse is also neat - since both JOIN and WHERE accept clauses that constrain, you can just pass an operation to the JOIN:\nselect * from fart left join fart2 on fart.id = fart2.id and fart2.smell = ‘bad’\nThis pattern is especially useful when you want to “append” values from the second table but only when some condition is met. For example, maybe I would like to show all clients but only add their contact info if they have accepted to our marketing agreeement terms.\nThe order of operation is also useful when running the ANTI JOIN\nselect * from fart left join fart2 on fart.id = fart2.id where fart2.id is null\nThe join happens first - so we can visualise in our head that some values are joined, some are not. Then, we can filter on the resulting set and only keep rows that didn’t find a match in table 2. This is called an anti join.\n\n2.2.1 1=1\nThe set theory perspective makes WHERE 1=1 straightforward - you’re just saying",
     "crumbs": [
       "<span class='chapter-number'>1</span>  <span class='chapter-title'>The Basics</span>"
     ]
@@ -114,8 +114,8 @@
     "objectID": "01-basics.html#group-by",
     "href": "01-basics.html#group-by",
     "title": "1  The Basics",
-    "section": "2.2 GROUP BY",
-    "text": "2.2 GROUP BY\nI LOVE grouping in SQL because most other programming tools will only let you run a function on the grouped set. But noone is stopping you from running conditional counts in SQL!\nselect count(*), sum(case when fart = ‘smelly’ then 1 else 0 end) as smelly_farts from farts\nIn theory, I could accomplish the same thing in other programming languages by creating columns that I could count/sum but come on, that’s wasteful.",
+    "section": "2.3 GROUP BY",
+    "text": "2.3 GROUP BY\nI LOVE grouping in SQL because most other programming tools will only let you run a function on the grouped set. But noone is stopping you from running conditional counts in SQL!\nselect count(*), sum(case when fart = ‘smelly’ then 1 else 0 end) as smelly_farts from farts\nIn theory, I could accomplish the same thing in other programming languages by creating columns that I could count/sum but come on, that’s wasteful.",
     "crumbs": [
       "<span class='chapter-number'>1</span>  <span class='chapter-title'>The Basics</span>"
     ]
@@ -155,31 +155,195 @@
   {
     "objectID": "goodies.html",
     "href": "goodies.html",
-    "title": "6  Useful Resources",
+    "title": "8  Useful Resources",
     "section": "",
-    "text": "6.1 Tools",
+    "text": "8.1 Tools",
     "crumbs": [
-      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Useful Resources</span>"
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>Useful Resources</span>"
     ]
   },
   {
     "objectID": "goodies.html#tools",
     "href": "goodies.html#tools",
-    "title": "6  Useful Resources",
+    "title": "8  Useful Resources",
     "section": "",
-    "text": "DBeaver - just a great SQL client that supports a lot of databases\nDB Fiddle - an online sandbox to run your SQL queries\nDuckDB Local UI - haven’t tested it yet but looks neat so far",
+    "text": "DBeaver - just a great SQL client that supports a lot of databases\nDB Fiddle - an online sandbox to run your SQL queries\nSQLime - another online sandbox to write queries\nDuckDB Local UI - haven’t tested it yet but looks neat so far",
     "crumbs": [
-      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Useful Resources</span>"
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>Useful Resources</span>"
     ]
   },
   {
     "objectID": "goodies.html#learning-resources",
     "href": "goodies.html#learning-resources",
-    "title": "6  Useful Resources",
-    "section": "6.2 Learning Resources",
-    "text": "6.2 Learning Resources\n\nAdvanced SQL Puzzles\nUse the Index, Luke",
+    "title": "8  Useful Resources",
+    "section": "8.2 Learning Resources",
+    "text": "8.2 Learning Resources\n\nAdvanced SQL Puzzles\nUse the Index, Luke",
     "crumbs": [
-      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Useful Resources</span>"
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>Useful Resources</span>"
+    ]
+  },
+  {
+    "objectID": "02_models/ragged_depth_hierarchies.html",
+    "href": "02_models/ragged_depth_hierarchies.html",
+    "title": "3  Ragged Depth Hierarchies",
+    "section": "",
+    "text": "Companies have layers. A team is likely to belong to a department which belongs to a business line which belongs to some larger org unit. And so it goes. From a modelling perspective, everything is peachy as long as the depth of layers is uniform. That is, it’s great if a team is always the third hierarchical org structure and a team always reports to a department which always reports to a business line. In such cases, you can simply model this as three columns in a dimension table and move on. However, reality resists simplicity\nSome employees might not have a team and report directly to the director of a business line. Other times there might be teams and there might not. The number of layers can be absolutely different. Hierarchies come in all shapes and sizes and we should expect them to be like this. How do we model this from a data modelling perspective?\nModelling this data is important. A good example is counting team expenses. You have expenses for individual employees but your stakeholders wants to rollup those expenses at any level. How would you do it?\nThis situation is called a ragged variable depth hierarchy and Kimball offers a great idea on how to solve it - but no SQL code!\nThe idea is to create a bridge table - a table that shows not only to whom to you report but also every skip level manager in the chain. The idea being that if you have a fact row associated with you, every manager in the chain inherits that fact row as well.\n\nWITH RECURSIVE org_hierarchy AS (\n    -- Anchor member: select all employees with their immediate manager\n    SELECT\n        employee_id,\n        manager_id,\n        employee_name,\n        1 AS level,\n        CAST(employee_id AS VARCHAR(100)) AS path\n    FROM employees\n    WHERE manager_id IS NULL -- Top-level managers\n\n    UNION ALL\n\n    -- Recursive member: join employees to their managers\n    SELECT\n        e.employee_id,\n        e.manager_id,\n        e.employee_name,\n        oh.level + 1 AS level,\n        CONCAT(oh.path, ' &gt; ', e.employee_id) AS path\n    FROM employees e\n    INNER JOIN org_hierarchy oh ON e.manager_id = oh.employee_id\n)\nSELECT * FROM org_hierarchy\nORDER BY path;",
+    "crumbs": [
+      "Data Modelling Techniques",
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Ragged Depth Hierarchies</span>"
+    ]
+  },
+  {
+    "objectID": "03_recipes/joins.html",
+    "href": "03_recipes/joins.html",
+    "title": "4  Joins",
+    "section": "",
+    "text": "4.1 Counting number of subscribers\nIf you’re working with subscription data, one frequent question is “how many subscribtions we had each month?”. This is a surprisingly difficult question to answer because you need to count the number of subscribers at the end of each month. This is a great example of a problem that is easy to solve in SQL but cumbersome on the BI end1.\nThe query is a two step process:",
+    "crumbs": [
+      "Data Recipes",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Joins</span>"
+    ]
+  },
+  {
+    "objectID": "03_recipes/joins.html#counting-number-of-subscribers",
+    "href": "03_recipes/joins.html#counting-number-of-subscribers",
+    "title": "4  Joins",
+    "section": "",
+    "text": "We join a list of months to the subscriptions table in order to “explore” the table at the level of months. Instead of having one row be a subscription, one row is a subscription in a given month. For example, a subscription that was active for three months would show up as three rows.\nAggregation - now that the data is at the level of months, we can count the number of subscriptions in each month.\n\n\nwith months as (\n            select distinct DATE(date, 'start of month') date\n            from calendar\n           )\n           select date, count(*)\n           from months\n           inner join subscriptions\n            on date between date_from and date_to\n           group by date",
+    "crumbs": [
+      "Data Recipes",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Joins</span>"
+    ]
+  },
+  {
+    "objectID": "03_recipes/joins.html#rolling-as-of-joins",
+    "href": "03_recipes/joins.html#rolling-as-of-joins",
+    "title": "4  Joins",
+    "section": "4.2 Rolling “As of” Joins",
+    "text": "4.2 Rolling “As of” Joins\nRolling joins are essentially non-equi joins that only return the “closest” row. R users may be familliar with this technique as Rolling Joins, DuckDB and Snowflake refers to these as “ASOF” joins: https://duckdb.org/docs/stable/guides/sql_features/asof_join.html\nThese operations are incredibly useful when working with attribution. For example, two customer representatives performed a sale and marked it in the CRM but you need to attribute the sale to the sale that was performed first.",
+    "crumbs": [
+      "Data Recipes",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Joins</span>"
+    ]
+  },
+  {
+    "objectID": "03_recipes/joins.html#footnotes",
+    "href": "03_recipes/joins.html#footnotes",
+    "title": "4  Joins",
+    "section": "",
+    "text": "In Power BI, it’s a four step process.↩︎",
+    "crumbs": [
+      "Data Recipes",
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>Joins</span>"
+    ]
+  },
+  {
+    "objectID": "03_recipes/queries_with_dates.html",
+    "href": "03_recipes/queries_with_dates.html",
+    "title": "5  Queries with Dates",
+    "section": "",
+    "text": "6 Intersecting Dates\nLet’s say you have a table of subscriptions that all different start and end dates. How would you filter down a list of subscriptions to show those that were active within a time range? In other words, how do you find rows that have intersecting dates?\nFor example, here are all subscribers that had active subscriptions in 2023:\n\n\nselect *\nfrom subscribers\nwhere subscription_valid_from &lt;= '2023-12-31'\nand subscription_valid_to &gt;= '2023-01-01'\n\nThis query works when thinking in terms of sets. A subscription whose start date is later than our range’s end date is not in scope (i.e. date_from &gt; ‘2023-12-31’). So we can write the inverse of this, i.e. date_from &lt;= ‘2023-12-31’. The same goes for subscriptions that end before our range of interest.\n\n\n7 Counting Active Date Ranges\nIf you have a SCD2 type dimension like subscriptions, a common question might be to provide the number of active subscriptions for each day, week, month or year. It’s best to use a calendar table like this:\n\n\nselect\n  date,\n  count(*) as number_of_subscribers\nfrom calendar\ninner join subscribers\n  on date &gt;= subscription_valid_from\n  and date &lt;= subscription_valid_to\ngroup by date\n\n\nYou can also build a query without using a calendar table:\n\n\nwith d as (\n      select validfrom as dte, 1 as inc\n      from t\n      union all\n      select validto, -1\n      from t\n     )\nselect dte, sum(sum(inc)) over (order by dte)\nfrom d\ngroup by dte\norder by dte;\n\n\n\n8 Calculating date ranges based on gaps\nLet’s say we have subscriptions but we need to show a start date and an end date of gaps between subscriptions. For example, if I subscribed from 2023-01-01 to 2023-05-31 and then from 2023-07-01 to 2023-12-31, I would want to return a row that said I was not a subscriber from 2023-06-01 to 2023-06-30.\n\nSELECT   \n  seqval + 1 AS start_range,   \n  (\n    SELECT \n      MIN(B.seqval)    \n    FROM dbo.NumSeq AS B    \n    WHERE B.seqval &gt; A.seqval\n    ) - 1 AS end_range \nFROM dbo.NumSeq AS A \nWHERE NOT EXISTS (\n  SELECT * FROM dbo.NumSeq AS B    \n  WHERE B.seqval = A.seqval + 1)\nAND seqval &lt; (SELECT MAX(seqval) FROM dbo.NumSeq);\n\nThis solution is based on subqueries. In order to understand it you should first focus on the filtering activity in the WHERE clause and then proceed to the activity in the SELECT list. The purpose of the NOT EXISTS predicate in the WHERE clause is to filter only points that are a point before a gap. You can identify a point before a gap when you see that for such a point, the value plus 1 doesn’t exist in the sequence. The purpose of the second predicate in the WHERE clause is to filter out the maximum value from the sequence because it represents the point before infinity, which does not concern us.\n\n\n9 Sessionization\n\n\n10 Islands Problem\n\n\nSELECT \n  MIN(seqval) AS start_range, \n  MAX(seqval) AS end_range \nFROM (\n  SELECT \n    seqval, \n    seqval - ROW_NUMBER() OVER (ORDER BY seqval) AS grp\n  FROM dbo.NumSeq\n  ) AS D GROUP BY grp;\n\n\n\n11",
+    "crumbs": [
+      "Data Recipes",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Queries with Dates</span>"
+    ]
+  },
+  {
+    "objectID": "03_recipes/pivoting-and-unpivoting.html",
+    "href": "03_recipes/pivoting-and-unpivoting.html",
+    "title": "6  Pivoting and Unpivoting",
+    "section": "",
+    "text": "At this point it’s likely you’re using a database that supports pivoting and unpivoting but it’s good to know how to do it yourself.\n\n7 Pivoting\nThe most basic way to pivot is to use a CASE statement for each column you want to pivot.\n\n\nselect \n  ts_id,\n  sum(case when ts_year = 2020 then ts_value end) as ts_2020,\n  sum(case when ts_year = 2021 then ts_value end) as ts_2021\nfrom yearly_values_long\ngroup by ts_id\n\n\n\n8 Advanced Pivoting\nWhy I like pivoting in SQL is that I can create arbitrary case when statements to control how my data is pivoted:\n\n\nselect \n  ts_id,\n  sum(case when ts_year = 2020 and ts_value &gt; 0.5 then ts_value end) as ts_2020,\n  sum(case when ts_year = 2021 and ts_value &gt; 0.5 then ts_value end) as ts_2021\nfrom yearly_values_long\ngroup by ts_id\n\n\n\n9 Unpivoting\nI wish you don’t ever need to unpivot manually in SQL. A universal way to unpivot in SQL is to take each column of interest and do a UNION ALL.\n\n\nselect \n  ts_id, \n  '2020' as ts_year, \n  [2020] as ts_value\nfrom yearly_values_wide\nunion all\nselect \n  ts_id, \n  '2021' as ts_year, \n  [2021] as ts_value\nfrom yearly_values_wide\n\n\n\n\n10 References\nhttps://sqlperformance.com/2019/09/t-sql-queries/t-sql-pitfalls-pivoting-unpivoting",
+    "crumbs": [
+      "Data Recipes",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Pivoting and Unpivoting</span>"
+    ]
+  },
+  {
+    "objectID": "03_recipes/filtering.html",
+    "href": "03_recipes/filtering.html",
+    "title": "7  Filtering",
+    "section": "",
+    "text": "8 Anti joins\nAnti joins are a type of join where you return only rows that do not match any row in a given table. For example, let’s say you have users who have done one time purchases but who have no subscription service. You want to send a marketing email to users who don’t have a subscription service yet but have done a one time purchase.",
+    "crumbs": [
+      "Data Recipes",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Filtering</span>"
+    ]
+  },
+  {
+    "objectID": "03_recipes/filtering.html#joining-only-to-certain-rows-in-the-main-table",
+    "href": "03_recipes/filtering.html#joining-only-to-certain-rows-in-the-main-table",
+    "title": "7  Filtering",
+    "section": "9.1 Joining only to certain rows in the main table",
+    "text": "9.1 Joining only to certain rows in the main table\nThe left join clause and created_channel = 2 ensures that the join only happens\n\n\nselect \n  users.*,\n  subscribers.subscription_type\nfrom users\nleft join subscribers\n  on user_id = users.id\n  and created_channel = 2\nwhere exists (select * from subscribers where users.id = subscribers.user_id)\nlimit 10",
+    "crumbs": [
+      "Data Recipes",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Filtering</span>"
+    ]
+  },
+  {
+    "objectID": "03_recipes/filtering.html#joining-only-certain-rows-from-another-table",
+    "href": "03_recipes/filtering.html#joining-only-certain-rows-from-another-table",
+    "title": "7  Filtering",
+    "section": "9.2 Joining only certain rows from another table",
+    "text": "9.2 Joining only certain rows from another table\n\n\nselect \n  users.*,\n  subscribers.subscription_type\nfrom users\nleft join subscribers\n  on user_id = users.id\n  and subscription_type = 2\nwhere exists (select * from subscribers where users.id = subscribers.user_id)\nlimit 10",
+    "crumbs": [
+      "Data Recipes",
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Filtering</span>"
+    ]
+  },
+  {
+    "objectID": "goodies.html#reading-material",
+    "href": "goodies.html#reading-material",
+    "title": "8  Useful Resources",
+    "section": "8.3 Reading material",
+    "text": "8.3 Reading material\nhttps://www.scattered-thoughts.net/writing/against-sql/",
+    "crumbs": [
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>Useful Resources</span>"
+    ]
+  },
+  {
+    "objectID": "02_models/factless_fact_tables.html",
+    "href": "02_models/factless_fact_tables.html",
+    "title": "2  Factless Fact Tables",
+    "section": "",
+    "text": "2.1 SQL code",
+    "crumbs": [
+      "Data Modelling Techniques",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Factless Fact Tables</span>"
+    ]
+  },
+  {
+    "objectID": "02_models/factless_fact_tables.html#how-is-this-different-from-snapshot-fact-tables",
+    "href": "02_models/factless_fact_tables.html#how-is-this-different-from-snapshot-fact-tables",
+    "title": "2  Factless Fact Tables",
+    "section": "2.2 How is this different from snapshot fact tables?",
+    "text": "2.2 How is this different from snapshot fact tables?\nYou may have heard about snapshot fact tables - they are VERY similar to factless fact tables. In fact, if you saved snapshots of active subscriptions for each month, you’d end up with the same table! The different comes down to implementation: snapshots are run on a regular basis to create the final dataset, a factless fact table can be recreated from scratch.\nKimball defines Factless Fact Tables as a table of dimensional entities coming together at a moment in time. Now that’s one eldtrich definition! In human terms, the raison d’être of these tables comes from the need to count whether a thing existed at a point in time. And if that definition is too vague, here’s an exercise - try showing how many subscribers you had on a monthly basis. For example, let’s say I had 10 subscriptions that were each active between January and December of last year, how would you show those 10 subscriptions for each month of the year? In Power BI, you need to resort to a multi-line DAX formula. In Tableau, the options have 8 steps in them. Factless fact tables sidestep these solution altogether so that all you need is a simple count.\nFactless fact tables can be built by combining your SCD2 type table (i.e. data that has an end date and a start date) with a calendar table (a date dimension). Here’s how to do it in SQL:\nin your favourite BI tool\nFactless fact tables solve this problem by showing whether a thing existed for a given time point. For example, if we were to build a factless table on a monthly granularity, a Netflix subscriber whose subscription starts at 2025-01-01 and ends at 2025-12-31 would show up as 12 rows, one for each of the months in a year. As a result, if you were to put your months on an x-axis, you could just do a count of rows from this table along the y axis. And it’s not just subscribers - it works on any table that has a start date and an end date1. Factless fact tables allow you to keep the modeling and KPI layer relatively simple - learning to build and use them is extremely helpful.",
+    "crumbs": [
+      "Data Modelling Techniques",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Factless Fact Tables</span>"
+    ]
+  },
+  {
+    "objectID": "02_models/factless_fact_tables.html#sample-sql",
+    "href": "02_models/factless_fact_tables.html#sample-sql",
+    "title": "2  Factless Fact Tables",
+    "section": "2.3 Sample SQL",
+    "text": "2.3 Sample SQL",
+    "crumbs": [
+      "Data Modelling Techniques",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Factless Fact Tables</span>"
+    ]
+  },
+  {
+    "objectID": "02_models/factless_fact_tables.html#footnotes",
+    "href": "02_models/factless_fact_tables.html#footnotes",
+    "title": "2  Factless Fact Tables",
+    "section": "",
+    "text": "Essentially, if it’s a SCD2 type dimension.↩︎",
+    "crumbs": [
+      "Data Modelling Techniques",
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>Factless Fact Tables</span>"
     ]
   }
 ]

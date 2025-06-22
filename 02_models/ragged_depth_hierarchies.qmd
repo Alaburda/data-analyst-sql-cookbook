@@ -1,0 +1,50 @@
+---
+engine: knitr
+---
+
+# Ragged Depth Hierarchies
+
+Companies have layers. A team is likely to belong to a department which belongs to a business line which belongs to some larger org unit. And so it goes. From a modelling perspective, everything is peachy as long as the depth of layers is uniform. That is, it's great if a team is always the third hierarchical org structure and a team always reports to a department which always reports to a business line. In such cases, you can simply model this as three columns in a dimension table and move on. However, reality resists simplicity
+
+Some employees might not have a team and report directly to the director of a business line. Other times there might be teams and there might not. The number of layers can be absolutely different. Hierarchies come in all shapes and sizes and we should expect them to be like this. How do we model this from a data modelling perspective?
+
+Modelling this data is important. A good example is counting team expenses. You have expenses for individual employees but your stakeholders wants to rollup those expenses at any level. How would you do it?
+
+This situation is called a [ragged variable depth hierarchy](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/ragged-variable-depth-hierarchy/) and Kimball offers a great idea on how to solve it - but no SQL code!
+
+The idea is to create a bridge table - a table that shows not only to whom to you report but also every skip level manager in the chain. The idea being that if you have a fact row associated with you, every manager in the chain inherits that fact row as well.
+
+```{sql}
+#| eval: false
+
+WITH RECURSIVE org_hierarchy AS (
+    -- Anchor member: select all employees with their immediate manager
+    SELECT
+        employee_id,
+        manager_id,
+        employee_name,
+        1 AS level,
+        CAST(employee_id AS VARCHAR(100)) AS path
+    FROM employees
+    WHERE manager_id IS NULL -- Top-level managers
+
+    UNION ALL
+
+    -- Recursive member: join employees to their managers
+    SELECT
+        e.employee_id,
+        e.manager_id,
+        e.employee_name,
+        oh.level + 1 AS level,
+        CONCAT(oh.path, ' > ', e.employee_id) AS path
+    FROM employees e
+    INNER JOIN org_hierarchy oh ON e.manager_id = oh.employee_id
+)
+SELECT * FROM org_hierarchy
+ORDER BY path;
+
+
+```
+
+
+

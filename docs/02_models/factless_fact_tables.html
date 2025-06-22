@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>8&nbsp; Useful Resources – The Data Analyst SQL Cookbook</title>
+<title>2&nbsp; Factless Fact Tables – The Data Analyst SQL Cookbook</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,27 +20,61 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
-<script src="site_libs/quarto-nav/quarto-nav.js"></script>
-<script src="site_libs/quarto-nav/headroom.min.js"></script>
-<script src="site_libs/clipboard/clipboard.min.js"></script>
-<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
-<script src="site_libs/quarto-search/fuse.min.js"></script>
-<script src="site_libs/quarto-search/quarto-search.js"></script>
-<meta name="quarto:offset" content="./">
-<link href="./references.html" rel="next">
-<link href="./03_recipes/filtering.html" rel="prev">
-<script src="site_libs/quarto-html/quarto.js"></script>
-<script src="site_libs/quarto-html/popper.min.js"></script>
-<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
-<script src="site_libs/quarto-html/anchor.min.js"></script>
-<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="site_libs/bootstrap/bootstrap.min.js"></script>
-<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../02_models/ragged_depth_hierarchies.html" rel="next">
+<link href="../01-basics.html" rel="prev">
+<script src="../site_libs/quarto-html/quarto.js"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -81,7 +115,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./goodies.html"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Useful Resources</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../02_models/factless_fact_tables.html">Data Modelling Techniques</a></li><li class="breadcrumb-item"><a href="../02_models/factless_fact_tables.html"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -96,7 +130,7 @@ ul.task-list li input[type="checkbox"] {
   <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
     <div class="pt-lg-2 mt-2 text-left sidebar-header">
     <div class="sidebar-title mb-0 py-0">
-      <a href="./">The Data Analyst SQL Cookbook</a> 
+      <a href="../">The Data Analyst SQL Cookbook</a> 
     </div>
       </div>
         <div class="mt-2 flex-shrink-0 align-items-center">
@@ -108,13 +142,13 @@ ul.task-list li input[type="checkbox"] {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./index.html" class="sidebar-item-text sidebar-link">
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Preface</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./01-basics.html" class="sidebar-item-text sidebar-link">
+  <a href="../01-basics.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">The Basics</span></span></a>
   </div>
 </li>
@@ -129,13 +163,13 @@ ul.task-list li input[type="checkbox"] {
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./02_models/factless_fact_tables.html" class="sidebar-item-text sidebar-link">
+  <a href="../02_models/factless_fact_tables.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./02_models/ragged_depth_hierarchies.html" class="sidebar-item-text sidebar-link">
+  <a href="../02_models/ragged_depth_hierarchies.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
   </div>
 </li>
@@ -152,25 +186,25 @@ ul.task-list li input[type="checkbox"] {
       <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03_recipes/joins.html" class="sidebar-item-text sidebar-link">
+  <a href="../03_recipes/joins.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Joins</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03_recipes/queries_with_dates.html" class="sidebar-item-text sidebar-link">
+  <a href="../03_recipes/queries_with_dates.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03_recipes/pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link">
+  <a href="../03_recipes/pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03_recipes/filtering.html" class="sidebar-item-text sidebar-link">
+  <a href="../03_recipes/filtering.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Filtering</span></span></a>
   </div>
 </li>
@@ -178,13 +212,13 @@ ul.task-list li input[type="checkbox"] {
   </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./goodies.html" class="sidebar-item-text sidebar-link active">
+  <a href="../goodies.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Useful Resources</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./references.html" class="sidebar-item-text sidebar-link">
+  <a href="../references.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">References</span></a>
   </div>
 </li>
@@ -198,18 +232,18 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#tools" id="toc-tools" class="nav-link active" data-scroll-target="#tools"><span class="header-section-number">8.1</span> Tools</a></li>
-  <li><a href="#learning-resources" id="toc-learning-resources" class="nav-link" data-scroll-target="#learning-resources"><span class="header-section-number">8.2</span> Learning Resources</a></li>
-  <li><a href="#reading-material" id="toc-reading-material" class="nav-link" data-scroll-target="#reading-material"><span class="header-section-number">8.3</span> Reading material</a></li>
+  <li><a href="#sql-code" id="toc-sql-code" class="nav-link active" data-scroll-target="#sql-code"><span class="header-section-number">2.1</span> SQL code</a></li>
+  <li><a href="#how-is-this-different-from-snapshot-fact-tables" id="toc-how-is-this-different-from-snapshot-fact-tables" class="nav-link" data-scroll-target="#how-is-this-different-from-snapshot-fact-tables"><span class="header-section-number">2.2</span> How is this different from snapshot fact tables?</a></li>
+  <li><a href="#sample-sql" id="toc-sample-sql" class="nav-link" data-scroll-target="#sample-sql"><span class="header-section-number">2.3</span> Sample SQL</a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../02_models/factless_fact_tables.html">Data Modelling Techniques</a></li><li class="breadcrumb-item"><a href="../02_models/factless_fact_tables.html"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Useful Resources</span></h1>
+<h1 class="title"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></h1>
 </div>
 
 
@@ -226,28 +260,43 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>This is an ongoing list of things I have found useful and you may find useful too!</p>
-<section id="tools" class="level2" data-number="8.1">
-<h2 data-number="8.1" class="anchored" data-anchor-id="tools"><span class="header-section-number">8.1</span> Tools</h2>
-<ul>
-<li><a href="https://dbeaver.io/">DBeaver</a> - just a great SQL client that supports a lot of databases</li>
-<li><a href="https://www.db-fiddle.com/">DB Fiddle</a> - an online sandbox to run your SQL queries</li>
-<li><a href="https://sqlime.org/">SQLime</a> - another online sandbox to write queries</li>
-<li><a href="https://duckdb.org/2025/03/12/duckdb-ui">DuckDB Local UI</a> - haven’t tested it yet but looks neat so far</li>
-</ul>
+<p>If I wanted to show the number of subscriptions that were active for each month in my favourite BI tool, I would be in trouble. In Power BI, I would have to resort to <a href="https://community.fabric.microsoft.com/t5/Power-BI-Community-Blog/HR-Analytics-Active-Employee-Hire-and-Termination-trend/ba-p/882970">a multi-line DAX formula</a>. In Tableau, <a href="https://help.salesforce.com/s/articleView?id=001458045&amp;type=1">the options have 8 steps in them</a>. I couldn’t even find a tutorial for Looker. Luckily, Factless Fact Tables sidestep these solutions altogether so that your BI tool only has to do a simple count.</p>
+<p>Kimball defines Factless Fact Tables as a <a href="https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/factless-fact-table/">table of dimensional entities coming together at a moment in time</a>. Now that’s one eldritch definition! In human terms, the <strong>raison d’être</strong> of these tables comes from the need to count whether a thing existed at a point in time. It’s best to show the technique using an example.</p>
+<p>Let’s say I have a table of subscriptions that looks like this:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(duckdb)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading required package: DBI</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> <span class="fu">dbConnect</span>(duckdb<span class="sc">::</span><span class="fu">duckdb</span>(), <span class="st">":memory:"</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">dbExecute</span>(con, <span class="st">"CREATE TABLE subscriptions (id INTEGER, start_date DATE, end_date DATE);"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0</code></pre>
+</div>
+</div>
+<p>Whenever we want to count something, it’s best to count it using a fact table. However, subscriptions are a SCD2 type dimension and you want to count whether they existed between the <code>start_date</code> and <code>end_date</code>. Counting becomes trivial if the date range is expanded into their dedicated rows. For example, if I were building a monthly fact table, the first id would be 6 rows and my second id would be 4 rows because they were active subscriptions during those months. In order to build it, it’s best to have a calendar table so that we could perform a cross join using a <code>BETWEEN</code> statement.</p>
+<section id="sql-code" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="sql-code"><span class="header-section-number">2.1</span> SQL code</h2>
 </section>
-<section id="learning-resources" class="level2" data-number="8.2">
-<h2 data-number="8.2" class="anchored" data-anchor-id="learning-resources"><span class="header-section-number">8.2</span> Learning Resources</h2>
-<ul>
-<li><a href="https://github.com/smpetersgithub/AdvancedSQLPuzzles">Advanced SQL Puzzles</a></li>
-<li><a href="https://use-the-index-luke.com/">Use the Index, Luke</a></li>
-</ul>
+<section id="how-is-this-different-from-snapshot-fact-tables" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="how-is-this-different-from-snapshot-fact-tables"><span class="header-section-number">2.2</span> How is this different from snapshot fact tables?</h2>
+<p>You may have heard about snapshot fact tables - they are VERY similar to factless fact tables. In fact, if you saved snapshots of active subscriptions for each month, you’d end up with the same table! The different comes down to implementation: snapshots are run on a regular basis to create the final dataset, a factless fact table can be recreated from scratch.</p>
+<p>Kimball defines Factless Fact Tables as a <a href="https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/factless-fact-table/">table of dimensional entities coming together at a moment in time</a>. Now that’s one eldtrich definition! In human terms, the <strong>raison d’être</strong> of these tables comes from the need to count whether a thing existed at a point in time. And if that definition is too vague, here’s an exercise - try showing how many subscribers you had on a monthly basis. For example, let’s say I had 10 subscriptions that were each active between January and December of last year, how would you show those 10 subscriptions for each month of the year? In Power BI, you need to resort to <a href="https://community.fabric.microsoft.com/t5/Power-BI-Community-Blog/HR-Analytics-Active-Employee-Hire-and-Termination-trend/ba-p/882970">a multi-line DAX formula</a>. In Tableau, <a href="https://help.salesforce.com/s/articleView?id=001458045&amp;type=1">the options have 8 steps in them</a>. Factless fact tables sidestep these solution altogether so that all you need is a simple count.</p>
+<p>Factless fact tables can be built by combining your SCD2 type table (i.e.&nbsp;data that has an end date and a start date) with a calendar table (a date dimension). Here’s how to do it in SQL:</p>
+<p>in your favourite BI tool</p>
+<p>Factless fact tables solve this problem by showing whether a thing existed for a given time point. For example, if we were to build a factless table on a monthly granularity, a Netflix subscriber whose subscription starts at 2025-01-01 and ends at 2025-12-31 would show up as 12 rows, one for each of the months in a year. As a result, if you were to put your months on an x-axis, you could just do a count of rows from this table along the y axis. And it’s not just subscribers - it works on any table that has a start date and an end date<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>. Factless fact tables allow you to keep the modeling and KPI layer relatively simple - learning to build and use them is extremely helpful.</p>
 </section>
-<section id="reading-material" class="level2" data-number="8.3">
-<h2 data-number="8.3" class="anchored" data-anchor-id="reading-material"><span class="header-section-number">8.3</span> Reading material</h2>
-<p>https://www.scattered-thoughts.net/writing/against-sql/</p>
+<section id="sample-sql" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="sample-sql"><span class="header-section-number">2.3</span> Sample SQL</h2>
 
 
+</section>
+<section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes">
+<hr>
+<ol>
+<li id="fn1"><p>Essentially, if it’s a SCD2 type dimension.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
 </section>
 
 </main> <!-- /main -->
@@ -673,13 +722,13 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./03_recipes/filtering.html" class="pagination-link" aria-label="Filtering">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Filtering</span></span>
+      <a href="../01-basics.html" class="pagination-link" aria-label="The Basics">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">The Basics</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./references.html" class="pagination-link" aria-label="References">
-        <span class="nav-page-text">References</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../02_models/ragged_depth_hierarchies.html" class="pagination-link" aria-label="Ragged Depth Hierarchies">
+        <span class="nav-page-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

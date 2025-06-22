@@ -21,14 +21,6 @@ Whenever we want to count something, it's best to count it using a fact table. H
 
 ## SQL code
 
-```{sql}
-
-
-
-```
-
-
-
 ## How is this different from snapshot fact tables?
 
 You may have heard about snapshot fact tables - they are VERY similar to factless fact tables. In fact, if you saved snapshots of active subscriptions for each month, you'd end up with the same table! The different comes down to implementation: snapshots are run on a regular basis to create the final dataset, a factless fact table can be recreated from scratch.
@@ -39,28 +31,11 @@ Kimball defines Factless Fact Tables as a [table of dimensional entities coming 
 
 Factless fact tables can be built by combining your SCD2 type table (i.e. data that has an end date and a start date) with a calendar table (a date dimension). Here's how to do it in SQL:
 
-```{sql}
-
--- This is a factless fact table that counts the number of active subscribers
--- in a given month. It uses a date dimension to get the months and a subscriber
--- dimension to get the subscribers. The factless fact table is created by
-
-```
-
-
 in your favourite BI tool
 
 Factless fact tables solve this problem by showing whether a thing existed for a given time point. For example, if we were to build a factless table on a monthly granularity, a Netflix subscriber whose subscription starts at 2025-01-01 and ends at 2025-12-31 would show up as 12 rows, one for each of the months in a year. As a result, if you were to put your months on an x-axis, you could just do a count of rows from this table along the y axis. And it's not just subscribers - it works on any table that has a start date and an end date[^1]. Factless fact tables allow you to keep the modeling and KPI layer relatively simple - learning to build and use them is extremely helpful.
 
 ## Sample SQL
-
-```{sql}
--- This is a factless fact table that counts the number of active subscribers
--- in a given month. It uses a date dimension to get the months and a subscriber
--- dimension to get the subscribers. The factless fact table is created by
-select
-
-```
 
 
 [^1]: Essentially, if it's a SCD2 type dimension.

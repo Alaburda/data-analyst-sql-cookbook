@@ -4,6 +4,12 @@ title: "Creating Intervals"
 
 Whatever industry you're in, you likely have fact data with timestamps that need to be collected into intervals.
 
+Here's a tricky one: imagine you have a table with rows that you would like to compress because they form some consecutive series. It could be consecutive subscriptions, it could be consecutive statuses. Using SQL - it's possible!
+
+The idea behind it is to rank all the rows but then reset the rank based on change of some status. That could be anything - it could be a change in sensor status, it could be a change in subscription type.
+
+
+
 # Consecutive dates
 
 # Dates with gaps no larger than specified 
@@ -46,3 +52,4 @@ FROM
 ```
 
 
+https://mattboegner.com/improve-your-sql-skills-master-the-gaps-islands-problem/
