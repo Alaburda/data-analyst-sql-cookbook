@@ -13,6 +13,7 @@ This is an ongoing list of things I have found useful and you may find useful to
 
 * [Advanced SQL Puzzles](https://github.com/smpetersgithub/AdvancedSQLPuzzles)
 * [Use the Index, Luke](https://use-the-index-luke.com/)
+* [Arena Games - Data Analysis](https://docs.google.com/document/d/1H4Jo215InMGDVxU7Zuk31cJeh8vy_knF1xJ-jtzXST0/edit?fbclid=IwAR1lmuH5GM3yqOpbXnavnBe_v26tD_ZG3cjqtqWeImwfXeBRR2vOI3LcEWA&tab=t.0)
 
 ## Reading material
 

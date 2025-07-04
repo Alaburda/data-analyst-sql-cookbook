@@ -1,0 +1,27 @@
+
+## dbt incremental models should be configured VERY differently from official documentation
+
+dbt Labs suggests adding a subquery to first select the max date or id from the current table and then pass the value onto the query. However, this results in a dynamic query - in some cases, the query engine does not know the value to filter on beforehand and may opt for a full table scan anyway. In essence, incremental loading can be computationally the same to a full query!
+
+[Here](https://stackoverflow.com/a/75818399)'s the solution:
+
+```{sql}
+#| eval: false
+
+{% if is_incremental() %}
+  {%- call statement('state', fetch_result=True) -%}
+
+    select max(load_date) from {{ this }}
+
+  {%- endcall -%}
+
+  {%- set prev_max_date = state['data'][0][0] -%}
+{% endif %}
+
+select * from {{ source('huge_table') }}
+{% if is_incremental() %}
+    where load_date >= DATE prev_max_date
+{% endif %}
+
+```
+

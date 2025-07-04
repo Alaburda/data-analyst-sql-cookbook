@@ -4,7 +4,7 @@ filters:
   - interactive-sql
 databases:
   - name: subscribers
-    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/subscribers.db"
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook-database/main/cookbookdb.sqlite"
 ---
 
 Everyone starts out with filtering using the WHERE clause but there's more to it than just specifying columns and their conditions.   
@@ -56,3 +56,16 @@ limit 10
 
 ```
 
+If you're reading this book, you know about the `WHERE` clause. But there are multiple others ways to filter values!
+
+## Anti joins
+
+I love anti joins because they're extremely useful for a wide range of scenarios but SQL practitioners don't always learn about them early on (I certainly didn't!).
+
+Add anti-join from here: https://github.com/gadenbuie/tidyexplain
+
+## WHERE EXISTS
+
+WHERE EXISTS isn
+
+https://sqlperformance.com/2012/12/t-sql-queries/left-anti-semi-join

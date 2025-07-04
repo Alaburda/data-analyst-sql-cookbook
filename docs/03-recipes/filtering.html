@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>8&nbsp; Useful Resources – The Data Analyst SQL Cookbook</title>
+<title>7&nbsp; Filtering – The Data Analyst SQL Cookbook</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,27 +20,62 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
-<script src="site_libs/quarto-nav/quarto-nav.js"></script>
-<script src="site_libs/quarto-nav/headroom.min.js"></script>
-<script src="site_libs/clipboard/clipboard.min.js"></script>
-<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
-<script src="site_libs/quarto-search/fuse.min.js"></script>
-<script src="site_libs/quarto-search/quarto-search.js"></script>
-<meta name="quarto:offset" content="./">
-<link href="./references.html" rel="next">
-<link href="./03-recipes/filtering.html" rel="prev">
-<script src="site_libs/quarto-html/quarto.js"></script>
-<script src="site_libs/quarto-html/popper.min.js"></script>
-<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
-<script src="site_libs/quarto-html/anchor.min.js"></script>
-<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="site_libs/bootstrap/bootstrap.min.js"></script>
-<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../goodies.html" rel="next">
+<link href="../03-recipes/pivoting-and-unpivoting.html" rel="prev">
+<script src="../site_libs/quarto-html/quarto.js"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/quarto-contrib/interactive-sql-1.0.0/interactive-sql.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -68,6 +103,9 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Search"
   }
 }</script>
+<script src="https://unpkg.com/@antonz/sqlite@3.40.0/dist/sqlite3.js"></script>
+<script src="https://unpkg.com/sqlime@0.1.3/dist/sqlime-db.js"></script>
+<script src="https://unpkg.com/sqlime@0.1.3/dist/sqlime-examples.js"></script>
 
 
 </head>
@@ -81,7 +119,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./goodies.html"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Useful Resources</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03-recipes/joins.html">Data Recipes</a></li><li class="breadcrumb-item"><a href="../03-recipes/filtering.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Filtering</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -96,7 +134,7 @@ ul.task-list li input[type="checkbox"] {
   <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
     <div class="pt-lg-2 mt-2 text-left sidebar-header">
     <div class="sidebar-title mb-0 py-0">
-      <a href="./">The Data Analyst SQL Cookbook</a> 
+      <a href="../">The Data Analyst SQL Cookbook</a> 
     </div>
       </div>
         <div class="mt-2 flex-shrink-0 align-items-center">
@@ -108,13 +146,13 @@ ul.task-list li input[type="checkbox"] {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./index.html" class="sidebar-item-text sidebar-link">
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Preface</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./01-basics.html" class="sidebar-item-text sidebar-link">
+  <a href="../01-basics.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">The Basics</span></span></a>
   </div>
 </li>
@@ -129,13 +167,13 @@ ul.task-list li input[type="checkbox"] {
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./02-models/factless-fact-tables.html" class="sidebar-item-text sidebar-link">
+  <a href="../02-models/factless-fact-tables.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./02-models/ragged-depth-hierarchies.html" class="sidebar-item-text sidebar-link">
+  <a href="../02-models/ragged-depth-hierarchies.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
   </div>
 </li>
@@ -152,25 +190,25 @@ ul.task-list li input[type="checkbox"] {
       <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03-recipes/joins.html" class="sidebar-item-text sidebar-link">
+  <a href="../03-recipes/joins.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Joins</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03-recipes/queries_with_dates.html" class="sidebar-item-text sidebar-link">
+  <a href="../03-recipes/queries_with_dates.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03-recipes/pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link">
+  <a href="../03-recipes/pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03-recipes/filtering.html" class="sidebar-item-text sidebar-link">
+  <a href="../03-recipes/filtering.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Filtering</span></span></a>
   </div>
 </li>
@@ -178,13 +216,13 @@ ul.task-list li input[type="checkbox"] {
   </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./goodies.html" class="sidebar-item-text sidebar-link active">
+  <a href="../goodies.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Useful Resources</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./references.html" class="sidebar-item-text sidebar-link">
+  <a href="../references.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">References</span></a>
   </div>
 </li>
@@ -198,18 +236,23 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#tools" id="toc-tools" class="nav-link active" data-scroll-target="#tools"><span class="header-section-number">8.1</span> Tools</a></li>
-  <li><a href="#learning-resources" id="toc-learning-resources" class="nav-link" data-scroll-target="#learning-resources"><span class="header-section-number">8.2</span> Learning Resources</a></li>
-  <li><a href="#reading-material" id="toc-reading-material" class="nav-link" data-scroll-target="#reading-material"><span class="header-section-number">8.3</span> Reading material</a></li>
+  <li><a href="#anti-joins" id="toc-anti-joins" class="nav-link active" data-scroll-target="#anti-joins"><span class="header-section-number">8</span> Anti joins</a></li>
+  <li><a href="#filtering-on-the-on-clause" id="toc-filtering-on-the-on-clause" class="nav-link" data-scroll-target="#filtering-on-the-on-clause"><span class="header-section-number">9</span> Filtering on the ON clause</a>
+  <ul class="collapse">
+  <li><a href="#joining-only-to-certain-rows-in-the-main-table" id="toc-joining-only-to-certain-rows-in-the-main-table" class="nav-link" data-scroll-target="#joining-only-to-certain-rows-in-the-main-table"><span class="header-section-number">9.1</span> Joining only to certain rows in the main table</a></li>
+  <li><a href="#joining-only-certain-rows-from-another-table" id="toc-joining-only-certain-rows-from-another-table" class="nav-link" data-scroll-target="#joining-only-certain-rows-from-another-table"><span class="header-section-number">9.2</span> Joining only certain rows from another table</a></li>
+  <li><a href="#anti-joins-1" id="toc-anti-joins-1" class="nav-link" data-scroll-target="#anti-joins-1"><span class="header-section-number">9.3</span> Anti joins</a></li>
+  <li><a href="#where-exists" id="toc-where-exists" class="nav-link" data-scroll-target="#where-exists"><span class="header-section-number">9.4</span> WHERE EXISTS</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03-recipes/joins.html">Data Recipes</a></li><li class="breadcrumb-item"><a href="../03-recipes/filtering.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Filtering</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Useful Resources</span></h1>
+<h1 class="title"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Filtering</span></h1>
 </div>
 
 
@@ -226,28 +269,63 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>This is an ongoing list of things I have found useful and you may find useful too!</p>
-<section id="tools" class="level2" data-number="8.1">
-<h2 data-number="8.1" class="anchored" data-anchor-id="tools"><span class="header-section-number">8.1</span> Tools</h2>
-<ul>
-<li><a href="https://dbeaver.io/">DBeaver</a> - just a great SQL client that supports a lot of databases</li>
-<li><a href="https://www.db-fiddle.com/">DB Fiddle</a> - an online sandbox to run your SQL queries</li>
-<li><a href="https://sqlime.org/">SQLime</a> - another online sandbox to write queries</li>
-<li><a href="https://duckdb.org/2025/03/12/duckdb-ui">DuckDB Local UI</a> - haven’t tested it yet but looks neat so far</li>
-</ul>
+<p>Everyone starts out with filtering using the WHERE clause but there’s more to it than just specifying columns and their conditions.</p>
+<section id="anti-joins" class="level1" data-number="8">
+<h1 data-number="8"><span class="header-section-number">8</span> Anti joins</h1>
+<p>Anti joins are a type of join where you return only rows that do not match any row in a given table. For example, let’s say you have users who have done one time purchases but who have no subscription service. You want to send a marketing email to users who don’t have a subscription service yet but have done a one time purchase.</p>
+<div class="interactive-sql">
+<div class="sourceCode" id="cb1"><pre class="sourceCode sql interactive subscribers code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
 </section>
-<section id="learning-resources" class="level2" data-number="8.2">
-<h2 data-number="8.2" class="anchored" data-anchor-id="learning-resources"><span class="header-section-number">8.2</span> Learning Resources</h2>
-<ul>
-<li><a href="https://github.com/smpetersgithub/AdvancedSQLPuzzles">Advanced SQL Puzzles</a></li>
-<li><a href="https://use-the-index-luke.com/">Use the Index, Luke</a></li>
-</ul>
+<section id="filtering-on-the-on-clause" class="level1" data-number="9">
+<h1 data-number="9"><span class="header-section-number">9</span> Filtering on the ON clause</h1>
+<p>You can use the ON clause in joins to do neat things, such as:</p>
+<section id="joining-only-to-certain-rows-in-the-main-table" class="level2" data-number="9.1">
+<h2 data-number="9.1" class="anchored" data-anchor-id="joining-only-to-certain-rows-in-the-main-table"><span class="header-section-number">9.1</span> Joining only to certain rows in the main table</h2>
+<p>The left join clause <code>and created_channel = 2</code> ensures that the join only happens</p>
+<div class="interactive-sql">
+<div class="sourceCode" id="cb2"><pre class="sourceCode sql interactive subscribers code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  users.<span class="op">*</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  subscribers.subscription_type</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> users</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">left</span> <span class="kw">join</span> subscribers</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">on</span> user_id <span class="op">=</span> users.<span class="kw">id</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">and</span> created_channel <span class="op">=</span> <span class="dv">2</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="kw">where</span> <span class="kw">exists</span> (<span class="kw">select</span> <span class="op">*</span> <span class="kw">from</span> subscribers <span class="kw">where</span> users.<span class="kw">id</span> <span class="op">=</span> subscribers.user_id)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="kw">limit</span> <span class="dv">10</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
 </section>
-<section id="reading-material" class="level2" data-number="8.3">
-<h2 data-number="8.3" class="anchored" data-anchor-id="reading-material"><span class="header-section-number">8.3</span> Reading material</h2>
-<p>https://www.scattered-thoughts.net/writing/against-sql/</p>
+<section id="joining-only-certain-rows-from-another-table" class="level2" data-number="9.2">
+<h2 data-number="9.2" class="anchored" data-anchor-id="joining-only-certain-rows-from-another-table"><span class="header-section-number">9.2</span> Joining only certain rows from another table</h2>
+<div class="interactive-sql">
+<div class="sourceCode" id="cb3"><pre class="sourceCode sql interactive subscribers code-with-copy"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  users.<span class="op">*</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  subscribers.subscription_type</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> users</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="kw">left</span> <span class="kw">join</span> subscribers</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">on</span> user_id <span class="op">=</span> users.<span class="kw">id</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">and</span> subscription_type <span class="op">=</span> <span class="dv">2</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="kw">where</span> <span class="kw">exists</span> (<span class="kw">select</span> <span class="op">*</span> <span class="kw">from</span> subscribers <span class="kw">where</span> users.<span class="kw">id</span> <span class="op">=</span> subscribers.user_id)</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="kw">limit</span> <span class="dv">10</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>If you’re reading this book, you know about the <code>WHERE</code> clause. But there are multiple others ways to filter values!</p>
+</section>
+<section id="anti-joins-1" class="level2" data-number="9.3">
+<h2 data-number="9.3" class="anchored" data-anchor-id="anti-joins-1"><span class="header-section-number">9.3</span> Anti joins</h2>
+<p>I love anti joins because they’re extremely useful for a wide range of scenarios but SQL practitioners don’t always learn about them early on (I certainly didn’t!).</p>
+<p>Add anti-join from here: https://github.com/gadenbuie/tidyexplain</p>
+</section>
+<section id="where-exists" class="level2" data-number="9.4">
+<h2 data-number="9.4" class="anchored" data-anchor-id="where-exists"><span class="header-section-number">9.4</span> WHERE EXISTS</h2>
+<p>WHERE EXISTS isn</p>
+<p>https://sqlperformance.com/2012/12/t-sql-queries/left-anti-semi-join</p>
 
 
+<sqlime-db name="subscribers" path="https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/subscribers.db"></sqlime-db>
+<sqlime-examples db="subscribers" selector="div.interactive-sql pre.subscribers code" editable=""></sqlime-examples>
+</section>
 </section>
 
 </main> <!-- /main -->
@@ -673,13 +751,13 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./03-recipes/filtering.html" class="pagination-link" aria-label="Filtering">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Filtering</span></span>
+      <a href="../03-recipes/pivoting-and-unpivoting.html" class="pagination-link" aria-label="Pivoting and Unpivoting">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./references.html" class="pagination-link" aria-label="References">
-        <span class="nav-page-text">References</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../goodies.html" class="pagination-link" aria-label="Useful Resources">
+        <span class="nav-page-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Useful Resources</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -688,4 +766,5 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 
 
 
+<script src="../site_libs/quarto-contrib/interactive-sql-1.0.0/interactive-sql.js"></script>
 </body></html>

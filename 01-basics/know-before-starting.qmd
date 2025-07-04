@@ -1,0 +1,16 @@
+---
+title: "Things to Know Before Starting SQL"
+filters:
+  - interactive-sql
+databases:
+  - name: db
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook-database/main/cookbookdb.sqlite"
+---
+
+
+# Who do NULLs work?
+
+To record missing and unknown values, SQL uses NULLs. NULL by itself is not a data value but a marker representing the absence of a value. Since NULLs are an unknown value, they will not match any value. That means, they won't work with joins, in where statements or in case when statements.
+
+# UNION vs UNION ALL
+

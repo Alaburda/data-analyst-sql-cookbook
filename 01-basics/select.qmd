@@ -1,0 +1,12 @@
+---
+title: "Factless Fact Table"
+filters:
+  - interactive-sql
+databases:
+  - name: db
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook-database/main/cookbookdb.sqlite"
+---
+
+# SELECT
+
+This chapter includes a lot of things you can accomplish between the confines of SELECT and FROM statements.

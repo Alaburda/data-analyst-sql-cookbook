@@ -1,0 +1,176 @@
+---
+title: "Pivoting and Unpivoting"
+filters:
+  - interactive-sql
+databases:
+  - name: pivot
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/pivot.db"
+---
+
+At this point it's likely you're using a database that supports pivoting and unpivoting but it's good to know how to do it yourself.
+
+# Pivoting
+
+The most basic way to pivot is to use a CASE statement for each column you want to pivot.
+
+```{.sql .interactive .pivot}
+
+select 
+  ts_id,
+  sum(case when ts_year = 2020 then ts_value end) as ts_2020,
+  sum(case when ts_year = 2021 then ts_value end) as ts_2021
+from yearly_values_long
+group by ts_id
+
+```
+
+# Advanced Pivoting
+
+Why I like pivoting in SQL is that I can create arbitrary case when statements to control how my data is pivoted:
+
+```{.sql .interactive .pivot}
+
+select 
+  ts_id,
+  sum(case when ts_year = 2020 and ts_value > 0.5 then ts_value end) as ts_2020,
+  sum(case when ts_year = 2021 and ts_value > 0.5 then ts_value end) as ts_2021
+from yearly_values_long
+group by ts_id
+
+```
+
+# Unpivoting
+
+I wish you don't ever need to unpivot manually in SQL. A universal way to unpivot in SQL is to take each column of interest and do a UNION ALL.
+
+```{.sql .interactive .pivot}
+
+select 
+  ts_id, 
+  '2020' as ts_year, 
+  [2020] as ts_value
+from yearly_values_wide
+union all
+select 
+  ts_id, 
+  '2021' as ts_year, 
+  [2021] as ts_value
+from yearly_values_wide
+
+
+```
+
+# References
+
+https://sqlperformance.com/2019/09/t-sql-queries/t-sql-pitfalls-pivoting-unpivoting
+
+# Pivoting and Unpivoting
+
+Pivoting refers to a transformation where you take two columns: one containing values that will represent the names of your columns and another containing the values that you want those columns to contain. In a sense, we're making our data wider (`dplyr`'s R refers to pivoting and unpivoting as `pivot_wider` and `pivot_longer`, respectively). Accordingly, unpivoting collects your column names into one column and the contents of those columns into another. 
+
+Chances are that your tooling allows you to perform these operations. Unless, of course, you are an unlucky fellow or you prefer to roll your own code.
+
+## The Data
+
+The data we're using looks like this:
+
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(duckdb)
+library(dplyr)
+
+con <- dbConnect(duckdb::duckdb())
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Create vectors for each column
+names <- c("Alice", "Bob", "Charlie", "David", "Emma", "Frank", "Grace", "Henry", "Isabel", "Jack")
+activities <- c("Running", "Swimming", "Cycling", "Yoga", "Tennis", "Basketball", "Hiking", "Dancing", "Weightlifting", "Pilates")
+
+# Generate the data frame
+df <- data.frame(
+  Name = sample(names, 50, replace = TRUE),
+  Activity = sample(activities, 50, replace = TRUE),
+  Number = round(runif(50, min = 1, max = 100), 2)
+)
+
+dbWriteTable(con, "sport_interests", df)
+
+```
+
+```{sql}
+#| connection: con
+
+select *
+from sport_interests 
+limit 5
+
+```
+
+## Pivoting
+
+Pivoting in SQL looks like this:
+
+```{sql}
+#| connection: con
+
+select 
+  name,
+  sum(case when Activity = 'Running' then Number end) as running,
+  sum(case when Activity = 'Tennis' then Number end) as tennis
+from sport_interests
+group by name
+
+
+```
+
+```{sql}
+#| connection: con
+#| echo: false
+
+create table sport_interests_pivot as 
+(select 
+  name,
+  sum(case when Activity = 'Running' then Number end) as running,
+  sum(case when Activity = 'Tennis' then Number end) as tennis
+from sport_interests
+group by name)
+
+```
+
+If you need to pivot into a lot of columns, you are going to have a bad time. First, you need to specify each column that is *not* being pivoted into the select statement as well as the group by clause. Second, you need to manually type out each column that appears in the pivot. 
+
+Nonetheless, I love pivoting in SQL because you can individually define how each column is pivoted. Maybe you need to average one column, but sum another? Maybe you want to add two conditional statements when you are pivoting `Activity = 'Running'`? I've done my fair share of intricate SQL pivots that would have taken me much more time in other languages.
+
+## Unpivoting
+
+Unpivoting is a little tricky in SQL. Essentially, we'll be creating multiple select statements for each column we would like to unpivot, with each select statement containing a different column:
+
+```{sql}
+#| connection: con
+
+select 
+  name,
+  'Running' as Activity,
+  running as Number
+from sport_interests_pivot
+
+UNION ALL
+
+select 
+  name,
+  'Tennis' as Activity,
+  tennis as Number
+from sport_interests_pivot
+
+```
+
+I don't love unpivoting in SQL. When pivoting, a single line of code translates into a column, whereas a single column translates into a whole separate SQL statement. Please use some framework or an engine that supports unpivoting through a function (e.g. Snowflake's `UNPIVOT` or dbt's `unpivot` macro).
+
+
+

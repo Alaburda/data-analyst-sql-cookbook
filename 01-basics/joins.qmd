@@ -1,0 +1,62 @@
+---
+title: "Factless Fact Table"
+filters:
+  - interactive-sql
+databases:
+  - name: db
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook-database/main/cookbookdb.sqlite"
+---
+
+# Joins
+
+If you're here, there's a high chance you know of the simple suite of joins.
+
+When it comes to joins, my head is usually in either of two spaces: it's either just a series of inner and left joins or it's something else to achieve a certain table. For example, I use a full outer join pretty much in cases where I need a full combination from two tables and nowhere else.
+
+If I could write a blog post, I would probably just dump interesting cases of using joins in ways that are not entirely obvious on first glance. What comes to mind:
+
+* anti joins
+* non-equi joins
+* full outer joins
+* filtering when joining to avoid a CTE
+
+This basics chapter delves into 
+
+## Non-equi joins / range joins
+
+Range joins are great for calculating working time (as opposed to total time), creating factless fact tables, creating 
+
+Range joins can be expensive - the more you constrain them, the cheaper and faster the query.
+
+## Range joins (non-equi joins)
+
+Range joins, also known as non-equi joins, are amazing when done right. Range joins are essentially a multiplication operation - you're creating a combination of rows based on constraints. In this way, range joins are a kind of cartesian join with a filter condition on top - to be fair, that's how I think of them myself. For example, this code:
+
+Essentially says "give me a combination of rows from these two tables".
+
+
+
+They're not a means to an end by themselves as they are needed when exploding tables, creating factless fact tables, doing row attributions etc. Normal joins won't usually produce joins but range joins can.  
+
+I really like Microsoft's SQL Server page on [range join optimization](https://learn.microsoft.com/en-us/azure/databricks/optimizations/range-join).
+
+
+## Anti joins
+
+ANTI is not a join type, what gives? Imagine doing a left join: some rows will return a NULL from the joined table and some will be filled. If you were to filter the result set to keep only filled rows, you basically do an INNER join. But if you filter to only keep rows with NULL values, you end up with a table of rows that didn't have a matching row. In other words, the reverse of the INNER JOIN allows you to remove rows from one table based on matching rows in another.
+
+This is an important implication because your other options are either the IN operator or the WHERE EXISTS clause. The problem with the IN operator is that it's not efficient and the latter is more verbose. The alternating are laid out in the [filtering](03-recipes/filtering.qmd) chapter. 
+
+## LEFT JOIN
+
+When doing left joins, there's a few tricks that are not obvious but are incredibly useful. First, is the anti join where after you had joined the rows you only keep the ones that didn't have a matching row. For example:
+
+
+The second trick relates to the fact that you can put any condition in the join clause. If you put a filtering condition in the join then you can join rows on some condition but also only rows that meet some criteria overall. For example:
+
+You can't put the condition in the WHERE clause because filtering happens after the join - essentially that would transform the join into an INNER JOIN. 
+
+
+
+
+Anti joins are one way of filtering out rows. For more, see the section on filtering.

@@ -1,3 +1,12 @@
+---
+title: "Factless Fact Table"
+filters:
+  - interactive-sql
+databases:
+  - name: db
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook-database/main/cookbookdb.sqlite"
+---
+
 # Factless Fact Tables
 
 If I wanted to show the number of subscriptions that were active for each month in my favourite BI tool, I would be in trouble. In Power BI, I would have to resort to [a multi-line DAX formula](https://community.fabric.microsoft.com/t5/Power-BI-Community-Blog/HR-Analytics-Active-Employee-Hire-and-Termination-trend/ba-p/882970). In Tableau, [the options have 8 steps in them](https://help.salesforce.com/s/articleView?id=001458045&type=1). I couldn't even find a tutorial for Looker. Luckily, Factless Fact Tables sidestep these solutions altogether so that your BI tool only has to do a simple count.
@@ -39,3 +48,54 @@ Factless fact tables solve this problem by showing whether a thing existed for a
 
 
 [^1]: Essentially, if it's a SCD2 type dimension.
+
+
+
+# Creating a Factless Fact Table
+
+::: {.callout-note}
+
+Hey Paulius, can you quickly create this table that shows our subscriber count over time? 
+
+:::
+
+If you're working with SCD Type 2 data (e.g. subscriptions, marketing campaigns), it's straightforward to count the number of rows at a single point in time:
+
+
+```{.sql .interactive .db}
+
+select count(*)
+from subscriptions
+where '2024-08-01' between date_from and date_to
+
+```
+
+But it's not if you'd like to count it over multiple points in time, i.e. how do you group by each month of a year and show how many subscriptions were active for a given month? The problem can be solved two ways!
+
+
+## Without using a calendar table
+
+```{sql}
+#| eval: false
+
+with d as (
+      select validfrom as dte, 1 as inc
+      from t
+      union all
+      select validto, -1
+      from t
+     )
+select dte, sum(sum(inc)) over (order by dte)
+from d
+group by dte
+order by dte;
+
+
+```
+
+
+## Using a calendar table
+
+
+
+[](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/factless-fact-table/)

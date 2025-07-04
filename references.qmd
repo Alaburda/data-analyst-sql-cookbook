@@ -5,3 +5,9 @@
 https://stackoverflow.com/questions/3270338/confused-about-itzik-ben-gans-logical-query-processing-order-in-his-sql-server
 
 :::
+
+# Link Dump
+
+* https://docs.google.com/document/d/1H4Jo215InMGDVxU7Zuk31cJeh8vy_knF1xJ-jtzXST0/edit
+* https://www.amitgrinson.com/blog/window-function-with-groupby/
+* https://www.amazon.com/Data-Analysis-Using-SQL-Excel/dp/111902143X

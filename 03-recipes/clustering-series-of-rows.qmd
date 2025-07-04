@@ -1,0 +1,59 @@
+# Islands and Gaps
+
+::: {.callout-note}
+
+Hey, do you think it would be hard to create a session id from these user events we have? 
+
+:::
+
+Most data we're working with will contain an incremental id, a timestamp or a creation date. Sometimes, we are interested in grouping rows if the timestamp is consecutive between rows or if the rows have some desired distance between them. For example, we might want to create a session id if events are within 1 hour of each other. Or we might want to group rows if their dates are consecutive. In SQL-land, they're called "islands"[1]:. For me, it's easier to visualise this concept:
+
+```{r}
+#| echo: false
+
+library(ggplot2)
+
+ggplot(data_long, aes(x = reorder(name, date, min), y = date)) + 
+  geom_line() + 
+  scale_y_date(limits = c(as.Date("2007-01-01"),as.Date("2026-01-01")), date_breaks = "2 years", date_labels =  "%Y") +
+  coord_flip() + 
+  geom_hline(yintercept=as.Date("2016-03-07"), linetype="dashed", 
+                color = "#B82B1A", size=1) +
+  annotate("text", x=25, y=as.Date("2013-04-07"), label="PRIME scheme launched", color = "#B82B1A") +
+  geom_point(aes(color = prime)) +
+  geom_text(aes(label = name), size = 3, data = data_long[data_long$event == "authorisation_date",], hjust = -0.3) + 
+  theme_bw() + 
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        panel.grid.major.y = element_blank()) + 
+  labs(y = "Day 1 to Marketing Authorisation Timeline", color = "PRIME scheme") + 
+  scale_color_manual(values = c("#B82B1A","#289e9a")) + 
+  guides(color = FALSE)
+
+
+```
+
+Gaps are the inverse problem - if there is a gap between two consecutive rows, we would like to infer new rows that show when/where the gap begins and when/where it ends.
+
+There are actually a few use cases for using these methods, so we'll go through all of them.
+
+## Grouping consecutive rows
+
+https://dba.stackexchange.com/questions/193680/group-rows-by-uninterrupted-dates
+
+## Grouping overlapping rows
+
+## Grouping rows that have a minimal distance
+
+https://stackoverflow.com/questions/53519702/group-rows-with-that-are-less-than-15-days-apart-and-assign-min-max-date
+
+
+
+[^1]: As far as I can find the term "Islands and Gaps", I think it was first coined in the [SQL Server MVP Deep Dives](https://www.manning.com/books/sql-server-mvp-deep-dives) book.
+
+
+
+
+
+

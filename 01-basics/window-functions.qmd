@@ -1,0 +1,10 @@
+---
+title: "Factless Fact Table"
+filters:
+  - interactive-sql
+databases:
+  - name: db
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook-database/main/cookbookdb.sqlite"
+---
+
+# Window functions

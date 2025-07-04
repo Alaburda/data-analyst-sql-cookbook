@@ -9,16 +9,23 @@ book:
   chapters:
     - index.qmd
     - 01-basics.qmd
+    - part: The Basics
+      chapters:
+
+        - 01-basics/using-sql-in-r.qmd
+        - 01-basics/using-sql-in-dbt.qmd
+        - 01-basics/joins.qmd
+        - 01-basics/goodies.qmd
     - part: Data Modelling Techniques
       chapters:
-        - 02_models/factless_fact_tables.qmd
-        - 02_models/ragged_depth_hierarchies.qmd
+        - 02-models/factless-fact-tables.qmd
+        - 02-models/ragged-depth-hierarchies.qmd
     - part: Data Recipes
       chapters:
-        - 03_recipes/joins.qmd
-        - 03_recipes/queries_with_dates.qmd
-        - 03_recipes/pivoting-and-unpivoting.qmd
-        - 03_recipes/filtering.qmd
+        - 03-recipes/joins.qmd
+        - 03-recipes/queries_with_dates.qmd
+        - 03-recipes/pivoting-and-unpivoting.qmd
+        - 03-recipes/filtering.qmd
     - goodies.qmd
     - references.qmd
 

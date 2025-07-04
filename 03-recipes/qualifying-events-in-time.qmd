@@ -1,0 +1,72 @@
+# Recursive queries
+
+I don't like recursive queries because they're too rare in the wild and their syntax is not intuitive. To be fair, this section is more for my own self-learning.
+
+## Qualify events based on first event
+
+Erika Pullum posted a great SQL teaser - I'm not sure what's the use case but it's a great way to apply recursive CTEs.
+
+```{r}
+
+library(duckdb)
+
+con <- dbConnect(duckdb::duckdb(), ":memory:")
+
+dbSendStatement(con, "create table events as
+                select '2024-06-10'::date as d
+
+                UNION ALL
+
+                select '2024-08-20'::date as d
+
+                UNION ALL
+
+                select '2024-08-22'::date as d
+
+                UNION ALL
+
+                select '2024-09-17'::date as d
+
+                UNION ALL
+
+                select '2024-09-19'::date as d
+
+                UNION ALL
+
+                select '2024-11-01'::date as d
+
+                UNION ALL
+
+                select '2024-12-11'::date as d
+
+                UNION ALL
+
+                select '2024-12-21'::date as d
+                ")
+
+```
+
+
+```{sql, connection=con}
+
+with recursive recursive_cte as (
+  select
+    min(d) as d,
+    TRUE as is_after_cooldown
+  from events
+
+  union all
+
+  select
+    min(events.d) as d,
+    TRUE as is_after_cooldown
+  from events
+  inner join (select max(d) as d from recursive_cte) as r
+    on events.d > r.d + interval 90 day
+)
+select *
+from recursive_cte
+
+
+```
+

@@ -1,0 +1,258 @@
+---
+
+Title: "Split datetime intervals"
+author: "Paulius Alaburda"
+
+---
+
+Event data that has a start and an end does not gel well with datetime aggregations when the events overlap multiple datetime periods. For example, if your user session started on August 1st but ended on August 3rd, you probably want to show that a session was happening on the 1st, 2nd and 3rd.
+
+```{r}
+
+#| echo: false
+#| message: false
+
+library(duckdb)
+library(lubridate)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+con <- dbConnect(duckdb::duckdb())
+
+generate_intervals <- function(date_from = "2024-07-01", 
+                               groups = 3, 
+                               duration = 10, 
+                               gaps = 1:2,
+                               n = 10) {
+  
+  data.frame(id = 1:(n*groups),
+             group_id = as.character(rep(1:groups,each = n))) %>% 
+    group_by(group_id) %>% 
+    mutate(duration = sample.int(duration, n, replace = TRUE),
+           gap = c(0,sample(gaps, n-1, replace = TRUE)),
+           date_kernel = as.Date(date_from)) %>% 
+    mutate(lag_duration = replace_na(lag(duration),0),
+           cumulative_duration = cumsum(duration),
+           cumulative_gap = cumsum(gap)) %>% 
+    mutate(cumulative_lag_duration = cumsum(lag_duration)) %>% 
+    mutate(date_from = date_kernel %m+% days(cumulative_gap+cumulative_lag_duration),
+         date_to = date_kernel %m+% days(cumulative_gap+cumulative_duration))
+
+}
+
+plot_timeline <- function(data) {
+  
+  data_long <- data %>% 
+    pivot_longer(names_to = "name", values_to = "date", c(date_from, date_to)) 
+  
+  ggplot(data_long, aes(x = reorder(id, group_id, min), y = date, color = group_id)) + 
+    geom_line() +
+  # scale_y_date(limits = c(as.Date("2007-01-01"),as.Date("2026-01-01")), date_breaks = "2 years", date_labels =  "%Y") +
+  coord_flip() + 
+  geom_point(aes(color = group_id)) +
+  theme_bw() + 
+  theme(axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        panel.grid.major.y = element_blank()) + 
+  guides(color = FALSE)
+  
+}
+  
+
+
+```
+
+
+```{r}
+
+df <- generate_intervals()
+
+df %>% plot_timeline()
+
+
+```
+
+# Grouping consecutive intervals
+
+# Grouping overlapping intervals
+
+
+```{r}
+
+df <- generate_intervals(groups = 3, duration = 10, gaps = -10:5)
+
+df %>% plot_timeline()
+
+con <- dbConnect(duckdb::duckdb())
+
+dbWriteTable(con, "overlapping_ranges", df, overwrite = TRUE)
+
+```
+
+```{sql}
+
+WITH C1 AS(  SELECT *,    MAX(endtime) OVER(PARTITION BY actid          ORDER BY starttime, endtime, sessionid          ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prvend  FROM dbo.Sessions)SELECT *FROM C1  CROSS APPLY ( VALUES(CASE WHEN starttime <= prvend THEN NULL ELSE 1 END) ) AS A(isstart);
+
+
+
+```
+
+
+```{sql connection = con, output.var="overlapping_islands"}
+
+with prev_date as (
+SELECT
+  ROW_NUMBER() OVER (ORDER BY group_id, date_from, date_to) AS date_rank,
+  group_id,
+  date_from,
+  date_to,
+  MAX(date_to) OVER (PARTITION BY group_id ORDER BY date_from, date_to ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS previous_date_to
+FROM
+  overlapping_ranges
+),
+islands as (
+SELECT
+ *,
+ CASE WHEN previous_date_to >= date_from THEN 0 ELSE 1 END AS island_start_id,
+ SUM(CASE WHEN previous_date_to >= date_from THEN 0 ELSE 1 END) OVER (ORDER BY date_rank) AS island_id
+from prev_date
+)
+select 
+  group_id,
+  cast(island_id as varchar) as island_id,
+  min(date_from) as date_from,
+  max(date_to) as date_to
+from islands
+group by group_id, island_id
+
+```
+
+```{r}
+
+df %>% 
+  plot_timeline() +
+  facet_grid(group_id~.) +
+  geom_rect(data = overlapping_islands %>% filter() %>% mutate(island_id = as.character(row_number())), aes(y = NULL, x = NULL, ymin = date_from, ymax = date_to, xmin = -Inf, xmax = Inf, fill = island_id), alpha = 0.05)
+
+
+```
+
+
+
+# Grouping when intervals are within some distances
+
+
+Let's say our data looks like this:
+
+```{r}
+
+
+dbWriteTable(con, "sessions", sessions, overwrite = TRUE)
+
+```
+
+```{sql connection = con}
+select *
+from sessions
+limit 6
+```
+
+In this example, how do you properly aggregate by hour? By using a tally table!
+
+## The correct approach using a tally table
+
+The correct approach is to use a tally table or a reference table with specified hours. [A tally table is a technique created by Itzik Ben-Gan in 2009](https://www.itprotoday.com/server-virtualization/virtual-auxiliary-table-of-numbers) that uses recursive CTEs to create an index table **fast**. Here's an example of it:
+
+  ```{sql}
+#| eval: false
+
+GO
+
+CREATE FUNCTION dbo.GetNums(@n AS BIGINT) RETURNS TABLE AS
+RETURN
+
+WITH
+L0   AS(SELECT 1 AS c UNION ALL SELECT 1),
+L1   AS(SELECT 1 AS c FROM L0 AS A CROSS JOIN L0 AS B),
+L2   AS(SELECT 1 AS c FROM L1 AS A CROSS JOIN L1 AS B),
+L3   AS(SELECT 1 AS c FROM L2 AS A CROSS JOIN L2 AS B),
+L4   AS(SELECT 1 AS c FROM L3 AS A CROSS JOIN L3 AS B),
+L5   AS(SELECT 1 AS c FROM L4 AS A CROSS JOIN L4 AS B),
+Nums AS(SELECT ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) AS n FROM L5)
+
+SELECT n FROM Nums WHERE n <= @n;
+
+GO
+
+```
+
+I couldn't find a good enough explanation of why they are fast (best case is [here](https://www.sqlservercentral.com/articles/the-numbers-or-tally-table-what-it-is-and-how-it-replaces-a-loop-1)), so I would appreciate a link! In this post, I am simply resorting to DuckDB to generate series of hourly intervals:
+
+```{sql connection = con}
+
+CREATE TABLE calendar_hours as
+with start_times as (
+  SELECT *
+  FROM generate_series(DATE '2024-07-30', DATE '2024-08-10', INTERVAL '1' HOUR)
+)
+select
+  generate_series as start_time,
+  lead(generate_series,1) over (order by generate_series) - interval '1' MINUTE as end_time
+from start_times
+
+```
+
+```{sql connection = con}
+#| echo: false
+
+select *
+from calendar_hours
+limit 10
+
+```
+
+Now that we have a reference table of hourly intervals, we can run a range join:
+
+```{sql connection = con}
+
+CREATE TABLE session_intervals as
+select
+  case when session_start > start_time then session_start else start_time end as session_start,
+  case when session_end < end_time then session_end else end_time end as session_end
+from calendar_hours
+inner join sessions
+  on start_time <= session_end
+  and end_time >= session_start
+
+
+```
+
+The query above uses date intersection, wherein we join the calendar table to our session table using a range join. Without the range join, we would end up with a cross join, combining all rows from both tables together. The range join filters down our output to only rows where the "ends" from each interval overlaps:
+
+```
+                        |---- session ------|
+|---calendar hour --------|
+
+        |---- session ------|
+                          |---calendar hour --------|
+
+
+```
+
+The end of the calendar hour overlaps with the start of the session in the first example. In the second one, the end of the session overlaps with the start of the calendar hour.
+
+Having built this, we can finally aggregate our data correctly:
+
+## The final output
+
+```{sql connection = con}
+
+select
+  cast(session_start as date) as session_day,
+  sum(datediff('minute',session_start,session_end)) as session_duration
+from session_intervals
+group by cast(session_start as date)
+
+```
