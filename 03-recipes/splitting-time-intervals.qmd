@@ -1,8 +1,7 @@
 ---
-
-Title: "Split datetime intervals"
+title: "Split datetime intervals"
 author: "Paulius Alaburda"
-
+engine: knitr
 ---
 
 Event data that has a start and an end does not gel well with datetime aggregations when the events overlap multiple datetime periods. For example, if your user session started on August 1st but ended on August 3rd, you probably want to show that a session was happening on the 1st, 2nd and 3rd.

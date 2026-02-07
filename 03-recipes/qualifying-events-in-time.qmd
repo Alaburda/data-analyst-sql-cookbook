@@ -1,3 +1,7 @@
+---
+engine: knitr
+---
+
 # Recursive queries
 
 I don't like recursive queries because they're too rare in the wild and their syntax is not intuitive. To be fair, this section is more for my own self-learning.

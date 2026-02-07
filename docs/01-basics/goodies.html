@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>1&nbsp; The Basics – The Data Analyst SQL Cookbook</title>
+<title>5&nbsp; LIKE for fixed length wildcards – The Data Analyst SQL Cookbook</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,61 +20,27 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
-/* CSS for syntax highlighting */
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode > span { color: inherit; text-decoration: inherit; }
-div.sourceCode { margin: 1em 0; }
-pre.sourceCode { margin: 0; }
-@media screen {
-div.sourceCode { overflow: auto; }
-}
-@media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
-}
-pre.numberSource code
-  { counter-reset: source-line 0; }
-pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
-pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-  }
-pre.numberSource { margin-left: 3em;  padding-left: 4px; }
-div.sourceCode
-  {   }
-@media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
-}
 </style>
 
 
-<script src="site_libs/quarto-nav/quarto-nav.js"></script>
-<script src="site_libs/quarto-nav/headroom.min.js"></script>
-<script src="site_libs/clipboard/clipboard.min.js"></script>
-<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
-<script src="site_libs/quarto-search/fuse.min.js"></script>
-<script src="site_libs/quarto-search/quarto-search.js"></script>
-<meta name="quarto:offset" content="./">
-<link href="./01-basics/using-sql-in-r.html" rel="next">
-<link href="./erd.html" rel="prev">
-<script src="site_libs/quarto-html/quarto.js"></script>
-<script src="site_libs/quarto-html/popper.min.js"></script>
-<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
-<script src="site_libs/quarto-html/anchor.min.js"></script>
-<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="site_libs/bootstrap/bootstrap.min.js"></script>
-<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../02-models/factless-fact-tables.html" rel="next">
+<link href="../01-basics/joins.html" rel="prev">
+<script src="../site_libs/quarto-html/quarto.js"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -115,7 +81,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./01-basics.html"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">The Basics</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../01-basics/using-sql-in-r.html">The Basics</a></li><li class="breadcrumb-item"><a href="../01-basics/goodies.html"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -130,7 +96,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
     <div class="pt-lg-2 mt-2 text-left sidebar-header">
     <div class="sidebar-title mb-0 py-0">
-      <a href="./">The Data Analyst SQL Cookbook</a> 
+      <a href="../">The Data Analyst SQL Cookbook</a> 
     </div>
       </div>
         <div class="mt-2 flex-shrink-0 align-items-center">
@@ -142,19 +108,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./index.html" class="sidebar-item-text sidebar-link">
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Preface</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./erd.html" class="sidebar-item-text sidebar-link">
+  <a href="../erd.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">The Data Model</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./01-basics.html" class="sidebar-item-text sidebar-link active">
+  <a href="../01-basics.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">The Basics</span></span></a>
   </div>
 </li>
@@ -169,25 +135,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./01-basics/using-sql-in-r.html" class="sidebar-item-text sidebar-link">
+  <a href="../01-basics/using-sql-in-r.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./01-basics/using-sql-in-dbt.html" class="sidebar-item-text sidebar-link">
+  <a href="../01-basics/using-sql-in-dbt.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./01-basics/joins.html" class="sidebar-item-text sidebar-link">
+  <a href="../01-basics/joins.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./01-basics/goodies.html" class="sidebar-item-text sidebar-link">
+  <a href="../01-basics/goodies.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
   </div>
 </li>
@@ -204,13 +170,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./02-models/factless-fact-tables.html" class="sidebar-item-text sidebar-link">
+  <a href="../02-models/factless-fact-tables.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./02-models/ragged-depth-hierarchies.html" class="sidebar-item-text sidebar-link">
+  <a href="../02-models/ragged-depth-hierarchies.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
   </div>
 </li>
@@ -227,31 +193,31 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03-recipes/joins.html" class="sidebar-item-text sidebar-link">
+  <a href="../03-recipes/joins.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Joins</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03-recipes/queries_with_dates.html" class="sidebar-item-text sidebar-link">
+  <a href="../03-recipes/queries_with_dates.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03-recipes/pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link">
+  <a href="../03-recipes/pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03-recipes/filtering.html" class="sidebar-item-text sidebar-link">
+  <a href="../03-recipes/filtering.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Filtering</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./03-recipes/customer-analytics.html" class="sidebar-item-text sidebar-link">
+  <a href="../03-recipes/customer-analytics.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Customer Analytics Recipes</span></span></a>
   </div>
 </li>
@@ -259,13 +225,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./goodies.html" class="sidebar-item-text sidebar-link">
+  <a href="../goodies.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Useful Resources</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./references.html" class="sidebar-item-text sidebar-link">
+  <a href="../references.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">References</span></a>
   </div>
 </li>
@@ -279,24 +245,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#the-basics" id="toc-the-basics" class="nav-link active" data-scroll-target="#the-basics"><span class="header-section-number">2</span> The Basics</a>
-  <ul class="collapse">
-  <li><a href="#select" id="toc-select" class="nav-link" data-scroll-target="#select"><span class="header-section-number">2.1</span> SELECT</a></li>
-  <li><a href="#joins-and-where" id="toc-joins-and-where" class="nav-link" data-scroll-target="#joins-and-where"><span class="header-section-number">2.2</span> JOINS and WHERE</a>
-  <ul class="collapse">
-  <li><a href="#section" id="toc-section" class="nav-link" data-scroll-target="#section"><span class="header-section-number">2.2.1</span> 1=1</a></li>
-  </ul></li>
-  <li><a href="#group-by" id="toc-group-by" class="nav-link" data-scroll-target="#group-by"><span class="header-section-number">2.3</span> GROUP BY</a></li>
-  </ul></li>
+  <li><a href="#union" id="toc-union" class="nav-link active" data-scroll-target="#union"><span class="header-section-number">5.1</span> UNION</a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../01-basics/using-sql-in-r.html">The Basics</a></li><li class="breadcrumb-item"><a href="../01-basics/goodies.html"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">The Basics</span></h1>
+<h1 class="title"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></h1>
 </div>
 
 
@@ -313,49 +271,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="the-basics" class="level1" data-number="2">
-<h1 data-number="2"><span class="header-section-number">2</span> The Basics</h1>
-<p>You could find this section in probably any SQL book - feel free to skip it if you feel comfortable with SQL!</p>
-<section id="select" class="level2" data-number="2.1">
-<h2 data-number="2.1" class="anchored" data-anchor-id="select"><span class="header-section-number">2.1</span> SELECT</h2>
-<p>I wish I could write something smart when writing anything between the SELECT and FROM keywords!</p>
-</section>
-<section id="joins-and-where" class="level2" data-number="2.2">
-<h2 data-number="2.2" class="anchored" data-anchor-id="joins-and-where"><span class="header-section-number">2.2</span> JOINS and WHERE</h2>
-<p>There are entire chapters devoted to joins and a variety of interesting dialects. However, knowing LEFT and INNER joins gets you 95% of the way there. A great illustration of how joins work can be found in R for Data Science https://r4ds.hadley.nz/joins.html. Lately I’ve been thinking of joins and where statements interchangeably because you can express the same result in two different ways. For example, this query would return a combination of rows from the two tables:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> <span class="op">*</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> coffee</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">join</span> coffee_brewing</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p>The Join and WHERE clauses are fun because they are VERY interchangeable. When you write</p>
-<p>select * from fart join fart2</p>
-<p>You’re essentially doing multiplication because it’s a cross join that combines all rows from fart to all rows from fart2. Usually you don’t want the full possible set of combinations but only a certain set. One typical way to constrain the output set is to only output rows that have a common value between two tables - it’s typically a primary key and foreign key combo but it could be anything else. Anyway, the typical way to JOIN tables is like this:</p>
-<p>select * from fart join fart2 on fart.id = fart2.id</p>
-<p>What we’re essentially doing is saying “hey, give me a set of rows from these two tables where the id column matches”. where the id column matches… WAIT, THIS IS ALSO LEGAL SQL</p>
-<p>select * from fart join fart2 where fart.id = fart2.id</p>
-<p>Congrats, we’ve just discovered the ANSI-89 standard of SQL! ANSI-89 compliant SQL looks like this:</p>
-<p>select * from fart, fart2 where fart.id = fart2.id</p>
-<p>This is because joins and where accomplish the same thing - they constrain the output set. Of course, the order of operations makes so that the join is done first and then the where clause is applied so you can’t just WHERE your way through when using ANSI-92 SQL.</p>
-<p>Anyway, the inverse is also neat - since both JOIN and WHERE accept clauses that constrain, you can just pass an operation to the JOIN:</p>
-<p>select * from fart left join fart2 on fart.id = fart2.id and fart2.smell = ‘bad’</p>
-<p>This pattern is especially useful when you want to “append” values from the second table but only when some condition is met. For example, maybe I would like to show all clients but only add their contact info if they have accepted to our marketing agreeement terms.</p>
-<p>The order of operation is also useful when running the ANTI JOIN</p>
-<p>select * from fart left join fart2 on fart.id = fart2.id where fart2.id is null</p>
-<p>The join happens first - so we can visualise in our head that some values are joined, some are not. Then, we can filter on the resulting set and only keep rows that didn’t find a match in table 2. This is called an anti join.</p>
-<section id="section" class="level3" data-number="2.2.1">
-<h3 data-number="2.2.1" class="anchored" data-anchor-id="section"><span class="header-section-number">2.2.1</span> 1=1</h3>
-<p>The set theory perspective makes WHERE 1=1 straightforward - you’re just saying</p>
-</section>
-</section>
-<section id="group-by" class="level2" data-number="2.3">
-<h2 data-number="2.3" class="anchored" data-anchor-id="group-by"><span class="header-section-number">2.3</span> GROUP BY</h2>
-<p>I LOVE grouping in SQL because most other programming tools will only let you run a function on the grouped set. But noone is stopping you from running conditional counts in SQL!</p>
-<p>select count(*), sum(case when fart = ‘smelly’ then 1 else 0 end) as smelly_farts from farts</p>
-<p>In theory, I could accomplish the same thing in other programming languages by creating columns that I could count/sum but come on, that’s wasteful.</p>
+<p>When using the LIKE statement in a WHERE clause, <code>*</code> defines any number of characters. <code>_</code> defines a single character. For example, <code>WHERE name LIKE '_ake'</code> would capture <em>Jake</em> but not <em>Drake</em>.</p>
+<section id="union" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="union"><span class="header-section-number">5.1</span> UNION</h2>
+<p>UNION and UNION ALL are different - UNION does an implicit DISTINCT after appending the tables, UNION ALL does not.</p>
 
 
-</section>
 </section>
 
 </main> <!-- /main -->
@@ -781,13 +702,13 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./erd.html" class="pagination-link" aria-label="The Data Model">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">The Data Model</span>
+      <a href="../01-basics/joins.html" class="pagination-link" aria-label="Factless Fact Table">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./01-basics/using-sql-in-r.html" class="pagination-link" aria-label="Using SQL in R">
-        <span class="nav-page-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../02-models/factless-fact-tables.html" class="pagination-link" aria-label="Factless Fact Table">
+        <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

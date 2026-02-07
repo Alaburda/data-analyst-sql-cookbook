@@ -1,5 +1,6 @@
 ---
 title: "Anti-Patterns"
+engine: knitr
 ---
 
 # Using OR in joins

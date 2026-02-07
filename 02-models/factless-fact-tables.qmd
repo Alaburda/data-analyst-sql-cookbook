@@ -1,5 +1,6 @@
 ---
 title: "Factless Fact Table"
+engine: knitr
 filters:
   - interactive-sql
 databases:

@@ -1,5 +1,6 @@
 ---
 title: "Pivoting and Unpivoting"
+engine: knitr
 filters:
   - interactive-sql
 databases:

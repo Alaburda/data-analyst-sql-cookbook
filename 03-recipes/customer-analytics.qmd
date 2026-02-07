@@ -1,0 +1,288 @@
+---
+title: "Customer Analytics Recipes"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "../db/cookbook.duckdb"
+    format: duckdb
+---
+
+This chapter contains analytics recipes that data analysts encounter regularly when working with customer, order, and subscription data. Every query runs against the cookbook database — click **▶ Run** or press `Ctrl+Enter` to execute them. Feel free to edit the SQL and experiment!
+
+# Exploring the Database
+
+Let's start by seeing what tables we have:
+
+```{.sql .interactive .cookbook}
+SHOW TABLES;
+```
+
+And a quick peek at the customers table:
+
+```{.sql .interactive .cookbook}
+SELECT * FROM customers LIMIT 10;
+```
+
+# Revenue Analysis
+
+## Monthly Revenue
+
+Calculate revenue by month using the calendar dimension and order items:
+
+```{.sql .interactive .cookbook}
+SELECT
+    c.year,
+    c.month,
+    c.month_name,
+    COUNT(DISTINCT o.order_id)  AS num_orders,
+    ROUND(SUM(oi.line_total), 2) AS revenue
+FROM orders o
+INNER JOIN order_items oi ON o.order_id = oi.order_id
+INNER JOIN calendar c     ON o.order_date = c.date
+WHERE o.status = 'completed'
+GROUP BY c.year, c.month, c.month_name
+ORDER BY c.year, c.month;
+```
+
+## Month-over-Month Growth
+
+Use the `LAG` window function to compare each month's revenue to the previous month:
+
+```{.sql .interactive .cookbook}
+WITH monthly_revenue AS (
+    SELECT
+        c.year,
+        c.month,
+        ROUND(SUM(oi.line_total), 2) AS revenue
+    FROM orders o
+    INNER JOIN order_items oi ON o.order_id = oi.order_id
+    INNER JOIN calendar c     ON o.order_date = c.date
+    WHERE o.status = 'completed'
+    GROUP BY c.year, c.month
+)
+SELECT
+    year,
+    month,
+    revenue,
+    LAG(revenue) OVER (ORDER BY year, month) AS prev_month,
+    ROUND(
+        100.0 * (revenue - LAG(revenue) OVER (ORDER BY year, month))
+        / LAG(revenue) OVER (ORDER BY year, month),
+        1
+    ) AS mom_growth_pct
+FROM monthly_revenue
+ORDER BY year, month;
+```
+
+# Customer Cohort Analysis
+
+Group customers by their sign-up month and track how many placed an order in subsequent months:
+
+```{.sql .interactive .cookbook}
+WITH cohorts AS (
+    SELECT
+        customer_id,
+        DATE_TRUNC('month', signup_date) AS cohort_month
+    FROM customers
+),
+order_months AS (
+    SELECT DISTINCT
+        o.customer_id,
+        DATE_TRUNC('month', o.order_date) AS order_month
+    FROM orders o
+    WHERE o.status IN ('completed', 'pending')
+)
+SELECT
+    co.cohort_month,
+    DATEDIFF('month', co.cohort_month, om.order_month) AS months_since_signup,
+    COUNT(DISTINCT co.customer_id) AS active_customers
+FROM cohorts co
+INNER JOIN order_months om ON co.customer_id = om.customer_id
+WHERE DATEDIFF('month', co.cohort_month, om.order_month) BETWEEN 0 AND 6
+GROUP BY co.cohort_month, months_since_signup
+ORDER BY co.cohort_month, months_since_signup;
+```
+
+# Active Subscriptions Over Time
+
+This is the classic "factless fact table" pattern — explode SCD2 subscription rows across a calendar to count how many were active each month:
+
+```{.sql .interactive .cookbook}
+WITH months AS (
+    SELECT DISTINCT
+        DATE_TRUNC('month', date) AS month_start
+    FROM calendar
+)
+SELECT
+    m.month_start,
+    COUNT(*) AS active_subscriptions,
+    ROUND(SUM(s.monthly_amount), 2) AS mrr
+FROM months m
+INNER JOIN subscriptions s
+    ON m.month_start >= s.valid_from
+    AND (m.month_start <= s.valid_to OR s.valid_to IS NULL)
+GROUP BY m.month_start
+ORDER BY m.month_start;
+```
+
+# Employee Hierarchy
+
+Use a recursive CTE to traverse the org chart from the CEO downward:
+
+```{.sql .interactive .cookbook}
+WITH RECURSIVE org AS (
+    -- Anchor: the CEO (no manager)
+    SELECT
+        employee_id,
+        first_name || ' ' || last_name AS employee_name,
+        d.department_name,
+        manager_id,
+        1 AS level,
+        first_name || ' ' || last_name AS path
+    FROM employees e
+    JOIN departments d ON e.department_id = d.department_id
+    WHERE e.manager_id IS NULL
+
+    UNION ALL
+
+    -- Recursive: employees who report to someone already in the set
+    SELECT
+        e.employee_id,
+        e.first_name || ' ' || e.last_name,
+        d.department_name,
+        e.manager_id,
+        o.level + 1,
+        o.path || ' → ' || e.first_name || ' ' || e.last_name
+    FROM employees e
+    JOIN departments d ON e.department_id = d.department_id
+    JOIN org o ON e.manager_id = o.employee_id
+)
+SELECT
+    employee_id,
+    employee_name,
+    department_name,
+    level,
+    path
+FROM org
+ORDER BY path;
+```
+
+# Support Ticket Analysis
+
+## Average Resolution Time by Category and Priority
+
+```{.sql .interactive .cookbook}
+SELECT
+    category,
+    priority,
+    COUNT(*)                         AS ticket_count,
+    SUM(CASE WHEN resolved_date IS NOT NULL THEN 1 ELSE 0 END) AS resolved,
+    ROUND(AVG(resolved_date - created_date), 1) AS avg_days_to_resolve,
+    ROUND(AVG(satisfaction_score), 2) AS avg_csat
+FROM support_tickets
+GROUP BY category, priority
+ORDER BY category, priority;
+```
+
+## Repeat Ticket Customers
+
+Find customers who opened multiple tickets within 30 days — a signal for deeper issues:
+
+```{.sql .interactive .cookbook}
+WITH ticket_pairs AS (
+    SELECT
+        t1.customer_id,
+        t1.ticket_id  AS ticket_1,
+        t2.ticket_id  AS ticket_2,
+        t1.created_date AS date_1,
+        t2.created_date AS date_2,
+        t2.created_date - t1.created_date AS days_apart
+    FROM support_tickets t1
+    INNER JOIN support_tickets t2
+        ON  t1.customer_id = t2.customer_id
+        AND t2.ticket_id > t1.ticket_id
+        AND t2.created_date - t1.created_date BETWEEN 0 AND 30
+)
+SELECT
+    tp.customer_id,
+    cu.first_name || ' ' || cu.last_name AS customer_name,
+    COUNT(*) AS ticket_pairs_within_30d,
+    MIN(tp.days_apart) AS min_days_apart
+FROM ticket_pairs tp
+JOIN customers cu ON tp.customer_id = cu.customer_id
+GROUP BY tp.customer_id, customer_name
+ORDER BY ticket_pairs_within_30d DESC
+LIMIT 15;
+```
+
+# Top Products by Revenue
+
+Use `RANK()` to find the best-selling products:
+
+```{.sql .interactive .cookbook}
+SELECT
+    p.product_name,
+    p.category,
+    SUM(oi.quantity)                AS units_sold,
+    ROUND(SUM(oi.line_total), 2)   AS total_revenue,
+    RANK() OVER (ORDER BY SUM(oi.line_total) DESC) AS revenue_rank
+FROM order_items oi
+JOIN products p ON oi.product_id = p.product_id
+JOIN orders o   ON oi.order_id = o.order_id
+WHERE o.status = 'completed'
+GROUP BY p.product_id, p.product_name, p.category
+ORDER BY revenue_rank;
+```
+
+# Customer 360 View
+
+Bring it all together — orders, subscriptions, and tickets per customer:
+
+```{.sql .interactive .cookbook}
+WITH order_summary AS (
+    SELECT
+        customer_id,
+        COUNT(DISTINCT order_id) AS total_orders,
+        ROUND(SUM(oi.line_total), 2) AS lifetime_spend,
+        MAX(order_date) AS last_order_date
+    FROM orders o
+    JOIN order_items oi ON o.order_id = oi.order_id
+    WHERE o.status = 'completed'
+    GROUP BY customer_id
+),
+sub_summary AS (
+    SELECT
+        customer_id,
+        COUNT(*) AS total_subscriptions,
+        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active_subs,
+        ROUND(SUM(CASE WHEN status = 'active' THEN monthly_amount ELSE 0 END), 2) AS current_mrr
+    FROM subscriptions
+    GROUP BY customer_id
+),
+ticket_summary AS (
+    SELECT
+        customer_id,
+        COUNT(*) AS total_tickets,
+        ROUND(AVG(satisfaction_score), 2) AS avg_csat
+    FROM support_tickets
+    GROUP BY customer_id
+)
+SELECT
+    c.customer_id,
+    c.first_name || ' ' || c.last_name AS customer_name,
+    c.customer_segment,
+    c.city,
+    COALESCE(os.total_orders, 0)        AS total_orders,
+    COALESCE(os.lifetime_spend, 0)      AS lifetime_spend,
+    COALESCE(ss.active_subs, 0)         AS active_subs,
+    COALESCE(ss.current_mrr, 0)         AS current_mrr,
+    COALESCE(ts.total_tickets, 0)       AS total_tickets,
+    ts.avg_csat
+FROM customers c
+LEFT JOIN order_summary  os ON c.customer_id = os.customer_id
+LEFT JOIN sub_summary    ss ON c.customer_id = ss.customer_id
+LEFT JOIN ticket_summary ts ON c.customer_id = ts.customer_id
+ORDER BY lifetime_spend DESC
+LIMIT 20;
+```

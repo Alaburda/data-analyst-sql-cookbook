@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>1&nbsp; The Basics – The Data Analyst SQL Cookbook</title>
+<title>The Data Model – The Data Analyst SQL Cookbook</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,40 +20,6 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
-/* CSS for syntax highlighting */
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode > span { color: inherit; text-decoration: inherit; }
-div.sourceCode { margin: 1em 0; }
-pre.sourceCode { margin: 0; }
-@media screen {
-div.sourceCode { overflow: auto; }
-}
-@media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
-}
-pre.numberSource code
-  { counter-reset: source-line 0; }
-pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
-pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-  }
-pre.numberSource { margin-left: 3em;  padding-left: 4px; }
-div.sourceCode
-  {   }
-@media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
-}
 </style>
 
 
@@ -64,8 +30,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./01-basics/using-sql-in-r.html" rel="next">
-<link href="./erd.html" rel="prev">
+<link href="./01-basics.html" rel="next">
+<link href="./index.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -102,6 +68,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
+<link href="site_libs/htmltools-fill-0.5.8.1/fill.css" rel="stylesheet">
+
+<script src="site_libs/htmlwidgets-1.6.4/htmlwidgets.js"></script>
+
+<script src="site_libs/viz-1.8.2/viz.js"></script>
+
+<link href="site_libs/DiagrammeR-styles-0.2/styles.css" rel="stylesheet">
+
+<script src="site_libs/grViz-binding-1.0.11/grViz.js"></script>
+
 
 
 </head>
@@ -115,7 +91,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./01-basics.html"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">The Basics</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./erd.html">The Data Model</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -148,13 +124,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./erd.html" class="sidebar-item-text sidebar-link">
+  <a href="./erd.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">The Data Model</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./01-basics.html" class="sidebar-item-text sidebar-link active">
+  <a href="./01-basics.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">The Basics</span></span></a>
   </div>
 </li>
@@ -279,15 +255,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#the-basics" id="toc-the-basics" class="nav-link active" data-scroll-target="#the-basics"><span class="header-section-number">2</span> The Basics</a>
-  <ul class="collapse">
-  <li><a href="#select" id="toc-select" class="nav-link" data-scroll-target="#select"><span class="header-section-number">2.1</span> SELECT</a></li>
-  <li><a href="#joins-and-where" id="toc-joins-and-where" class="nav-link" data-scroll-target="#joins-and-where"><span class="header-section-number">2.2</span> JOINS and WHERE</a>
-  <ul class="collapse">
-  <li><a href="#section" id="toc-section" class="nav-link" data-scroll-target="#section"><span class="header-section-number">2.2.1</span> 1=1</a></li>
-  </ul></li>
-  <li><a href="#group-by" id="toc-group-by" class="nav-link" data-scroll-target="#group-by"><span class="header-section-number">2.3</span> GROUP BY</a></li>
-  </ul></li>
+  <li><a href="#entity-relationship-diagram" id="toc-entity-relationship-diagram" class="nav-link active" data-scroll-target="#entity-relationship-diagram">Entity-Relationship Diagram</a></li>
+  <li><a href="#table-overview" id="toc-table-overview" class="nav-link" data-scroll-target="#table-overview">Table overview</a></li>
   </ul>
 </nav>
     </div>
@@ -296,7 +265,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">The Basics</span></h1>
+<h1 class="title">The Data Model</h1>
 </div>
 
 
@@ -313,49 +282,84 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="the-basics" class="level1" data-number="2">
-<h1 data-number="2"><span class="header-section-number">2</span> The Basics</h1>
-<p>You could find this section in probably any SQL book - feel free to skip it if you feel comfortable with SQL!</p>
-<section id="select" class="level2" data-number="2.1">
-<h2 data-number="2.1" class="anchored" data-anchor-id="select"><span class="header-section-number">2.1</span> SELECT</h2>
-<p>I wish I could write something smart when writing anything between the SELECT and FROM keywords!</p>
-</section>
-<section id="joins-and-where" class="level2" data-number="2.2">
-<h2 data-number="2.2" class="anchored" data-anchor-id="joins-and-where"><span class="header-section-number">2.2</span> JOINS and WHERE</h2>
-<p>There are entire chapters devoted to joins and a variety of interesting dialects. However, knowing LEFT and INNER joins gets you 95% of the way there. A great illustration of how joins work can be found in R for Data Science https://r4ds.hadley.nz/joins.html. Lately I’ve been thinking of joins and where statements interchangeably because you can express the same result in two different ways. For example, this query would return a combination of rows from the two tables:</p>
+<p>The cookbook uses a fictional SaaS company database. All chapters query the same set of tables so you can build on what you’ve learned across chapters.</p>
+<section id="entity-relationship-diagram" class="level2">
+<h2 class="anchored" data-anchor-id="entity-relationship-diagram">Entity-Relationship Diagram</h2>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> <span class="op">*</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> coffee</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">join</span> coffee_brewing</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: package 'dm' was built under R version 4.4.3</code></pre>
 </div>
-<p>The Join and WHERE clauses are fun because they are VERY interchangeable. When you write</p>
-<p>select * from fart join fart2</p>
-<p>You’re essentially doing multiplication because it’s a cross join that combines all rows from fart to all rows from fart2. Usually you don’t want the full possible set of combinations but only a certain set. One typical way to constrain the output set is to only output rows that have a common value between two tables - it’s typically a primary key and foreign key combo but it could be anything else. Anyway, the typical way to JOIN tables is like this:</p>
-<p>select * from fart join fart2 on fart.id = fart2.id</p>
-<p>What we’re essentially doing is saying “hey, give me a set of rows from these two tables where the id column matches”. where the id column matches… WAIT, THIS IS ALSO LEGAL SQL</p>
-<p>select * from fart join fart2 where fart.id = fart2.id</p>
-<p>Congrats, we’ve just discovered the ANSI-89 standard of SQL! ANSI-89 compliant SQL looks like this:</p>
-<p>select * from fart, fart2 where fart.id = fart2.id</p>
-<p>This is because joins and where accomplish the same thing - they constrain the output set. Of course, the order of operations makes so that the join is done first and then the where clause is applied so you can’t just WHERE your way through when using ANSI-92 SQL.</p>
-<p>Anyway, the inverse is also neat - since both JOIN and WHERE accept clauses that constrain, you can just pass an operation to the JOIN:</p>
-<p>select * from fart left join fart2 on fart.id = fart2.id and fart2.smell = ‘bad’</p>
-<p>This pattern is especially useful when you want to “append” values from the second table but only when some condition is met. For example, maybe I would like to show all clients but only add their contact info if they have accepted to our marketing agreeement terms.</p>
-<p>The order of operation is also useful when running the ANTI JOIN</p>
-<p>select * from fart left join fart2 on fart.id = fart2.id where fart2.id is null</p>
-<p>The join happens first - so we can visualise in our head that some values are joined, some are not. Then, we can filter on the resulting set and only keep rows that didn’t find a match in table 2. This is called an anti join.</p>
-<section id="section" class="level3" data-number="2.2.1">
-<h3 data-number="2.2.1" class="anchored" data-anchor-id="section"><span class="header-section-number">2.2.1</span> 1=1</h3>
-<p>The set theory perspective makes WHERE 1=1 straightforward - you’re just saying</p>
+<div class="cell-output-display">
+<div class="grViz html-widget html-fill-item" id="htmlwidget-dfc7c697d1b3acfa9fb3" style="width:100%;height:464px;"></div>
+<script type="application/json" data-for="htmlwidget-dfc7c697d1b3acfa9fb3">{"x":{"diagram":"#data_model\ndigraph {\ngraph [rankdir=LR tooltip=\"Data Model\" ]\n\nnode [margin=0 fontcolor = \"#444444\" ]\n\nedge [color = \"#555555\", arrowsize = 1, ]\n\npack=true\npackmode= \"node\"\n\n  \"calendar\" [id = \"calendar\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#75516BAA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#B07AA1FF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">calendar<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\" PORT=\"date_key\"><U>date_key<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">date<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">year<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">quarter<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">month<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">month_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">week<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">day_of_week<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">day_of_month<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">day_of_year<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">is_weekend<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">lgl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">fiscal_year<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">fiscal_quarter<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">int<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"customers\" [id = \"customers\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#34506FAA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#4E79A7FF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">customers<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\" PORT=\"customer_id\"><U>customer_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">first_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">last_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">email<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">city<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">country<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">signup_date<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">customer_segment<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">chr<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"departments\" [id = \"departments\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#3B6B34AA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#59A14FFF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">departments<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\" PORT=\"department_id\"><U>department_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">department_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">chr<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"employees\" [id = \"employees\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#3B6B34AA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#59A14FFF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">employees<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\" PORT=\"employee_id\"><U>employee_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">first_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">last_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">email<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\" PORT=\"department_id\">department_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">hire_date<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">salary<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">city<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">is_active<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">lgl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\" PORT=\"manager_id\">manager_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">int<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"order_items\" [id = \"order_items\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#34506FAA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#4E79A7FF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">order_items<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\" PORT=\"order_item_id\"><U>order_item_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\" PORT=\"order_id\">order_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\" PORT=\"product_id\">product_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">quantity<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">unit_price<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">line_total<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">dbl<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"orders\" [id = \"orders\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#34506FAA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#4E79A7FF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">orders<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\" PORT=\"order_id\"><U>order_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\" PORT=\"customer_id\">customer_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">order_date<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">status<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">chr<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"products\" [id = \"products\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#A15E1CAA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#F28E2BFF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">products<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\" PORT=\"product_id\"><U>product_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">product_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">category<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">unit_price<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">is_recurring<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">lgl<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"subscriptions\" [id = \"subscriptions\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#A15E1CAA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#F28E2BFF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">subscriptions<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\" PORT=\"subscription_id\"><U>subscription_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\" PORT=\"customer_id\">customer_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\" PORT=\"product_id\">product_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">status<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">valid_from<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">valid_to<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">monthly_amount<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">dbl<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"support_tickets\" [id = \"support_tickets\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#963A3BAA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#E15759FF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">support_tickets<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\" PORT=\"ticket_id\"><U>ticket_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\" PORT=\"customer_id\">customer_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\" PORT=\"assigned_to\">assigned_to<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">category<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">priority<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">status<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">created_date<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">resolved_date<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">satisfaction_score<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">int<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n\"subscriptions\":\"customer_id\"->\"customers\":\"customer_id\" [id=\"subscriptions_1\"]\n\"orders\":\"customer_id\"->\"customers\":\"customer_id\" [id=\"orders_1\"]\n\"support_tickets\":\"customer_id\"->\"customers\":\"customer_id\" [id=\"support_tickets_1\"]\n\"employees\":\"department_id\"->\"departments\":\"department_id\" [id=\"employees_1\"]\n\"employees\":\"manager_id\"->\"employees\":\"employee_id\" [id=\"employees_2\"]\n\"support_tickets\":\"assigned_to\"->\"employees\":\"employee_id\" [id=\"support_tickets_2\"]\n\"order_items\":\"order_id\"->\"orders\":\"order_id\" [id=\"order_items_1\"]\n\"subscriptions\":\"product_id\"->\"products\":\"product_id\" [id=\"subscriptions_2\"]\n\"order_items\":\"product_id\"->\"products\":\"product_id\" [id=\"order_items_2\"]\n}","config":{"engine":null,"options":null}},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
 </section>
-</section>
-<section id="group-by" class="level2" data-number="2.3">
-<h2 data-number="2.3" class="anchored" data-anchor-id="group-by"><span class="header-section-number">2.3</span> GROUP BY</h2>
-<p>I LOVE grouping in SQL because most other programming tools will only let you run a function on the grouped set. But noone is stopping you from running conditional counts in SQL!</p>
-<p>select count(*), sum(case when fart = ‘smelly’ then 1 else 0 end) as smelly_farts from farts</p>
-<p>In theory, I could accomplish the same thing in other programming languages by creating columns that I could count/sum but come on, that’s wasteful.</p>
+<section id="table-overview" class="level2">
+<h2 class="anchored" data-anchor-id="table-overview">Table overview</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Table</th>
+<th>Rows</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>calendar</code></td>
+<td>1,461</td>
+<td>Date dimension covering 2022–2025</td>
+</tr>
+<tr class="even">
+<td><code>departments</code></td>
+<td>6</td>
+<td>Engineering, Sales, Marketing, Support, HR, Finance</td>
+</tr>
+<tr class="odd">
+<td><code>employees</code></td>
+<td>50</td>
+<td>Hierarchical via <code>manager_id</code> → <code>employee_id</code></td>
+</tr>
+<tr class="even">
+<td><code>customers</code></td>
+<td>200</td>
+<td>Consumer / Business / Enterprise segments</td>
+</tr>
+<tr class="odd">
+<td><code>products</code></td>
+<td>12</td>
+<td>Plans, add‑ons, services, features</td>
+</tr>
+<tr class="even">
+<td><code>subscriptions</code></td>
+<td>300</td>
+<td>SCD2 style with <code>valid_from</code> / <code>valid_to</code></td>
+</tr>
+<tr class="odd">
+<td><code>orders</code></td>
+<td>800</td>
+<td>Completed, pending, cancelled, refunded</td>
+</tr>
+<tr class="even">
+<td><code>order_items</code></td>
+<td>~1,400</td>
+<td>1–4 line items per order</td>
+</tr>
+<tr class="odd">
+<td><code>support_tickets</code></td>
+<td>400</td>
+<td>With priority, category, resolution dates</td>
+</tr>
+</tbody>
+</table>
 
 
-</section>
 </section>
 
 </main> <!-- /main -->
@@ -781,13 +785,13 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./erd.html" class="pagination-link" aria-label="The Data Model">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">The Data Model</span>
+      <a href="./index.html" class="pagination-link" aria-label="Preface">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Preface</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./01-basics/using-sql-in-r.html" class="pagination-link" aria-label="Using SQL in R">
-        <span class="nav-page-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./01-basics.html" class="pagination-link" aria-label="The Basics">
+        <span class="nav-page-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">The Basics</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

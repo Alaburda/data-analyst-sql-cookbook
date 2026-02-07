@@ -8,6 +8,7 @@ book:
   date: "2023-10-18"
   chapters:
     - index.qmd
+    - erd.qmd
     - 01-basics.qmd
     - part: The Basics
       chapters:
@@ -26,6 +27,7 @@ book:
         - 03-recipes/queries_with_dates.qmd
         - 03-recipes/pivoting-and-unpivoting.qmd
         - 03-recipes/filtering.qmd
+        - 03-recipes/customer-analytics.qmd
     - goodies.qmd
     - references.qmd
 
@@ -34,8 +36,6 @@ bibliography: references.bib
 format:
   html:
     theme: cosmo
-  pdf:
-    documentclass: scrreprt
 
 
 

@@ -1,28 +1,69 @@
-# The Data Model
+---
+engine: knitr
+prefer-html: true
+---
 
-The data model is a fictional subscription business. 
+# The Data Model {.unnumbered}
 
-The Entity-Relationship Diagram (ERD) is as follows:
+The cookbook uses a fictional SaaS company database. All chapters query the same set of tables so you can build on what you've learned across chapters.
 
-```{mermaid}
-erDiagram
-    subscribers ||--o{ orders : has
+## Entity-Relationship Diagram
 
-    subscribers {
-        int subscriber_id PK
-        varchar first_name
-        varchar last_name
-        varchar email
-        date subscription_date
-        boolean is_active
-        varchar tier
-    }
+```{r}
+#| echo: false
+#| message: false
 
-    orders {
-        int order_id PK
-        int subscriber_id FK "References subscribers"
-        date order_date
-        decimal amount
-    }
+library(dm)
+library(DBI)
+library(duckdb)
 
+con <- dbConnect(duckdb::duckdb(), dbdir = "db/cookbook.duckdb", read_only = TRUE)
+
+# Build dm from individual tables (learn_keys = FALSE avoids DuckDB compat issues)
+cookbook_dm <- dm_from_con(con, learn_keys = FALSE) |>
+  # Primary keys
+  dm_add_pk(calendar,        date_key) |>
+  dm_add_pk(departments,     department_id) |>
+  dm_add_pk(employees,       employee_id) |>
+  dm_add_pk(customers,       customer_id) |>
+  dm_add_pk(products,        product_id) |>
+  dm_add_pk(subscriptions,   subscription_id) |>
+  dm_add_pk(orders,          order_id) |>
+  dm_add_pk(order_items,     order_item_id) |>
+  dm_add_pk(support_tickets, ticket_id) |>
+  # Foreign keys
+  dm_add_fk(employees,       department_id, departments) |>
+  dm_add_fk(employees,       manager_id,    employees, ref_columns = employee_id) |>
+  dm_add_fk(subscriptions,   customer_id,   customers) |>
+  dm_add_fk(subscriptions,   product_id,    products) |>
+  dm_add_fk(orders,          customer_id,   customers) |>
+  dm_add_fk(order_items,     order_id,      orders) |>
+  dm_add_fk(order_items,     product_id,    products) |>
+  dm_add_fk(support_tickets, customer_id,   customers) |>
+  dm_add_fk(support_tickets, assigned_to,   employees, ref_columns = employee_id) |>
+  dm_set_colors(
+    "#4E79A7" = c(customers, orders, order_items),
+    "#F28E2B" = c(subscriptions, products),
+    "#59A14F" = c(employees, departments),
+    "#E15759" = support_tickets,
+    "#B07AA1" = calendar
+  )
+
+dm_draw(cookbook_dm, view_type = "all", column_types = TRUE)
+
+dbDisconnect(con, shutdown = TRUE)
 ```
+
+## Table overview
+
+| Table | Rows | Purpose |
+|---|---|---|
+| `calendar` | 1,461 | Date dimension covering 2022–2025 |
+| `departments` | 6 | Engineering, Sales, Marketing, Support, HR, Finance |
+| `employees` | 50 | Hierarchical via `manager_id` → `employee_id` |
+| `customers` | 200 | Consumer / Business / Enterprise segments |
+| `products` | 12 | Plans, add‑ons, services, features |
+| `subscriptions` | 300 | SCD2 style with `valid_from` / `valid_to` |
+| `orders` | 800 | Completed, pending, cancelled, refunded |
+| `order_items` | ~1,400 | 1–4 line items per order |
+| `support_tickets` | 400 | With priority, category, resolution dates |

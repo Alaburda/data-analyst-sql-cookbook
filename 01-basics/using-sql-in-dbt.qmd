@@ -1,3 +1,6 @@
+---
+engine: knitr
+---
 
 ## dbt incremental models should be configured VERY differently from official documentation
 
