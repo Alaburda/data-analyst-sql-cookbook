@@ -104,7 +104,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   }
 }</script>
 <script type="module">
-  import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.28.0/+esm';
+  import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm';
   
   // Global DuckDB instance management
   window.duckdbModule = duckdb;
@@ -153,8 +153,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
             if (!url || url.length === 0) continue;
             
             if (format === 'duckdb' || format === 'db') {
+              console.log('Loading DuckDB file:', url);
               const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
               const arrayBuffer = await response.arrayBuffer();
+              console.log('DuckDB file size:', arrayBuffer.byteLength, 'bytes');
               await db.registerFileBuffer('db.duckdb', new Uint8Array(arrayBuffer));
               await conn.query(`ATTACH 'db.duckdb' AS filedb`);
               await conn.query(`USE filedb`);
@@ -741,7 +744,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script>
 (function() {
   const dbName = "cookbook";
-  const dataFiles = [{url:"../db/cookbook.duckdb",format:"duckdb",tableName:"cookbook"}];
+  const dataFiles = [{url:"https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb",format:"duckdb",tableName:"cookbook"}];
   const editable = true;
   const selector = 'div.interactive-duckdb pre.cookbook code';
   
