@@ -4,7 +4,7 @@ filters:
   - interactive-sql
 databases:
   - name: db
-    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/main/db/cookbookdb.sqlite"
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbookdb.sqlite"
 ---
 
 # Factless Fact Tables
