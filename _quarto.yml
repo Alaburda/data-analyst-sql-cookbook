@@ -16,6 +16,7 @@ book:
         - 01-basics/using-sql-in-r.qmd
         - 01-basics/using-sql-in-dbt.qmd
         - 01-basics/joins.qmd
+        - 01-basics/window-functions.qmd
         - 01-basics/goodies.qmd
     - part: Data Modelling Techniques
       chapters:
