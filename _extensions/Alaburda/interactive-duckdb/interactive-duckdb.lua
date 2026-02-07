@@ -24,7 +24,7 @@ local function add_duckdb_scripts()
     "in-header",
     [[
 <script type="module">
-  import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.28.0/+esm';
+  import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm';
   
   // Global DuckDB instance management
   window.duckdbModule = duckdb;
@@ -73,8 +73,11 @@ local function add_duckdb_scripts()
             if (!url || url.length === 0) continue;
             
             if (format === 'duckdb' || format === 'db') {
+              console.log('Loading DuckDB file:', url);
               const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
               const arrayBuffer = await response.arrayBuffer();
+              console.log('DuckDB file size:', arrayBuffer.byteLength, 'bytes');
               await db.registerFileBuffer('db.duckdb', new Uint8Array(arrayBuffer));
               await conn.query(`ATTACH 'db.duckdb' AS filedb`);
               await conn.query(`USE filedb`);
