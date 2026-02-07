@@ -1,0 +1,28 @@
+# The Data Model
+
+The data model is a fictional subscription business. 
+
+The Entity-Relationship Diagram (ERD) is as follows:
+
+```{mermaid}
+erDiagram
+    subscribers ||--o{ orders : has
+
+    subscribers {
+        int subscriber_id PK
+        varchar first_name
+        varchar last_name
+        varchar email
+        date subscription_date
+        boolean is_active
+        varchar tier
+    }
+
+    orders {
+        int order_id PK
+        int subscriber_id FK "References subscribers"
+        date order_date
+        decimal amount
+    }
+
+```
