@@ -4,7 +4,7 @@ filters:
   - interactive-duckdb
 databases:
   - name: cookbook
-    path: "../db/cookbook.duckdb"
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
     format: duckdb
 ---
 
