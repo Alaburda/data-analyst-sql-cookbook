@@ -158,351 +158,406 @@
     ]
   },
   {
-    "objectID": "01-basics/goodies.html",
-    "href": "01-basics/goodies.html",
-    "title": "5  LIKE for fixed length wildcards",
+    "objectID": "01-basics/window-functions.html",
+    "href": "01-basics/window-functions.html",
+    "title": "5  Window Functions",
     "section": "",
-    "text": "5.1 UNION\nUNION and UNION ALL are different - UNION does an implicit DISTINCT after appending the tables, UNION ALL does not.",
+    "text": "6 Window Functions\nWindow functions let you perform calculations across a set of rows that are related to the current row — without collapsing the result into a single summary row the way GROUP BY does. They are one of the most powerful features of SQL.\nEvery window function has the same anatomy:",
     "crumbs": [
       "The Basics",
-      "<span class='chapter-number'>5</span>  <span class='chapter-title'>LIKE for fixed length wildcards</span>"
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Window Functions</span>"
+    ]
+  },
+  {
+    "objectID": "01-basics/window-functions.html#row_number",
+    "href": "01-basics/window-functions.html#row_number",
+    "title": "5  Window Functions",
+    "section": "6.1 ROW_NUMBER()",
+    "text": "6.1 ROW_NUMBER()\nROW_NUMBER() assigns a sequential integer to every row within its partition. The most common real-world use case is keeping only the first (or last) row per group — for instance, the most recent order per customer, the highest-scoring student per class, or the latest status change per subscription.\nThe pattern is always the same:\n\nUse ROW_NUMBER() with PARTITION BY (your group) and ORDER BY (your ranking criterion).\nWrap it in a CTE or subquery.\nFilter to rn = 1.\n\n\n\n\nHow ROW_NUMBER() + filter works\n\n\nLet’s see it in action. Say we want the highest-value order item per product:\n\nWITH ranked AS (\n    SELECT\n        p.product_name,\n        o.order_id,\n        oi.quantity,\n        oi.line_total,\n        ROW_NUMBER() OVER (\n            PARTITION BY oi.product_id\n            ORDER BY oi.line_total DESC\n        ) AS rn\n    FROM order_items oi\n    JOIN products p ON oi.product_id = p.product_id\n    JOIN orders o   ON oi.order_id = o.order_id\n    WHERE o.status = 'completed'\n)\nSELECT product_name, order_id, quantity, line_total\nFROM ranked\nWHERE rn = 1\nORDER BY line_total DESC;\n\nOr the most recent order per customer:\n\nWITH ranked AS (\n    SELECT\n        c.first_name || ' ' || c.last_name AS customer_name,\n        o.order_id,\n        o.order_date,\n        o.status,\n        ROW_NUMBER() OVER (\n            PARTITION BY o.customer_id\n            ORDER BY o.order_date DESC\n        ) AS rn\n    FROM orders o\n    JOIN customers c ON o.customer_id = c.customer_id\n)\nSELECT customer_name, order_id, order_date, status\nFROM ranked\nWHERE rn = 1\nORDER BY order_date DESC\nLIMIT 15;\n\n\n\n\n\n\n\nROW_NUMBER vs RANK vs DENSE_RANK\n\n\n\n\nROW_NUMBER() — always assigns unique numbers (1, 2, 3, …), even when values tie.\nRANK() — ties get the same rank, but the next rank skips (1, 1, 3, …).\nDENSE_RANK() — ties get the same rank, no gaps (1, 1, 2, …).\n\nWhen you only want rn = 1, all three behave the same if there are no ties. If ties are possible and you want all tied rows, use RANK() instead.",
+    "crumbs": [
+      "The Basics",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Window Functions</span>"
+    ]
+  },
+  {
+    "objectID": "01-basics/window-functions.html#rank-and-dense_rank",
+    "href": "01-basics/window-functions.html#rank-and-dense_rank",
+    "title": "5  Window Functions",
+    "section": "6.2 RANK() and DENSE_RANK()",
+    "text": "6.2 RANK() and DENSE_RANK()\nRANK() is useful when you want to find the top N items and treat ties fairly. Let’s rank products by total revenue:\n\nSELECT\n    p.product_name,\n    p.category,\n    ROUND(SUM(oi.line_total), 2) AS total_revenue,\n    RANK() OVER (ORDER BY SUM(oi.line_total) DESC) AS revenue_rank,\n    DENSE_RANK() OVER (ORDER BY SUM(oi.line_total) DESC) AS dense_rank\nFROM order_items oi\nJOIN products p ON oi.product_id = p.product_id\nJOIN orders o   ON oi.order_id = o.order_id\nWHERE o.status = 'completed'\nGROUP BY p.product_id, p.product_name, p.category\nORDER BY revenue_rank;",
+    "crumbs": [
+      "The Basics",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Window Functions</span>"
+    ]
+  },
+  {
+    "objectID": "01-basics/window-functions.html#lag-and-lead",
+    "href": "01-basics/window-functions.html#lag-and-lead",
+    "title": "5  Window Functions",
+    "section": "6.3 LAG() and LEAD()",
+    "text": "6.3 LAG() and LEAD()\nLAG() looks at a previous row; LEAD() looks at the next one. Perfect for calculating period-over-period changes:\n\nWITH monthly AS (\n    SELECT\n        c.year,\n        c.month,\n        ROUND(SUM(oi.line_total), 2) AS revenue\n    FROM orders o\n    JOIN order_items oi ON o.order_id = oi.order_id\n    JOIN calendar c     ON o.order_date = c.date\n    WHERE o.status = 'completed'\n    GROUP BY c.year, c.month\n)\nSELECT\n    year,\n    month,\n    revenue,\n    LAG(revenue) OVER (ORDER BY year, month) AS prev_month,\n    ROUND(\n        100.0 * (revenue - LAG(revenue) OVER (ORDER BY year, month))\n        / LAG(revenue) OVER (ORDER BY year, month),\n        1\n    ) AS mom_growth_pct\nFROM monthly\nORDER BY year, month;",
+    "crumbs": [
+      "The Basics",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Window Functions</span>"
+    ]
+  },
+  {
+    "objectID": "01-basics/window-functions.html#running-totals-with-sum-over",
+    "href": "01-basics/window-functions.html#running-totals-with-sum-over",
+    "title": "5  Window Functions",
+    "section": "6.4 Running Totals with SUM() OVER",
+    "text": "6.4 Running Totals with SUM() OVER\nA window SUM() with an ORDER BY gives you a cumulative (running) total:\n\nSELECT\n    o.order_id,\n    o.order_date,\n    ROUND(SUM(oi.line_total), 2) AS order_total,\n    ROUND(SUM(SUM(oi.line_total)) OVER (ORDER BY o.order_date, o.order_id), 2) AS running_total\nFROM orders o\nJOIN order_items oi ON o.order_id = oi.order_id\nWHERE o.status = 'completed'\nGROUP BY o.order_id, o.order_date\nORDER BY o.order_date, o.order_id\nLIMIT 20;",
+    "crumbs": [
+      "The Basics",
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>Window Functions</span>"
+    ]
+  },
+  {
+    "objectID": "01-basics/goodies.html",
+    "href": "01-basics/goodies.html",
+    "title": "6  LIKE for fixed length wildcards",
+    "section": "",
+    "text": "6.1 UNION\nUNION and UNION ALL are different - UNION does an implicit DISTINCT after appending the tables, UNION ALL does not.",
+    "crumbs": [
+      "The Basics",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>LIKE for fixed length wildcards</span>"
     ]
   },
   {
     "objectID": "02-models/factless-fact-tables.html",
     "href": "02-models/factless-fact-tables.html",
-    "title": "6  Factless Fact Table",
+    "title": "7  Factless Fact Table",
     "section": "",
-    "text": "7 Factless Fact Tables\nIf I wanted to show the number of subscriptions that were active for each month in my favourite BI tool, I would be in trouble. In Power BI, I would have to resort to a multi-line DAX formula. In Tableau, the options have 8 steps in them. I couldn’t even find a tutorial for Looker. Luckily, Factless Fact Tables sidestep these solutions altogether so that your BI tool only has to do a simple count.\nKimball defines Factless Fact Tables as a table of dimensional entities coming together at a moment in time. Now that’s one eldritch definition! In human terms, the raison d’être of these tables comes from the need to count whether a thing existed at a point in time. It’s best to show the technique using an example.\nLet’s say I have a table of subscriptions that looks like this:\nlibrary(duckdb)\n\nWarning: package 'duckdb' was built under R version 4.4.3\n\n\nLoading required package: DBI\n\ncon &lt;- dbConnect(duckdb::duckdb(), \":memory:\")\n\ndbExecute(con, \"CREATE TABLE subscriptions (id INTEGER, start_date DATE, end_date DATE);\")\n\n[1] 0\nWhenever we want to count something, it’s best to count it using a fact table. However, subscriptions are a SCD2 type dimension and you want to count whether they existed between the start_date and end_date. Counting becomes trivial if the date range is expanded into their dedicated rows. For example, if I were building a monthly fact table, the first id would be 6 rows and my second id would be 4 rows because they were active subscriptions during those months. In order to build it, it’s best to have a calendar table so that we could perform a cross join using a BETWEEN statement.",
+    "text": "8 Factless Fact Tables\nIf I wanted to show the number of subscriptions that were active for each month in my favourite BI tool, I would be in trouble. In Power BI, I would have to resort to a multi-line DAX formula. In Tableau, the options have 8 steps in them. I couldn’t even find a tutorial for Looker. Luckily, Factless Fact Tables sidestep these solutions altogether so that your BI tool only has to do a simple count.\nKimball defines Factless Fact Tables as a table of dimensional entities coming together at a moment in time. Now that’s one eldritch definition! In human terms, the raison d’être of these tables comes from the need to count whether a thing existed at a point in time. It’s best to show the technique using an example.\nLet’s say I have a table of subscriptions that looks like this:\nlibrary(duckdb)\n\nWarning: package 'duckdb' was built under R version 4.4.3\n\n\nLoading required package: DBI\n\ncon &lt;- dbConnect(duckdb::duckdb(), \":memory:\")\n\ndbExecute(con, \"CREATE TABLE subscriptions (id INTEGER, start_date DATE, end_date DATE);\")\n\n[1] 0\nWhenever we want to count something, it’s best to count it using a fact table. However, subscriptions are a SCD2 type dimension and you want to count whether they existed between the start_date and end_date. Counting becomes trivial if the date range is expanded into their dedicated rows. For example, if I were building a monthly fact table, the first id would be 6 rows and my second id would be 4 rows because they were active subscriptions during those months. In order to build it, it’s best to have a calendar table so that we could perform a cross join using a BETWEEN statement.",
     "crumbs": [
       "Data Modelling Techniques",
-      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Factless Fact Table</span>"
     ]
   },
   {
     "objectID": "02-models/factless-fact-tables.html#sql-code",
     "href": "02-models/factless-fact-tables.html#sql-code",
-    "title": "6  Factless Fact Table",
-    "section": "7.1 SQL code",
-    "text": "7.1 SQL code",
+    "title": "7  Factless Fact Table",
+    "section": "8.1 SQL code",
+    "text": "8.1 SQL code",
     "crumbs": [
       "Data Modelling Techniques",
-      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Factless Fact Table</span>"
     ]
   },
   {
     "objectID": "02-models/factless-fact-tables.html#how-is-this-different-from-snapshot-fact-tables",
     "href": "02-models/factless-fact-tables.html#how-is-this-different-from-snapshot-fact-tables",
-    "title": "6  Factless Fact Table",
-    "section": "7.2 How is this different from snapshot fact tables?",
-    "text": "7.2 How is this different from snapshot fact tables?\nYou may have heard about snapshot fact tables - they are VERY similar to factless fact tables. In fact, if you saved snapshots of active subscriptions for each month, you’d end up with the same table! The different comes down to implementation: snapshots are run on a regular basis to create the final dataset, a factless fact table can be recreated from scratch.\nKimball defines Factless Fact Tables as a table of dimensional entities coming together at a moment in time. Now that’s one eldtrich definition! In human terms, the raison d’être of these tables comes from the need to count whether a thing existed at a point in time. And if that definition is too vague, here’s an exercise - try showing how many subscribers you had on a monthly basis. For example, let’s say I had 10 subscriptions that were each active between January and December of last year, how would you show those 10 subscriptions for each month of the year? In Power BI, you need to resort to a multi-line DAX formula. In Tableau, the options have 8 steps in them. Factless fact tables sidestep these solution altogether so that all you need is a simple count.\nFactless fact tables can be built by combining your SCD2 type table (i.e. data that has an end date and a start date) with a calendar table (a date dimension). Here’s how to do it in SQL:\nin your favourite BI tool\nFactless fact tables solve this problem by showing whether a thing existed for a given time point. For example, if we were to build a factless table on a monthly granularity, a Netflix subscriber whose subscription starts at 2025-01-01 and ends at 2025-12-31 would show up as 12 rows, one for each of the months in a year. As a result, if you were to put your months on an x-axis, you could just do a count of rows from this table along the y axis. And it’s not just subscribers - it works on any table that has a start date and an end date1. Factless fact tables allow you to keep the modeling and KPI layer relatively simple - learning to build and use them is extremely helpful.",
+    "title": "7  Factless Fact Table",
+    "section": "8.2 How is this different from snapshot fact tables?",
+    "text": "8.2 How is this different from snapshot fact tables?\nYou may have heard about snapshot fact tables - they are VERY similar to factless fact tables. In fact, if you saved snapshots of active subscriptions for each month, you’d end up with the same table! The different comes down to implementation: snapshots are run on a regular basis to create the final dataset, a factless fact table can be recreated from scratch.\nKimball defines Factless Fact Tables as a table of dimensional entities coming together at a moment in time. Now that’s one eldtrich definition! In human terms, the raison d’être of these tables comes from the need to count whether a thing existed at a point in time. And if that definition is too vague, here’s an exercise - try showing how many subscribers you had on a monthly basis. For example, let’s say I had 10 subscriptions that were each active between January and December of last year, how would you show those 10 subscriptions for each month of the year? In Power BI, you need to resort to a multi-line DAX formula. In Tableau, the options have 8 steps in them. Factless fact tables sidestep these solution altogether so that all you need is a simple count.\nFactless fact tables can be built by combining your SCD2 type table (i.e. data that has an end date and a start date) with a calendar table (a date dimension). Here’s how to do it in SQL:\nin your favourite BI tool\nFactless fact tables solve this problem by showing whether a thing existed for a given time point. For example, if we were to build a factless table on a monthly granularity, a Netflix subscriber whose subscription starts at 2025-01-01 and ends at 2025-12-31 would show up as 12 rows, one for each of the months in a year. As a result, if you were to put your months on an x-axis, you could just do a count of rows from this table along the y axis. And it’s not just subscribers - it works on any table that has a start date and an end date1. Factless fact tables allow you to keep the modeling and KPI layer relatively simple - learning to build and use them is extremely helpful.",
     "crumbs": [
       "Data Modelling Techniques",
-      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Factless Fact Table</span>"
     ]
   },
   {
     "objectID": "02-models/factless-fact-tables.html#sample-sql",
     "href": "02-models/factless-fact-tables.html#sample-sql",
-    "title": "6  Factless Fact Table",
-    "section": "7.3 Sample SQL",
-    "text": "7.3 Sample SQL",
+    "title": "7  Factless Fact Table",
+    "section": "8.3 Sample SQL",
+    "text": "8.3 Sample SQL",
     "crumbs": [
       "Data Modelling Techniques",
-      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Factless Fact Table</span>"
     ]
   },
   {
     "objectID": "02-models/factless-fact-tables.html#without-using-a-calendar-table",
     "href": "02-models/factless-fact-tables.html#without-using-a-calendar-table",
-    "title": "6  Factless Fact Table",
-    "section": "8.1 Without using a calendar table",
-    "text": "8.1 Without using a calendar table\n\nwith d as (\n      select validfrom as dte, 1 as inc\n      from t\n      union all\n      select validto, -1\n      from t\n     )\nselect dte, sum(sum(inc)) over (order by dte)\nfrom d\ngroup by dte\norder by dte;",
+    "title": "7  Factless Fact Table",
+    "section": "9.1 Without using a calendar table",
+    "text": "9.1 Without using a calendar table\n\nwith d as (\n      select validfrom as dte, 1 as inc\n      from t\n      union all\n      select validto, -1\n      from t\n     )\nselect dte, sum(sum(inc)) over (order by dte)\nfrom d\ngroup by dte\norder by dte;",
     "crumbs": [
       "Data Modelling Techniques",
-      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Factless Fact Table</span>"
     ]
   },
   {
     "objectID": "02-models/factless-fact-tables.html#using-a-calendar-table",
     "href": "02-models/factless-fact-tables.html#using-a-calendar-table",
-    "title": "6  Factless Fact Table",
-    "section": "8.2 Using a calendar table",
-    "text": "8.2 Using a calendar table",
+    "title": "7  Factless Fact Table",
+    "section": "9.2 Using a calendar table",
+    "text": "9.2 Using a calendar table",
     "crumbs": [
       "Data Modelling Techniques",
-      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Factless Fact Table</span>"
     ]
   },
   {
     "objectID": "02-models/factless-fact-tables.html#footnotes",
     "href": "02-models/factless-fact-tables.html#footnotes",
-    "title": "6  Factless Fact Table",
+    "title": "7  Factless Fact Table",
     "section": "",
     "text": "Essentially, if it’s a SCD2 type dimension.↩︎",
     "crumbs": [
       "Data Modelling Techniques",
-      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Factless Fact Table</span>"
     ]
   },
   {
     "objectID": "02-models/ragged-depth-hierarchies.html",
     "href": "02-models/ragged-depth-hierarchies.html",
-    "title": "7  Ragged Depth Hierarchies",
+    "title": "8  Ragged Depth Hierarchies",
     "section": "",
     "text": "Companies have layers. A team is likely to belong to a department which belongs to a business line which belongs to some larger org unit. And so it goes. From a modelling perspective, everything is peachy as long as the depth of layers is uniform. That is, it’s great if a team is always the third hierarchical org structure and a team always reports to a department which always reports to a business line. In such cases, you can simply model this as three columns in a dimension table and move on. However, reality resists simplicity\nSome employees might not have a team and report directly to the director of a business line. Other times there might be teams and there might not. The number of layers can be absolutely different. Hierarchies come in all shapes and sizes and we should expect them to be like this. How do we model this from a data modelling perspective?\nModelling this data is important. A good example is counting team expenses. You have expenses for individual employees but your stakeholders wants to rollup those expenses at any level. How would you do it?\nThis situation is called a ragged variable depth hierarchy and Kimball offers a great idea on how to solve it - but no SQL code!\nThe idea is to create a bridge table - a table that shows not only to whom to you report but also every skip level manager in the chain. The idea being that if you have a fact row associated with you, every manager in the chain inherits that fact row as well.\n\nWITH RECURSIVE org_hierarchy AS (\n    -- Anchor member: select all employees with their immediate manager\n    SELECT\n        employee_id,\n        manager_id,\n        employee_name,\n        1 AS level,\n        CAST(employee_id AS VARCHAR(100)) AS path\n    FROM employees\n    WHERE manager_id IS NULL -- Top-level managers\n\n    UNION ALL\n\n    -- Recursive member: join employees to their managers\n    SELECT\n        e.employee_id,\n        e.manager_id,\n        e.employee_name,\n        oh.level + 1 AS level,\n        CONCAT(oh.path, ' &gt; ', e.employee_id) AS path\n    FROM employees e\n    INNER JOIN org_hierarchy oh ON e.manager_id = oh.employee_id\n)\nSELECT * FROM org_hierarchy\nORDER BY path;",
     "crumbs": [
       "Data Modelling Techniques",
-      "<span class='chapter-number'>7</span>  <span class='chapter-title'>Ragged Depth Hierarchies</span>"
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>Ragged Depth Hierarchies</span>"
     ]
   },
   {
     "objectID": "03-recipes/joins.html",
     "href": "03-recipes/joins.html",
-    "title": "8  Joins",
+    "title": "9  Joins",
     "section": "",
-    "text": "8.1 Counting number of subscribers\nIf you’re working with subscription data, one frequent question is “how many subscribtions we had each month?”. This is a surprisingly difficult question to answer because you need to count the number of subscribers at the end of each month. This is a great example of a problem that is easy to solve in SQL but cumbersome on the BI end1.\nThe query is a two step process:",
+    "text": "9.1 Counting number of subscribers\nIf you’re working with subscription data, one frequent question is “how many subscribtions we had each month?”. This is a surprisingly difficult question to answer because you need to count the number of subscribers at the end of each month. This is a great example of a problem that is easy to solve in SQL but cumbersome on the BI end1.\nThe query is a two step process:",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>8</span>  <span class='chapter-title'>Joins</span>"
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>Joins</span>"
     ]
   },
   {
     "objectID": "03-recipes/joins.html#counting-number-of-subscribers",
     "href": "03-recipes/joins.html#counting-number-of-subscribers",
-    "title": "8  Joins",
+    "title": "9  Joins",
     "section": "",
     "text": "We join a list of months to the subscriptions table in order to “explore” the table at the level of months. Instead of having one row be a subscription, one row is a subscription in a given month. For example, a subscription that was active for three months would show up as three rows.\nAggregation - now that the data is at the level of months, we can count the number of subscriptions in each month.\n\n\nwith months as (\n            select distinct DATE(date, 'start of month') date\n            from calendar\n           )\n           select date, count(*)\n           from months\n           inner join subscriptions\n            on date between date_from and date_to\n           group by date",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>8</span>  <span class='chapter-title'>Joins</span>"
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>Joins</span>"
     ]
   },
   {
     "objectID": "03-recipes/joins.html#rolling-as-of-joins",
     "href": "03-recipes/joins.html#rolling-as-of-joins",
-    "title": "8  Joins",
-    "section": "8.2 Rolling “As of” Joins",
-    "text": "8.2 Rolling “As of” Joins\nRolling joins are essentially non-equi joins that only return the “closest” row. R users may be familliar with this technique as Rolling Joins, DuckDB and Snowflake refers to these as “ASOF” joins: https://duckdb.org/docs/stable/guides/sql_features/asof_join.html\nThese operations are incredibly useful when working with attribution. For example, two customer representatives performed a sale and marked it in the CRM but you need to attribute the sale to the sale that was performed first.",
+    "title": "9  Joins",
+    "section": "9.2 Rolling “As of” Joins",
+    "text": "9.2 Rolling “As of” Joins\nRolling joins are essentially non-equi joins that only return the “closest” row. R users may be familliar with this technique as Rolling Joins, DuckDB and Snowflake refers to these as “ASOF” joins: https://duckdb.org/docs/stable/guides/sql_features/asof_join.html\nThese operations are incredibly useful when working with attribution. For example, two customer representatives performed a sale and marked it in the CRM but you need to attribute the sale to the sale that was performed first.",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>8</span>  <span class='chapter-title'>Joins</span>"
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>Joins</span>"
     ]
   },
   {
     "objectID": "03-recipes/joins.html#footnotes",
     "href": "03-recipes/joins.html#footnotes",
-    "title": "8  Joins",
+    "title": "9  Joins",
     "section": "",
     "text": "In Power BI, it’s a four step process.↩︎",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>8</span>  <span class='chapter-title'>Joins</span>"
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>Joins</span>"
     ]
   },
   {
     "objectID": "03-recipes/queries_with_dates.html",
     "href": "03-recipes/queries_with_dates.html",
-    "title": "9  Queries with Dates",
+    "title": "10  Queries with Dates",
     "section": "",
-    "text": "10 Intersecting Dates\nLet’s say you have a table of subscriptions that all different start and end dates. How would you filter down a list of subscriptions to show those that were active within a time range? In other words, how do you find rows that have intersecting dates?\nFor example, here are all subscribers that had active subscriptions in 2023:\n\n\nselect *\nfrom subscribers\nwhere subscription_valid_from &lt;= '2023-12-31'\nand subscription_valid_to &gt;= '2023-01-01'\n\nThis query works when thinking in terms of sets. A subscription whose start date is later than our range’s end date is not in scope (i.e. date_from &gt; ‘2023-12-31’). So we can write the inverse of this, i.e. date_from &lt;= ‘2023-12-31’. The same goes for subscriptions that end before our range of interest.\n\n\n11 Counting Active Date Ranges\nIf you have a SCD2 type dimension like subscriptions, a common question might be to provide the number of active subscriptions for each day, week, month or year. It’s best to use a calendar table like this:\n\n\nselect\n  date,\n  count(*) as number_of_subscribers\nfrom calendar\ninner join subscribers\n  on date &gt;= subscription_valid_from\n  and date &lt;= subscription_valid_to\ngroup by date\n\n\nYou can also build a query without using a calendar table:\n\n\nwith d as (\n      select validfrom as dte, 1 as inc\n      from t\n      union all\n      select validto, -1\n      from t\n     )\nselect dte, sum(sum(inc)) over (order by dte)\nfrom d\ngroup by dte\norder by dte;\n\n\n\n12 Calculating date ranges based on gaps\nLet’s say we have subscriptions but we need to show a start date and an end date of gaps between subscriptions. For example, if I subscribed from 2023-01-01 to 2023-05-31 and then from 2023-07-01 to 2023-12-31, I would want to return a row that said I was not a subscriber from 2023-06-01 to 2023-06-30.\n\nSELECT   \n  seqval + 1 AS start_range,   \n  (\n    SELECT \n      MIN(B.seqval)    \n    FROM dbo.NumSeq AS B    \n    WHERE B.seqval &gt; A.seqval\n    ) - 1 AS end_range \nFROM dbo.NumSeq AS A \nWHERE NOT EXISTS (\n  SELECT * FROM dbo.NumSeq AS B    \n  WHERE B.seqval = A.seqval + 1)\nAND seqval &lt; (SELECT MAX(seqval) FROM dbo.NumSeq);\n\nThis solution is based on subqueries. In order to understand it you should first focus on the filtering activity in the WHERE clause and then proceed to the activity in the SELECT list. The purpose of the NOT EXISTS predicate in the WHERE clause is to filter only points that are a point before a gap. You can identify a point before a gap when you see that for such a point, the value plus 1 doesn’t exist in the sequence. The purpose of the second predicate in the WHERE clause is to filter out the maximum value from the sequence because it represents the point before infinity, which does not concern us.\n\n\n13 Sessionization\n\n\n14 Islands Problem\n\n\nSELECT \n  MIN(seqval) AS start_range, \n  MAX(seqval) AS end_range \nFROM (\n  SELECT \n    seqval, \n    seqval - ROW_NUMBER() OVER (ORDER BY seqval) AS grp\n  FROM dbo.NumSeq\n  ) AS D GROUP BY grp;\n\n\n\n15",
+    "text": "11 Intersecting Dates\nLet’s say you have a table of subscriptions that all different start and end dates. How would you filter down a list of subscriptions to show those that were active within a time range? In other words, how do you find rows that have intersecting dates?\nFor example, here are all subscribers that had active subscriptions in 2023:\n\n\nselect *\nfrom subscribers\nwhere subscription_valid_from &lt;= '2023-12-31'\nand subscription_valid_to &gt;= '2023-01-01'\n\nThis query works when thinking in terms of sets. A subscription whose start date is later than our range’s end date is not in scope (i.e. date_from &gt; ‘2023-12-31’). So we can write the inverse of this, i.e. date_from &lt;= ‘2023-12-31’. The same goes for subscriptions that end before our range of interest.\n\n\n12 Counting Active Date Ranges\nIf you have a SCD2 type dimension like subscriptions, a common question might be to provide the number of active subscriptions for each day, week, month or year. It’s best to use a calendar table like this:\n\n\nselect\n  date,\n  count(*) as number_of_subscribers\nfrom calendar\ninner join subscribers\n  on date &gt;= subscription_valid_from\n  and date &lt;= subscription_valid_to\ngroup by date\n\n\nYou can also build a query without using a calendar table:\n\n\nwith d as (\n      select validfrom as dte, 1 as inc\n      from t\n      union all\n      select validto, -1\n      from t\n     )\nselect dte, sum(sum(inc)) over (order by dte)\nfrom d\ngroup by dte\norder by dte;\n\n\n\n13 Calculating date ranges based on gaps\nLet’s say we have subscriptions but we need to show a start date and an end date of gaps between subscriptions. For example, if I subscribed from 2023-01-01 to 2023-05-31 and then from 2023-07-01 to 2023-12-31, I would want to return a row that said I was not a subscriber from 2023-06-01 to 2023-06-30.\n\nSELECT   \n  seqval + 1 AS start_range,   \n  (\n    SELECT \n      MIN(B.seqval)    \n    FROM dbo.NumSeq AS B    \n    WHERE B.seqval &gt; A.seqval\n    ) - 1 AS end_range \nFROM dbo.NumSeq AS A \nWHERE NOT EXISTS (\n  SELECT * FROM dbo.NumSeq AS B    \n  WHERE B.seqval = A.seqval + 1)\nAND seqval &lt; (SELECT MAX(seqval) FROM dbo.NumSeq);\n\nThis solution is based on subqueries. In order to understand it you should first focus on the filtering activity in the WHERE clause and then proceed to the activity in the SELECT list. The purpose of the NOT EXISTS predicate in the WHERE clause is to filter only points that are a point before a gap. You can identify a point before a gap when you see that for such a point, the value plus 1 doesn’t exist in the sequence. The purpose of the second predicate in the WHERE clause is to filter out the maximum value from the sequence because it represents the point before infinity, which does not concern us.\n\n\n14 Sessionization\n\n\n15 Islands Problem\n\n\nSELECT \n  MIN(seqval) AS start_range, \n  MAX(seqval) AS end_range \nFROM (\n  SELECT \n    seqval, \n    seqval - ROW_NUMBER() OVER (ORDER BY seqval) AS grp\n  FROM dbo.NumSeq\n  ) AS D GROUP BY grp;\n\n\n\n16",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>9</span>  <span class='chapter-title'>Queries with Dates</span>"
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>Queries with Dates</span>"
     ]
   },
   {
     "objectID": "03-recipes/pivoting-and-unpivoting.html",
     "href": "03-recipes/pivoting-and-unpivoting.html",
-    "title": "10  Pivoting and Unpivoting",
+    "title": "11  Pivoting and Unpivoting",
     "section": "",
-    "text": "11 Pivoting\nThe most basic way to pivot is to use a CASE statement for each column you want to pivot.",
+    "text": "12 Pivoting\nThe most basic way to pivot is to use a CASE statement for each column you want to pivot.",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>10</span>  <span class='chapter-title'>Pivoting and Unpivoting</span>"
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>Pivoting and Unpivoting</span>"
     ]
   },
   {
     "objectID": "03-recipes/pivoting-and-unpivoting.html#the-data",
     "href": "03-recipes/pivoting-and-unpivoting.html#the-data",
-    "title": "10  Pivoting and Unpivoting",
-    "section": "15.1 The Data",
-    "text": "15.1 The Data\nThe data we’re using looks like this:\n\nselect *\nfrom sport_interests \nlimit 5\n\n\n5 records\n\n\nName\nActivity\nNumber\n\n\n\n\nCharlie\nDancing\n65.35\n\n\nCharlie\nBasketball\n38.10\n\n\nJack\nBasketball\n36.19\n\n\nBob\nHiking\n53.84\n\n\nFrank\nRunning\n74.29",
+    "title": "11  Pivoting and Unpivoting",
+    "section": "16.1 The Data",
+    "text": "16.1 The Data\nThe data we’re using looks like this:\n\nselect *\nfrom sport_interests \nlimit 5\n\n\n5 records\n\n\nName\nActivity\nNumber\n\n\n\n\nCharlie\nDancing\n65.35\n\n\nCharlie\nBasketball\n38.10\n\n\nJack\nBasketball\n36.19\n\n\nBob\nHiking\n53.84\n\n\nFrank\nRunning\n74.29",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>10</span>  <span class='chapter-title'>Pivoting and Unpivoting</span>"
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>Pivoting and Unpivoting</span>"
     ]
   },
   {
     "objectID": "03-recipes/pivoting-and-unpivoting.html#pivoting-1",
     "href": "03-recipes/pivoting-and-unpivoting.html#pivoting-1",
-    "title": "10  Pivoting and Unpivoting",
-    "section": "15.2 Pivoting",
-    "text": "15.2 Pivoting\nPivoting in SQL looks like this:\n\nselect \n  name,\n  sum(case when Activity = 'Running' then Number end) as running,\n  sum(case when Activity = 'Tennis' then Number end) as tennis\nfrom sport_interests\ngroup by name\n\n\nDisplaying records 1 - 10\n\n\nName\nrunning\ntennis\n\n\n\n\nDavid\nNA\nNA\n\n\nHenry\n96.27\nNA\n\n\nJack\nNA\nNA\n\n\nBob\nNA\nNA\n\n\nEmma\n29.54\n86.50\n\n\nCharlie\nNA\nNA\n\n\nGrace\nNA\nNA\n\n\nFrank\n101.59\nNA\n\n\nIsabel\nNA\n60.97\n\n\nAlice\nNA\nNA\n\n\n\n\n\nIf you need to pivot into a lot of columns, you are going to have a bad time. First, you need to specify each column that is not being pivoted into the select statement as well as the group by clause. Second, you need to manually type out each column that appears in the pivot.\nNonetheless, I love pivoting in SQL because you can individually define how each column is pivoted. Maybe you need to average one column, but sum another? Maybe you want to add two conditional statements when you are pivoting Activity = 'Running'? I’ve done my fair share of intricate SQL pivots that would have taken me much more time in other languages.",
+    "title": "11  Pivoting and Unpivoting",
+    "section": "16.2 Pivoting",
+    "text": "16.2 Pivoting\nPivoting in SQL looks like this:\n\nselect \n  name,\n  sum(case when Activity = 'Running' then Number end) as running,\n  sum(case when Activity = 'Tennis' then Number end) as tennis\nfrom sport_interests\ngroup by name\n\n\nDisplaying records 1 - 10\n\n\nName\nrunning\ntennis\n\n\n\n\nDavid\nNA\nNA\n\n\nJack\nNA\nNA\n\n\nIsabel\nNA\n60.97\n\n\nAlice\nNA\nNA\n\n\nBob\nNA\nNA\n\n\nEmma\n29.54\n86.50\n\n\nHenry\n96.27\nNA\n\n\nCharlie\nNA\nNA\n\n\nFrank\n101.59\nNA\n\n\nGrace\nNA\nNA\n\n\n\n\n\nIf you need to pivot into a lot of columns, you are going to have a bad time. First, you need to specify each column that is not being pivoted into the select statement as well as the group by clause. Second, you need to manually type out each column that appears in the pivot.\nNonetheless, I love pivoting in SQL because you can individually define how each column is pivoted. Maybe you need to average one column, but sum another? Maybe you want to add two conditional statements when you are pivoting Activity = 'Running'? I’ve done my fair share of intricate SQL pivots that would have taken me much more time in other languages.",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>10</span>  <span class='chapter-title'>Pivoting and Unpivoting</span>"
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>Pivoting and Unpivoting</span>"
     ]
   },
   {
     "objectID": "03-recipes/pivoting-and-unpivoting.html#unpivoting-1",
     "href": "03-recipes/pivoting-and-unpivoting.html#unpivoting-1",
-    "title": "10  Pivoting and Unpivoting",
-    "section": "15.3 Unpivoting",
-    "text": "15.3 Unpivoting\nUnpivoting is a little tricky in SQL. Essentially, we’ll be creating multiple select statements for each column we would like to unpivot, with each select statement containing a different column:\n\nselect \n  name,\n  'Running' as Activity,\n  running as Number\nfrom sport_interests_pivot\n\nUNION ALL\n\nselect \n  name,\n  'Tennis' as Activity,\n  tennis as Number\nfrom sport_interests_pivot\n\n\nDisplaying records 1 - 10\n\n\nName\nActivity\nNumber\n\n\n\n\nGrace\nRunning\nNA\n\n\nBob\nRunning\nNA\n\n\nEmma\nRunning\n29.54\n\n\nDavid\nRunning\nNA\n\n\nFrank\nRunning\n101.59\n\n\nHenry\nRunning\n96.27\n\n\nJack\nRunning\nNA\n\n\nIsabel\nRunning\nNA\n\n\nAlice\nRunning\nNA\n\n\nCharlie\nRunning\nNA\n\n\n\n\n\nI don’t love unpivoting in SQL. When pivoting, a single line of code translates into a column, whereas a single column translates into a whole separate SQL statement. Please use some framework or an engine that supports unpivoting through a function (e.g. Snowflake’s UNPIVOT or dbt’s unpivot macro).",
+    "title": "11  Pivoting and Unpivoting",
+    "section": "16.3 Unpivoting",
+    "text": "16.3 Unpivoting\nUnpivoting is a little tricky in SQL. Essentially, we’ll be creating multiple select statements for each column we would like to unpivot, with each select statement containing a different column:\n\nselect \n  name,\n  'Running' as Activity,\n  running as Number\nfrom sport_interests_pivot\n\nUNION ALL\n\nselect \n  name,\n  'Tennis' as Activity,\n  tennis as Number\nfrom sport_interests_pivot\n\n\nDisplaying records 1 - 10\n\n\nName\nActivity\nNumber\n\n\n\n\nCharlie\nRunning\nNA\n\n\nJack\nRunning\nNA\n\n\nHenry\nRunning\n96.27\n\n\nDavid\nRunning\nNA\n\n\nFrank\nRunning\n101.59\n\n\nGrace\nRunning\nNA\n\n\nBob\nRunning\nNA\n\n\nEmma\nRunning\n29.54\n\n\nIsabel\nRunning\nNA\n\n\nAlice\nRunning\nNA\n\n\n\n\n\nI don’t love unpivoting in SQL. When pivoting, a single line of code translates into a column, whereas a single column translates into a whole separate SQL statement. Please use some framework or an engine that supports unpivoting through a function (e.g. Snowflake’s UNPIVOT or dbt’s unpivot macro).",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>10</span>  <span class='chapter-title'>Pivoting and Unpivoting</span>"
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>Pivoting and Unpivoting</span>"
     ]
   },
   {
     "objectID": "03-recipes/filtering.html",
     "href": "03-recipes/filtering.html",
-    "title": "11  Filtering",
+    "title": "12  Filtering",
     "section": "",
-    "text": "12 Anti joins\nAnti joins are a type of join where you return only rows that do not match any row in a given table. For example, let’s say you have users who have done one time purchases but who have no subscription service. You want to send a marketing email to users who don’t have a subscription service yet but have done a one time purchase.",
+    "text": "13 Anti joins\nAnti joins are a type of join where you return only rows that do not match any row in a given table. For example, let’s say you have users who have done one time purchases but who have no subscription service. You want to send a marketing email to users who don’t have a subscription service yet but have done a one time purchase.",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>11</span>  <span class='chapter-title'>Filtering</span>"
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>Filtering</span>"
     ]
   },
   {
     "objectID": "03-recipes/filtering.html#joining-only-to-certain-rows-in-the-main-table",
     "href": "03-recipes/filtering.html#joining-only-to-certain-rows-in-the-main-table",
-    "title": "11  Filtering",
-    "section": "13.1 Joining only to certain rows in the main table",
-    "text": "13.1 Joining only to certain rows in the main table\nThe left join clause and created_channel = 2 ensures that the join only happens\n\n\nselect \n  users.*,\n  subscribers.subscription_type\nfrom users\nleft join subscribers\n  on user_id = users.id\n  and created_channel = 2\nwhere exists (select * from subscribers where users.id = subscribers.user_id)\nlimit 10",
+    "title": "12  Filtering",
+    "section": "14.1 Joining only to certain rows in the main table",
+    "text": "14.1 Joining only to certain rows in the main table\nThe left join clause and created_channel = 2 ensures that the join only happens\n\n\nselect \n  users.*,\n  subscribers.subscription_type\nfrom users\nleft join subscribers\n  on user_id = users.id\n  and created_channel = 2\nwhere exists (select * from subscribers where users.id = subscribers.user_id)\nlimit 10",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>11</span>  <span class='chapter-title'>Filtering</span>"
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>Filtering</span>"
     ]
   },
   {
     "objectID": "03-recipes/filtering.html#joining-only-certain-rows-from-another-table",
     "href": "03-recipes/filtering.html#joining-only-certain-rows-from-another-table",
-    "title": "11  Filtering",
-    "section": "13.2 Joining only certain rows from another table",
-    "text": "13.2 Joining only certain rows from another table\n\n\nselect \n  users.*,\n  subscribers.subscription_type\nfrom users\nleft join subscribers\n  on user_id = users.id\n  and subscription_type = 2\nwhere exists (select * from subscribers where users.id = subscribers.user_id)\nlimit 10\n\nIf you’re reading this book, you know about the WHERE clause. But there are multiple others ways to filter values!",
+    "title": "12  Filtering",
+    "section": "14.2 Joining only certain rows from another table",
+    "text": "14.2 Joining only certain rows from another table\n\n\nselect \n  users.*,\n  subscribers.subscription_type\nfrom users\nleft join subscribers\n  on user_id = users.id\n  and subscription_type = 2\nwhere exists (select * from subscribers where users.id = subscribers.user_id)\nlimit 10\n\nIf you’re reading this book, you know about the WHERE clause. But there are multiple others ways to filter values!",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>11</span>  <span class='chapter-title'>Filtering</span>"
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>Filtering</span>"
     ]
   },
   {
     "objectID": "03-recipes/filtering.html#anti-joins-1",
     "href": "03-recipes/filtering.html#anti-joins-1",
-    "title": "11  Filtering",
-    "section": "13.3 Anti joins",
-    "text": "13.3 Anti joins\nI love anti joins because they’re extremely useful for a wide range of scenarios but SQL practitioners don’t always learn about them early on (I certainly didn’t!).\nAdd anti-join from here: https://github.com/gadenbuie/tidyexplain",
+    "title": "12  Filtering",
+    "section": "14.3 Anti joins",
+    "text": "14.3 Anti joins\nI love anti joins because they’re extremely useful for a wide range of scenarios but SQL practitioners don’t always learn about them early on (I certainly didn’t!).\nAdd anti-join from here: https://github.com/gadenbuie/tidyexplain",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>11</span>  <span class='chapter-title'>Filtering</span>"
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>Filtering</span>"
     ]
   },
   {
     "objectID": "03-recipes/filtering.html#where-exists",
     "href": "03-recipes/filtering.html#where-exists",
-    "title": "11  Filtering",
-    "section": "13.4 WHERE EXISTS",
-    "text": "13.4 WHERE EXISTS\nWHERE EXISTS isn\nhttps://sqlperformance.com/2012/12/t-sql-queries/left-anti-semi-join",
+    "title": "12  Filtering",
+    "section": "14.4 WHERE EXISTS",
+    "text": "14.4 WHERE EXISTS\nWHERE EXISTS isn\nhttps://sqlperformance.com/2012/12/t-sql-queries/left-anti-semi-join",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>11</span>  <span class='chapter-title'>Filtering</span>"
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>Filtering</span>"
     ]
   },
   {
     "objectID": "03-recipes/customer-analytics.html",
     "href": "03-recipes/customer-analytics.html",
-    "title": "12  Customer Analytics Recipes",
+    "title": "13  Customer Analytics Recipes",
     "section": "",
-    "text": "13 Exploring the Database\nLet’s start by seeing what tables we have:\nAnd a quick peek at the customers table:",
+    "text": "14 Exploring the Database\nLet’s start by seeing what tables we have:\nAnd a quick peek at the customers table:",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>12</span>  <span class='chapter-title'>Customer Analytics Recipes</span>"
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>Customer Analytics Recipes</span>"
     ]
   },
   {
     "objectID": "03-recipes/customer-analytics.html#monthly-revenue",
     "href": "03-recipes/customer-analytics.html#monthly-revenue",
-    "title": "12  Customer Analytics Recipes",
-    "section": "14.1 Monthly Revenue",
-    "text": "14.1 Monthly Revenue\nCalculate revenue by month using the calendar dimension and order items:\n\nSELECT\n    c.year,\n    c.month,\n    c.month_name,\n    COUNT(DISTINCT o.order_id)  AS num_orders,\n    ROUND(SUM(oi.line_total), 2) AS revenue\nFROM orders o\nINNER JOIN order_items oi ON o.order_id = oi.order_id\nINNER JOIN calendar c     ON o.order_date = c.date\nWHERE o.status = 'completed'\nGROUP BY c.year, c.month, c.month_name\nORDER BY c.year, c.month;",
+    "title": "13  Customer Analytics Recipes",
+    "section": "15.1 Monthly Revenue",
+    "text": "15.1 Monthly Revenue\nCalculate revenue by month using the calendar dimension and order items:\n\nSELECT\n    c.year,\n    c.month,\n    c.month_name,\n    COUNT(DISTINCT o.order_id)  AS num_orders,\n    ROUND(SUM(oi.line_total), 2) AS revenue\nFROM orders o\nINNER JOIN order_items oi ON o.order_id = oi.order_id\nINNER JOIN calendar c     ON o.order_date = c.date\nWHERE o.status = 'completed'\nGROUP BY c.year, c.month, c.month_name\nORDER BY c.year, c.month;",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>12</span>  <span class='chapter-title'>Customer Analytics Recipes</span>"
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>Customer Analytics Recipes</span>"
     ]
   },
   {
     "objectID": "03-recipes/customer-analytics.html#month-over-month-growth",
     "href": "03-recipes/customer-analytics.html#month-over-month-growth",
-    "title": "12  Customer Analytics Recipes",
-    "section": "14.2 Month-over-Month Growth",
-    "text": "14.2 Month-over-Month Growth\nUse the LAG window function to compare each month’s revenue to the previous month:\n\nWITH monthly_revenue AS (\n    SELECT\n        c.year,\n        c.month,\n        ROUND(SUM(oi.line_total), 2) AS revenue\n    FROM orders o\n    INNER JOIN order_items oi ON o.order_id = oi.order_id\n    INNER JOIN calendar c     ON o.order_date = c.date\n    WHERE o.status = 'completed'\n    GROUP BY c.year, c.month\n)\nSELECT\n    year,\n    month,\n    revenue,\n    LAG(revenue) OVER (ORDER BY year, month) AS prev_month,\n    ROUND(\n        100.0 * (revenue - LAG(revenue) OVER (ORDER BY year, month))\n        / LAG(revenue) OVER (ORDER BY year, month),\n        1\n    ) AS mom_growth_pct\nFROM monthly_revenue\nORDER BY year, month;",
+    "title": "13  Customer Analytics Recipes",
+    "section": "15.2 Month-over-Month Growth",
+    "text": "15.2 Month-over-Month Growth\nUse the LAG window function to compare each month’s revenue to the previous month:\n\nWITH monthly_revenue AS (\n    SELECT\n        c.year,\n        c.month,\n        ROUND(SUM(oi.line_total), 2) AS revenue\n    FROM orders o\n    INNER JOIN order_items oi ON o.order_id = oi.order_id\n    INNER JOIN calendar c     ON o.order_date = c.date\n    WHERE o.status = 'completed'\n    GROUP BY c.year, c.month\n)\nSELECT\n    year,\n    month,\n    revenue,\n    LAG(revenue) OVER (ORDER BY year, month) AS prev_month,\n    ROUND(\n        100.0 * (revenue - LAG(revenue) OVER (ORDER BY year, month))\n        / LAG(revenue) OVER (ORDER BY year, month),\n        1\n    ) AS mom_growth_pct\nFROM monthly_revenue\nORDER BY year, month;",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>12</span>  <span class='chapter-title'>Customer Analytics Recipes</span>"
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>Customer Analytics Recipes</span>"
     ]
   },
   {
     "objectID": "03-recipes/customer-analytics.html#average-resolution-time-by-category-and-priority",
     "href": "03-recipes/customer-analytics.html#average-resolution-time-by-category-and-priority",
-    "title": "12  Customer Analytics Recipes",
-    "section": "18.1 Average Resolution Time by Category and Priority",
-    "text": "18.1 Average Resolution Time by Category and Priority\n\nSELECT\n    category,\n    priority,\n    COUNT(*)                         AS ticket_count,\n    SUM(CASE WHEN resolved_date IS NOT NULL THEN 1 ELSE 0 END) AS resolved,\n    ROUND(AVG(resolved_date - created_date), 1) AS avg_days_to_resolve,\n    ROUND(AVG(satisfaction_score), 2) AS avg_csat\nFROM support_tickets\nGROUP BY category, priority\nORDER BY category, priority;",
+    "title": "13  Customer Analytics Recipes",
+    "section": "19.1 Average Resolution Time by Category and Priority",
+    "text": "19.1 Average Resolution Time by Category and Priority\n\nSELECT\n    category,\n    priority,\n    COUNT(*)                         AS ticket_count,\n    SUM(CASE WHEN resolved_date IS NOT NULL THEN 1 ELSE 0 END) AS resolved,\n    ROUND(AVG(resolved_date - created_date), 1) AS avg_days_to_resolve,\n    ROUND(AVG(satisfaction_score), 2) AS avg_csat\nFROM support_tickets\nGROUP BY category, priority\nORDER BY category, priority;",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>12</span>  <span class='chapter-title'>Customer Analytics Recipes</span>"
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>Customer Analytics Recipes</span>"
     ]
   },
   {
     "objectID": "03-recipes/customer-analytics.html#repeat-ticket-customers",
     "href": "03-recipes/customer-analytics.html#repeat-ticket-customers",
-    "title": "12  Customer Analytics Recipes",
-    "section": "18.2 Repeat Ticket Customers",
-    "text": "18.2 Repeat Ticket Customers\nFind customers who opened multiple tickets within 30 days — a signal for deeper issues:\n\nWITH ticket_pairs AS (\n    SELECT\n        t1.customer_id,\n        t1.ticket_id  AS ticket_1,\n        t2.ticket_id  AS ticket_2,\n        t1.created_date AS date_1,\n        t2.created_date AS date_2,\n        t2.created_date - t1.created_date AS days_apart\n    FROM support_tickets t1\n    INNER JOIN support_tickets t2\n        ON  t1.customer_id = t2.customer_id\n        AND t2.ticket_id &gt; t1.ticket_id\n        AND t2.created_date - t1.created_date BETWEEN 0 AND 30\n)\nSELECT\n    tp.customer_id,\n    cu.first_name || ' ' || cu.last_name AS customer_name,\n    COUNT(*) AS ticket_pairs_within_30d,\n    MIN(tp.days_apart) AS min_days_apart\nFROM ticket_pairs tp\nJOIN customers cu ON tp.customer_id = cu.customer_id\nGROUP BY tp.customer_id, customer_name\nORDER BY ticket_pairs_within_30d DESC\nLIMIT 15;",
+    "title": "13  Customer Analytics Recipes",
+    "section": "19.2 Repeat Ticket Customers",
+    "text": "19.2 Repeat Ticket Customers\nFind customers who opened multiple tickets within 30 days — a signal for deeper issues:\n\nWITH ticket_pairs AS (\n    SELECT\n        t1.customer_id,\n        t1.ticket_id  AS ticket_1,\n        t2.ticket_id  AS ticket_2,\n        t1.created_date AS date_1,\n        t2.created_date AS date_2,\n        t2.created_date - t1.created_date AS days_apart\n    FROM support_tickets t1\n    INNER JOIN support_tickets t2\n        ON  t1.customer_id = t2.customer_id\n        AND t2.ticket_id &gt; t1.ticket_id\n        AND t2.created_date - t1.created_date BETWEEN 0 AND 30\n)\nSELECT\n    tp.customer_id,\n    cu.first_name || ' ' || cu.last_name AS customer_name,\n    COUNT(*) AS ticket_pairs_within_30d,\n    MIN(tp.days_apart) AS min_days_apart\nFROM ticket_pairs tp\nJOIN customers cu ON tp.customer_id = cu.customer_id\nGROUP BY tp.customer_id, customer_name\nORDER BY ticket_pairs_within_30d DESC\nLIMIT 15;",
     "crumbs": [
       "Data Recipes",
-      "<span class='chapter-number'>12</span>  <span class='chapter-title'>Customer Analytics Recipes</span>"
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>Customer Analytics Recipes</span>"
     ]
   },
   {
     "objectID": "goodies.html",
     "href": "goodies.html",
-    "title": "13  Useful Resources",
+    "title": "14  Useful Resources",
     "section": "",
-    "text": "13.1 Tools",
+    "text": "14.1 Tools",
     "crumbs": [
-      "<span class='chapter-number'>13</span>  <span class='chapter-title'>Useful Resources</span>"
+      "<span class='chapter-number'>14</span>  <span class='chapter-title'>Useful Resources</span>"
     ]
   },
   {
     "objectID": "goodies.html#tools",
     "href": "goodies.html#tools",
-    "title": "13  Useful Resources",
+    "title": "14  Useful Resources",
     "section": "",
     "text": "DBeaver - just a great SQL client that supports a lot of databases\nDB Fiddle - an online sandbox to run your SQL queries\nSQLime - another online sandbox to write queries\nDuckDB Local UI - haven’t tested it yet but looks neat so far",
     "crumbs": [
-      "<span class='chapter-number'>13</span>  <span class='chapter-title'>Useful Resources</span>"
+      "<span class='chapter-number'>14</span>  <span class='chapter-title'>Useful Resources</span>"
     ]
   },
   {
     "objectID": "goodies.html#learning-resources",
     "href": "goodies.html#learning-resources",
-    "title": "13  Useful Resources",
-    "section": "13.2 Learning Resources",
-    "text": "13.2 Learning Resources\n\nAdvanced SQL Puzzles\nUse the Index, Luke\nArena Games - Data Analysis",
+    "title": "14  Useful Resources",
+    "section": "14.2 Learning Resources",
+    "text": "14.2 Learning Resources\n\nAdvanced SQL Puzzles\nUse the Index, Luke\nArena Games - Data Analysis",
     "crumbs": [
-      "<span class='chapter-number'>13</span>  <span class='chapter-title'>Useful Resources</span>"
+      "<span class='chapter-number'>14</span>  <span class='chapter-title'>Useful Resources</span>"
     ]
   },
   {
     "objectID": "goodies.html#reading-material",
     "href": "goodies.html#reading-material",
-    "title": "13  Useful Resources",
-    "section": "13.3 Reading material",
-    "text": "13.3 Reading material\nhttps://www.scattered-thoughts.net/writing/against-sql/",
+    "title": "14  Useful Resources",
+    "section": "14.3 Reading material",
+    "text": "14.3 Reading material\nhttps://www.scattered-thoughts.net/writing/against-sql/",
     "crumbs": [
-      "<span class='chapter-number'>13</span>  <span class='chapter-title'>Useful Resources</span>"
+      "<span class='chapter-number'>14</span>  <span class='chapter-title'>Useful Resources</span>"
     ]
   },
   {
