@@ -1,0 +1,511 @@
+---
+title: "[Medium] Top-K Frequent Words in Reviews"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Extract and analyze the most frequently occurring words in product reviews. This involves tokenizing text, filtering stopwords, and counting word frequencies.
+
+**Skills tested:** String functions, UNNEST, Regular expressions, Text processing, Aggregation
+
+## Schema
+
+### reviews
+```
+review_id      INTEGER
+product_id     INTEGER
+customer_id    INTEGER
+rating         INTEGER
+review_text    TEXT
+created_date   DATE
+```
+
+### products
+```
+product_id     INTEGER
+product_name   VARCHAR
+category_id    INTEGER
+price          DECIMAL
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View sample reviews
+SELECT 
+    review_id,
+    product_id,
+    rating,
+    LEFT(review_text, 100) AS review_preview,
+    created_date
+FROM reviews
+ORDER BY created_date DESC
+LIMIT 10;
+```
+
+## Expected Output
+
+| word       | frequency | avg_rating | positive_mentions | negative_mentions |
+|------------|-----------|------------|-------------------|-------------------|
+| quality    | 342       | 4.5        | 312               | 30                |
+| great      | 289       | 4.7        | 285               | 4                 |
+| price      | 245       | 3.8        | 156               | 89                |
+| delivery   | 198       | 4.2        | 175               | 23                |
+| recommend  | 187       | 4.8        | 185               | 2                 |
+| ...        | ...       | ...        | ...               | ...               |
+
+## Requirements
+
+1. Tokenize review text into individual words
+2. Convert to lowercase and remove punctuation
+3. Filter out common stopwords (the, and, is, etc.)
+4. Count word frequencies across all reviews
+5. Show top 20 most frequent words
+6. Include average rating for reviews containing each word
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Use `REGEXP_SPLIT_TO_TABLE()` or `STRING_SPLIT()` to tokenize text:
+```sql
+UNNEST(STRING_SPLIT(LOWER(review_text), ' ')) AS word
+```
+
+Or use regular expressions for better control:
+```sql
+UNNEST(REGEXP_SPLIT_TO_ARRAY(LOWER(review_text), '\W+')) AS word
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+Filter out stopwords using a NOT IN clause:
+```sql
+WHERE word NOT IN ('the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'is', 'are', 'was', 'were')
+  AND LENGTH(word) > 2  -- Also filter very short words
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+Group by word and use COUNT(*) for frequency:
+```sql
+GROUP BY word
+ORDER BY COUNT(*) DESC
+LIMIT 20
+```
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+WITH words AS (
+    SELECT 
+        review_id,
+        rating,
+        -- Tokenize and unnest words
+        LOWER(word) AS word
+    FROM reviews
+    CROSS JOIN UNNEST(STRING_SPLIT(review_text, ' ')) AS t(word)
+    WHERE created_date >= CURRENT_DATE - INTERVAL '6 months'
+)
+SELECT 
+    word,
+    COUNT(*) AS frequency,
+    -- Calculate average rating
+FROM words
+WHERE -- Filter stopwords and short words
+GROUP BY word
+ORDER BY frequency DESC
+LIMIT 20;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal solution</summary>
+
+```{.sql .interactive .cookbook}
+WITH words AS (
+    SELECT 
+        r.review_id,
+        r.rating,
+        UNNEST(REGEXP_SPLIT_TO_ARRAY(
+            LOWER(REGEXP_REPLACE(r.review_text, '[^\w\s]', '', 'g')), 
+            '\s+'
+        )) AS word
+    FROM reviews r
+    WHERE r.created_date >= CURRENT_DATE - INTERVAL '6 months'
+),
+filtered_words AS (
+    SELECT 
+        word,
+        rating
+    FROM words
+    WHERE word NOT IN (
+        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 
+        'of', 'with', 'is', 'are', 'was', 'were', 'been', 'be', 'have', 'has', 
+        'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 
+        'might', 'must', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 
+        'he', 'she', 'it', 'we', 'they', 'my', 'your', 'his', 'her', 'its', 
+        'our', 'their', 'me', 'him', 'us', 'them'
+    )
+    AND LENGTH(word) > 2
+    AND word NOT SIMILAR TO '[0-9]+'  -- Exclude pure numbers
+)
+SELECT 
+    word,
+    COUNT(*) AS frequency,
+    ROUND(AVG(rating), 2) AS avg_rating,
+    SUM(CASE WHEN rating >= 4 THEN 1 ELSE 0 END) AS positive_mentions,
+    SUM(CASE WHEN rating <= 2 THEN 1 ELSE 0 END) AS negative_mentions
+FROM filtered_words
+GROUP BY word
+HAVING COUNT(*) >= 10  -- Only show words appearing at least 10 times
+ORDER BY frequency DESC
+LIMIT 20;
+```
+
+</details>
+
+## Word Frequency by Category
+
+<details>
+<summary>Click to reveal category-specific analysis</summary>
+
+```{.sql .interactive .cookbook}
+WITH words AS (
+    SELECT 
+        r.review_id,
+        r.product_id,
+        r.rating,
+        UNNEST(REGEXP_SPLIT_TO_ARRAY(
+            LOWER(REGEXP_REPLACE(r.review_text, '[^\w\s]', '', 'g')), 
+            '\s+'
+        )) AS word
+    FROM reviews r
+    WHERE r.created_date >= CURRENT_DATE - INTERVAL '6 months'
+),
+filtered_words AS (
+    SELECT 
+        w.word,
+        w.rating,
+        p.category_id
+    FROM words w
+    JOIN products p ON w.product_id = p.product_id
+    WHERE w.word NOT IN (
+        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 
+        'of', 'with', 'is', 'are', 'was', 'were', 'been', 'be'
+    )
+    AND LENGTH(w.word) > 2
+)
+SELECT 
+    c.category_name,
+    fw.word,
+    COUNT(*) AS frequency,
+    ROUND(AVG(fw.rating), 2) AS avg_rating,
+    RANK() OVER (PARTITION BY c.category_name ORDER BY COUNT(*) DESC) AS rank_in_category
+FROM filtered_words fw
+JOIN categories c ON fw.category_id = c.category_id
+GROUP BY c.category_name, fw.word
+QUALIFY rank_in_category <= 10  -- Top 10 per category
+ORDER BY c.category_name, rank_in_category;
+```
+
+</details>
+
+## Positive vs Negative Word Analysis
+
+<details>
+<summary>Click to reveal sentiment-based word analysis</summary>
+
+```{.sql .interactive .cookbook}
+WITH words AS (
+    SELECT 
+        r.review_id,
+        r.rating,
+        CASE 
+            WHEN r.rating >= 4 THEN 'Positive'
+            WHEN r.rating <= 2 THEN 'Negative'
+            ELSE 'Neutral'
+        END AS sentiment,
+        UNNEST(REGEXP_SPLIT_TO_ARRAY(
+            LOWER(REGEXP_REPLACE(r.review_text, '[^\w\s]', '', 'g')), 
+            '\s+'
+        )) AS word
+    FROM reviews r
+    WHERE r.created_date >= CURRENT_DATE - INTERVAL '6 months'
+),
+filtered_words AS (
+    SELECT 
+        word,
+        sentiment
+    FROM words
+    WHERE word NOT IN ('the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'is', 'are', 'was', 'were')
+    AND LENGTH(word) > 2
+),
+word_sentiment_counts AS (
+    SELECT 
+        word,
+        COUNT(*) AS total_mentions,
+        SUM(CASE WHEN sentiment = 'Positive' THEN 1 ELSE 0 END) AS positive_count,
+        SUM(CASE WHEN sentiment = 'Negative' THEN 1 ELSE 0 END) AS negative_count,
+        SUM(CASE WHEN sentiment = 'Neutral' THEN 1 ELSE 0 END) AS neutral_count
+    FROM filtered_words
+    GROUP BY word
+    HAVING COUNT(*) >= 20
+)
+SELECT 
+    word,
+    total_mentions,
+    positive_count,
+    negative_count,
+    ROUND(100.0 * positive_count / total_mentions, 1) AS positive_pct,
+    ROUND(100.0 * negative_count / total_mentions, 1) AS negative_pct,
+    CASE 
+        WHEN positive_count > negative_count * 3 THEN 'Strongly Positive'
+        WHEN positive_count > negative_count * 1.5 THEN 'Positive'
+        WHEN negative_count > positive_count * 3 THEN 'Strongly Negative'
+        WHEN negative_count > positive_count * 1.5 THEN 'Negative'
+        ELSE 'Neutral'
+    END AS overall_sentiment
+FROM word_sentiment_counts
+ORDER BY total_mentions DESC
+LIMIT 50;
+```
+
+</details>
+
+## Bigrams (Two-Word Phrases)
+
+<details>
+<summary>Click to reveal two-word phrase analysis</summary>
+
+```{.sql .interactive .cookbook}
+WITH review_words AS (
+    SELECT 
+        review_id,
+        rating,
+        UNNEST(REGEXP_SPLIT_TO_ARRAY(
+            LOWER(REGEXP_REPLACE(review_text, '[^\w\s]', '', 'g')), 
+            '\s+'
+        )) AS word,
+        GENERATE_SUBSCRIPTS(REGEXP_SPLIT_TO_ARRAY(
+            LOWER(REGEXP_REPLACE(review_text, '[^\w\s]', '', 'g')), 
+            '\s+'
+        ), 1) AS word_position
+    FROM reviews
+    WHERE created_date >= CURRENT_DATE - INTERVAL '6 months'
+),
+bigrams AS (
+    SELECT 
+        w1.review_id,
+        w1.rating,
+        w1.word || ' ' || w2.word AS bigram
+    FROM review_words w1
+    JOIN review_words w2 
+        ON w1.review_id = w2.review_id 
+        AND w2.word_position = w1.word_position + 1
+    WHERE LENGTH(w1.word) > 2 
+      AND LENGTH(w2.word) > 2
+)
+SELECT 
+    bigram,
+    COUNT(*) AS frequency,
+    ROUND(AVG(rating), 2) AS avg_rating,
+    SUM(CASE WHEN rating >= 4 THEN 1 ELSE 0 END) AS positive_mentions,
+    SUM(CASE WHEN rating <= 2 THEN 1 ELSE 0 END) AS negative_mentions
+FROM bigrams
+GROUP BY bigram
+HAVING COUNT(*) >= 5
+ORDER BY frequency DESC
+LIMIT 30;
+```
+
+</details>
+
+## Word Co-occurrence Matrix
+
+<details>
+<summary>Click to reveal words that appear together</summary>
+
+```{.sql .interactive .cookbook}
+WITH words AS (
+    SELECT DISTINCT
+        r.review_id,
+        UNNEST(REGEXP_SPLIT_TO_ARRAY(
+            LOWER(REGEXP_REPLACE(r.review_text, '[^\w\s]', '', 'g')), 
+            '\s+'
+        )) AS word
+    FROM reviews r
+    WHERE r.created_date >= CURRENT_DATE - INTERVAL '3 months'
+),
+filtered_words AS (
+    SELECT 
+        review_id,
+        word
+    FROM words
+    WHERE word NOT IN ('the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'is', 'are', 'was', 'were')
+    AND LENGTH(word) > 2
+),
+-- Focus on specific interesting words
+target_words AS (
+    SELECT word FROM filtered_words
+    GROUP BY word
+    ORDER BY COUNT(*) DESC
+    LIMIT 10
+),
+co_occurrences AS (
+    SELECT 
+        w1.word AS word1,
+        w2.word AS word2,
+        COUNT(DISTINCT w1.review_id) AS co_occurrence_count
+    FROM filtered_words w1
+    JOIN filtered_words w2 
+        ON w1.review_id = w2.review_id 
+        AND w1.word < w2.word  -- Avoid duplicates and self-pairs
+    WHERE w1.word IN (SELECT word FROM target_words)
+      AND w2.word IN (SELECT word FROM target_words)
+    GROUP BY w1.word, w2.word
+)
+SELECT 
+    word1,
+    word2,
+    co_occurrence_count
+FROM co_occurrences
+ORDER BY co_occurrence_count DESC
+LIMIT 20;
+```
+
+</details>
+
+## Product-Specific Word Clouds
+
+<details>
+<summary>Click to reveal top words per product</summary>
+
+```{.sql .interactive .cookbook}
+WITH words AS (
+    SELECT 
+        r.product_id,
+        r.rating,
+        UNNEST(REGEXP_SPLIT_TO_ARRAY(
+            LOWER(REGEXP_REPLACE(r.review_text, '[^\w\s]', '', 'g')), 
+            '\s+'
+        )) AS word
+    FROM reviews r
+    WHERE r.created_date >= CURRENT_DATE - INTERVAL '6 months'
+),
+filtered_words AS (
+    SELECT 
+        product_id,
+        word,
+        rating
+    FROM words
+    WHERE word NOT IN ('the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'is', 'are', 'was', 'were')
+    AND LENGTH(word) > 2
+),
+product_word_freq AS (
+    SELECT 
+        product_id,
+        word,
+        COUNT(*) AS frequency,
+        ROUND(AVG(rating), 2) AS avg_rating,
+        RANK() OVER (PARTITION BY product_id ORDER BY COUNT(*) DESC) AS word_rank
+    FROM filtered_words
+    GROUP BY product_id, word
+)
+SELECT 
+    p.product_name,
+    pwf.word,
+    pwf.frequency,
+    pwf.avg_rating,
+    pwf.word_rank
+FROM product_word_freq pwf
+JOIN products p ON pwf.product_id = p.product_id
+WHERE pwf.word_rank <= 5
+ORDER BY p.product_name, pwf.word_rank;
+```
+
+</details>
+
+## Time-Based Trending Words
+
+<details>
+<summary>Click to reveal word trend analysis</summary>
+
+```{.sql .interactive .cookbook}
+WITH words AS (
+    SELECT 
+        DATE_TRUNC('month', r.created_date) AS month,
+        r.rating,
+        UNNEST(REGEXP_SPLIT_TO_ARRAY(
+            LOWER(REGEXP_REPLACE(r.review_text, '[^\w\s]', '', 'g')), 
+            '\s+'
+        )) AS word
+    FROM reviews r
+    WHERE r.created_date >= CURRENT_DATE - INTERVAL '6 months'
+),
+filtered_words AS (
+    SELECT 
+        month,
+        word,
+        rating
+    FROM words
+    WHERE word NOT IN ('the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'is', 'are', 'was', 'were')
+    AND LENGTH(word) > 2
+),
+monthly_word_freq AS (
+    SELECT 
+        month,
+        word,
+        COUNT(*) AS frequency
+    FROM filtered_words
+    GROUP BY month, word
+),
+word_trends AS (
+    SELECT 
+        month,
+        word,
+        frequency,
+        LAG(frequency) OVER (PARTITION BY word ORDER BY month) AS prev_month_freq,
+        frequency - LAG(frequency) OVER (PARTITION BY word ORDER BY month) AS frequency_change
+    FROM monthly_word_freq
+)
+SELECT 
+    word,
+    month,
+    frequency,
+    prev_month_freq,
+    frequency_change,
+    ROUND(100.0 * frequency_change / NULLIF(prev_month_freq, 0), 1) AS pct_change
+FROM word_trends
+WHERE prev_month_freq IS NOT NULL
+  AND frequency >= 10
+ORDER BY ABS(frequency_change) DESC, month DESC
+LIMIT 30;
+```
+
+</details>
+
+## Extensions
+
+1. **TF-IDF scoring:** Calculate term frequency-inverse document frequency for more meaningful keywords
+2. **Trigrams:** Extend to three-word phrases
+3. **Stemming:** Group variations (quality, qualities, qualitative)
+4. **Named entity recognition:** Extract product names, brands, features
+5. **Comparison words:** Find comparative language (better, worse, best)
+6. **Emoji analysis:** Parse and analyze emoji sentiment in reviews

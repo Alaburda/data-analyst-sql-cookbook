@@ -1,0 +1,340 @@
+---
+title: "[Medium] Pivot Orders by Weekday"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Transform weekday order counts from rows into columns (pivot), creating a report where each weekday becomes a separate column showing order counts.
+
+**Skills tested:** PIVOT/CASE expressions, Date functions, Conditional aggregation, Data reshaping
+
+## Schema
+
+### orders
+```
+order_id       INTEGER
+customer_id    INTEGER
+order_date     DATE
+status         VARCHAR
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View orders by day of week
+SELECT 
+    DAYNAME(order_date) AS weekday,
+    COUNT(*) AS order_count
+FROM orders
+WHERE status = 'completed'
+  AND order_date >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY weekday, DAYOFWEEK(order_date)
+ORDER BY DAYOFWEEK(order_date);
+```
+
+## Expected Output
+
+| week_start | monday | tuesday | wednesday | thursday | friday | saturday | sunday | total |
+|------------|--------|---------|-----------|----------|--------|----------|--------|-------|
+| 2024-01-15 | 45     | 52      | 48        | 51       | 63     | 38       | 29     | 326   |
+| 2024-01-08 | 42     | 49      | 46        | 47       | 58     | 35       | 27     | 304   |
+| 2024-01-01 | 38     | 44      | 43        | 45       | 55     | 32       | 25     | 282   |
+| ...        | ...    | ...     | ...       | ...      | ...    | ...      | ...    | ...   |
+
+## Requirements
+
+1. Pivot weekday order counts into columns (Monday through Sunday)
+2. Group by week (week starting Monday)
+3. Show total orders per week in final column
+4. Only include completed orders from last 12 weeks
+5. Sort by week descending
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Use conditional aggregation with CASE statements to pivot:
+```sql
+SUM(CASE WHEN DAYNAME(order_date) = 'Monday' THEN 1 ELSE 0 END) AS monday,
+SUM(CASE WHEN DAYNAME(order_date) = 'Tuesday' THEN 1 ELSE 0 END) AS tuesday
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+Get week start date using date arithmetic:
+```sql
+DATE_TRUNC('week', order_date) AS week_start
+```
+
+Or manually calculate Monday of each week:
+```sql
+order_date - INTERVAL (DAYOFWEEK(order_date) - 2) DAY AS week_start
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+DuckDB also supports the `PIVOT` clause (simplified syntax):
+```sql
+PIVOT your_table
+ON weekday
+USING SUM(order_count)
+```
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+SELECT 
+    DATE_TRUNC('week', order_date) AS week_start,
+    -- Add pivoted columns for each weekday
+    COUNT(*) AS total
+FROM orders
+WHERE status = 'completed'
+  AND order_date >= CURRENT_DATE - INTERVAL '12 weeks'
+GROUP BY week_start
+ORDER BY week_start DESC;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal solution using CASE expressions</summary>
+
+```{.sql .interactive .cookbook}
+SELECT 
+    DATE_TRUNC('week', order_date) AS week_start,
+    SUM(CASE WHEN DAYOFWEEK(order_date) = 1 THEN 1 ELSE 0 END) AS monday,
+    SUM(CASE WHEN DAYOFWEEK(order_date) = 2 THEN 1 ELSE 0 END) AS tuesday,
+    SUM(CASE WHEN DAYOFWEEK(order_date) = 3 THEN 1 ELSE 0 END) AS wednesday,
+    SUM(CASE WHEN DAYOFWEEK(order_date) = 4 THEN 1 ELSE 0 END) AS thursday,
+    SUM(CASE WHEN DAYOFWEEK(order_date) = 5 THEN 1 ELSE 0 END) AS friday,
+    SUM(CASE WHEN DAYOFWEEK(order_date) = 6 THEN 1 ELSE 0 END) AS saturday,
+    SUM(CASE WHEN DAYOFWEEK(order_date) = 7 THEN 1 ELSE 0 END) AS sunday,
+    COUNT(*) AS total
+FROM orders
+WHERE status = 'completed'
+  AND order_date >= CURRENT_DATE - INTERVAL '12 weeks'
+GROUP BY week_start
+ORDER BY week_start DESC;
+```
+
+**Note:** DuckDB's `DAYOFWEEK()` returns 1=Monday, 2=Tuesday, ..., 7=Sunday
+
+</details>
+
+<details>
+<summary>Click to reveal solution using PIVOT clause</summary>
+
+DuckDB supports native PIVOT syntax:
+
+```{.sql .interactive .cookbook}
+WITH weekly_orders AS (
+    SELECT 
+        DATE_TRUNC('week', order_date) AS week_start,
+        DAYNAME(order_date) AS weekday,
+        order_id
+    FROM orders
+    WHERE status = 'completed'
+      AND order_date >= CURRENT_DATE - INTERVAL '12 weeks'
+)
+PIVOT weekly_orders
+ON weekday
+USING COUNT(order_id)
+GROUP BY week_start
+ORDER BY week_start DESC;
+```
+
+</details>
+
+## Revenue Pivot
+
+<details>
+<summary>Click to reveal revenue by weekday pivot</summary>
+
+Show revenue instead of order count:
+
+```{.sql .interactive .cookbook}
+SELECT 
+    DATE_TRUNC('week', o.order_date) AS week_start,
+    ROUND(SUM(CASE WHEN DAYOFWEEK(o.order_date) = 1 THEN oi.line_total ELSE 0 END), 2) AS monday,
+    ROUND(SUM(CASE WHEN DAYOFWEEK(o.order_date) = 2 THEN oi.line_total ELSE 0 END), 2) AS tuesday,
+    ROUND(SUM(CASE WHEN DAYOFWEEK(o.order_date) = 3 THEN oi.line_total ELSE 0 END), 2) AS wednesday,
+    ROUND(SUM(CASE WHEN DAYOFWEEK(o.order_date) = 4 THEN oi.line_total ELSE 0 END), 2) AS thursday,
+    ROUND(SUM(CASE WHEN DAYOFWEEK(o.order_date) = 5 THEN oi.line_total ELSE 0 END), 2) AS friday,
+    ROUND(SUM(CASE WHEN DAYOFWEEK(o.order_date) = 6 THEN oi.line_total ELSE 0 END), 2) AS saturday,
+    ROUND(SUM(CASE WHEN DAYOFWEEK(o.order_date) = 7 THEN oi.line_total ELSE 0 END), 2) AS sunday,
+    ROUND(SUM(oi.line_total), 2) AS total_revenue
+FROM orders o
+JOIN order_items oi ON o.order_id = oi.order_id
+WHERE o.status = 'completed'
+  AND o.order_date >= CURRENT_DATE - INTERVAL '12 weeks'
+GROUP BY week_start
+ORDER BY week_start DESC;
+```
+
+</details>
+
+## Average Order Value by Weekday
+
+<details>
+<summary>Click to reveal AOV pivot</summary>
+
+```{.sql .interactive .cookbook}
+WITH order_totals AS (
+    SELECT 
+        o.order_id,
+        o.order_date,
+        SUM(oi.line_total) AS order_total
+    FROM orders o
+    JOIN order_items oi ON o.order_id = oi.order_id
+    WHERE o.status = 'completed'
+      AND o.order_date >= CURRENT_DATE - INTERVAL '12 weeks'
+    GROUP BY o.order_id, o.order_date
+)
+SELECT 
+    DATE_TRUNC('week', order_date) AS week_start,
+    ROUND(AVG(CASE WHEN DAYOFWEEK(order_date) = 1 THEN order_total END), 2) AS monday_aov,
+    ROUND(AVG(CASE WHEN DAYOFWEEK(order_date) = 2 THEN order_total END), 2) AS tuesday_aov,
+    ROUND(AVG(CASE WHEN DAYOFWEEK(order_date) = 3 THEN order_total END), 2) AS wednesday_aov,
+    ROUND(AVG(CASE WHEN DAYOFWEEK(order_date) = 4 THEN order_total END), 2) AS thursday_aov,
+    ROUND(AVG(CASE WHEN DAYOFWEEK(order_date) = 5 THEN order_total END), 2) AS friday_aov,
+    ROUND(AVG(CASE WHEN DAYOFWEEK(order_date) = 6 THEN order_total END), 2) AS saturday_aov,
+    ROUND(AVG(CASE WHEN DAYOFWEEK(order_date) = 7 THEN order_total END), 2) AS sunday_aov,
+    ROUND(AVG(order_total), 2) AS overall_aov
+FROM order_totals
+GROUP BY week_start
+ORDER BY week_start DESC;
+```
+
+</details>
+
+## Monthly Weekday Pattern
+
+<details>
+<summary>Click to reveal monthly aggregation</summary>
+
+Show total orders by weekday for each month:
+
+```{.sql .interactive .cookbook}
+SELECT 
+    DATE_TRUNC('month', order_date) AS month,
+    SUM(CASE WHEN DAYOFWEEK(order_date) = 1 THEN 1 ELSE 0 END) AS monday,
+    SUM(CASE WHEN DAYOFWEEK(order_date) = 2 THEN 1 ELSE 0 END) AS tuesday,
+    SUM(CASE WHEN DAYOFWEEK(order_date) = 3 THEN 1 ELSE 0 END) AS wednesday,
+    SUM(CASE WHEN DAYOFWEEK(order_date) = 4 THEN 1 ELSE 0 END) AS thursday,
+    SUM(CASE WHEN DAYOFWEEK(order_date) = 5 THEN 1 ELSE 0 END) AS friday,
+    SUM(CASE WHEN DAYOFWEEK(order_date) = 6 THEN 1 ELSE 0 END) AS saturday,
+    SUM(CASE WHEN DAYOFWEEK(order_date) = 7 THEN 1 ELSE 0 END) AS sunday,
+    COUNT(*) AS total,
+    ROUND(100.0 * SUM(CASE WHEN DAYOFWEEK(order_date) IN (6, 7) THEN 1 ELSE 0 END) / COUNT(*), 1) AS weekend_pct
+FROM orders
+WHERE status = 'completed'
+  AND order_date >= CURRENT_DATE - INTERVAL '6 months'
+GROUP BY month
+ORDER BY month DESC;
+```
+
+</details>
+
+## Category-Specific Patterns
+
+<details>
+<summary>Click to reveal weekday patterns by category</summary>
+
+```{.sql .interactive .cookbook}
+SELECT 
+    c.category_name,
+    SUM(CASE WHEN DAYOFWEEK(o.order_date) = 1 THEN 1 ELSE 0 END) AS monday,
+    SUM(CASE WHEN DAYOFWEEK(o.order_date) = 2 THEN 1 ELSE 0 END) AS tuesday,
+    SUM(CASE WHEN DAYOFWEEK(o.order_date) = 3 THEN 1 ELSE 0 END) AS wednesday,
+    SUM(CASE WHEN DAYOFWEEK(o.order_date) = 4 THEN 1 ELSE 0 END) AS thursday,
+    SUM(CASE WHEN DAYOFWEEK(o.order_date) = 5 THEN 1 ELSE 0 END) AS friday,
+    SUM(CASE WHEN DAYOFWEEK(o.order_date) = 6 THEN 1 ELSE 0 END) AS saturday,
+    SUM(CASE WHEN DAYOFWEEK(o.order_date) = 7 THEN 1 ELSE 0 END) AS sunday,
+    COUNT(*) AS total,
+    CASE 
+        WHEN SUM(CASE WHEN DAYOFWEEK(o.order_date) IN (6, 7) THEN 1 ELSE 0 END) > 
+             SUM(CASE WHEN DAYOFWEEK(o.order_date) IN (1, 2, 3, 4, 5) THEN 1 ELSE 0 END) / 5.0 * 2.0
+        THEN 'Weekend-heavy'
+        ELSE 'Weekday-heavy'
+    END AS pattern_type
+FROM orders o
+JOIN order_items oi ON o.order_id = oi.order_id
+JOIN products p ON oi.product_id = p.product_id
+JOIN categories c ON p.category_id = c.category_id
+WHERE o.status = 'completed'
+  AND o.order_date >= CURRENT_DATE - INTERVAL '3 months'
+GROUP BY c.category_name
+ORDER BY total DESC;
+```
+
+</details>
+
+## Unpivot Example
+
+<details>
+<summary>Click to reveal how to unpivot data</summary>
+
+Converting pivoted data back to rows (the reverse operation):
+
+```{.sql .interactive .cookbook}
+-- First, create pivoted data
+WITH pivoted AS (
+    SELECT 
+        DATE_TRUNC('week', order_date) AS week_start,
+        SUM(CASE WHEN DAYOFWEEK(order_date) = 1 THEN 1 ELSE 0 END) AS monday,
+        SUM(CASE WHEN DAYOFWEEK(order_date) = 2 THEN 1 ELSE 0 END) AS tuesday,
+        SUM(CASE WHEN DAYOFWEEK(order_date) = 3 THEN 1 ELSE 0 END) AS wednesday,
+        SUM(CASE WHEN DAYOFWEEK(order_date) = 4 THEN 1 ELSE 0 END) AS thursday,
+        SUM(CASE WHEN DAYOFWEEK(order_date) = 5 THEN 1 ELSE 0 END) AS friday,
+        SUM(CASE WHEN DAYOFWEEK(order_date) = 6 THEN 1 ELSE 0 END) AS saturday,
+        SUM(CASE WHEN DAYOFWEEK(order_date) = 7 THEN 1 ELSE 0 END) AS sunday
+    FROM orders
+    WHERE status = 'completed'
+      AND order_date >= CURRENT_DATE - INTERVAL '4 weeks'
+    GROUP BY week_start
+)
+-- Unpivot using UNION ALL
+SELECT week_start, 'Monday' AS weekday, monday AS order_count FROM pivoted
+UNION ALL SELECT week_start, 'Tuesday', tuesday FROM pivoted
+UNION ALL SELECT week_start, 'Wednesday', wednesday FROM pivoted
+UNION ALL SELECT week_start, 'Thursday', thursday FROM pivoted
+UNION ALL SELECT week_start, 'Friday', friday FROM pivoted
+UNION ALL SELECT week_start, 'Saturday', saturday FROM pivoted
+UNION ALL SELECT week_start, 'Sunday', sunday FROM pivoted
+ORDER BY week_start DESC, 
+    CASE weekday 
+        WHEN 'Monday' THEN 1 
+        WHEN 'Tuesday' THEN 2 
+        WHEN 'Wednesday' THEN 3 
+        WHEN 'Thursday' THEN 4 
+        WHEN 'Friday' THEN 5 
+        WHEN 'Saturday' THEN 6 
+        WHEN 'Sunday' THEN 7 
+    END;
+```
+
+</details>
+
+## Extensions
+
+1. **Hour-of-day pivot:** Pivot by hour (24 columns) to find peak times
+2. **Status breakdown:** Show order counts by status across weekdays
+3. **YoY comparison:** Compare current year weekday patterns to last year
+4. **Heatmap data:** Generate data for weekday × week heatmap visualization
+5. **Holiday effects:** Flag and compare weeks containing holidays
+6. **Multi-metric pivot:** Include multiple metrics (orders, revenue, AOV) in same pivot

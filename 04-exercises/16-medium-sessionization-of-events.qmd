@@ -1,0 +1,504 @@
+---
+title: "[Medium] Sessionization of Events"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Group user events into sessions based on inactivity threshold. A new session starts when more than 30 minutes pass between events. Calculate session duration, event count, and other session metrics.
+
+**Skills tested:** Window functions, LAG, Conditional logic, Cumulative sums, Session grouping
+
+## Schema
+
+### user_events
+```
+event_id       INTEGER
+user_id        INTEGER
+event_type     VARCHAR
+event_time     TIMESTAMP
+page_url       VARCHAR
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View recent user events
+SELECT 
+    user_id,
+    event_type,
+    event_time,
+    page_url
+FROM user_events
+WHERE user_id IN (SELECT user_id FROM user_events ORDER BY event_time DESC LIMIT 1)
+ORDER BY event_time
+LIMIT 20;
+```
+
+## Expected Output
+
+| user_id | session_id | session_start       | session_end         | duration_minutes | event_count | pages_visited |
+|---------|------------|---------------------|---------------------|------------------|-------------|---------------|
+| 123     | 1          | 2024-01-20 10:00:00 | 2024-01-20 10:15:23 | 15.4             | 12          | 5             |
+| 123     | 2          | 2024-01-20 14:30:00 | 2024-01-20 14:42:15 | 12.3             | 8           | 3             |
+| 456     | 1          | 2024-01-20 09:15:00 | 2024-01-20 09:45:30 | 30.5             | 18          | 7             |
+| ...     | ...        | ...                 | ...                 | ...              | ...         | ...           |
+
+## Requirements
+
+1. Define sessions with 30-minute inactivity threshold
+2. Assign unique session_id to each session
+3. Calculate session start and end times
+4. Compute session duration in minutes
+5. Count events and unique pages per session
+6. Only analyze last 30 days of data
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Use LAG() to compare current event time with previous event time:
+```sql
+LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_event_time
+```
+
+Then check if gap exceeds threshold:
+```sql
+CASE WHEN event_time - prev_event_time > INTERVAL '30 minutes' 
+     THEN 1 ELSE 0 END AS is_new_session
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+Use cumulative SUM to create session IDs:
+```sql
+SUM(is_new_session) OVER (PARTITION BY user_id ORDER BY event_time) AS session_id
+```
+
+This increments session_id each time a new session starts.
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+For the first event of each user, consider it a new session:
+```sql
+CASE 
+    WHEN prev_event_time IS NULL THEN 1
+    WHEN event_time - prev_event_time > INTERVAL '30 minutes' THEN 1 
+    ELSE 0 
+END AS is_new_session
+```
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+WITH events_with_gaps AS (
+    SELECT 
+        user_id,
+        event_type,
+        event_time,
+        page_url,
+        LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_event_time,
+        -- Calculate if new session starts
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+sessions AS (
+    SELECT 
+        user_id,
+        event_type,
+        event_time,
+        page_url,
+        -- Create session_id using cumulative sum
+    FROM events_with_gaps
+)
+SELECT 
+    user_id,
+    session_id,
+    MIN(event_time) AS session_start,
+    MAX(event_time) AS session_end,
+    -- Calculate duration and other metrics
+FROM sessions
+GROUP BY user_id, session_id
+ORDER BY user_id, session_id;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal solution</summary>
+
+```{.sql .interactive .cookbook}
+WITH events_with_gaps AS (
+    SELECT 
+        user_id,
+        event_type,
+        event_time,
+        page_url,
+        LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_event_time
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+session_boundaries AS (
+    SELECT 
+        user_id,
+        event_type,
+        event_time,
+        page_url,
+        prev_event_time,
+        CASE 
+            WHEN prev_event_time IS NULL THEN 1
+            WHEN EXTRACT(EPOCH FROM (event_time - prev_event_time)) / 60 > 30 THEN 1
+            ELSE 0 
+        END AS is_new_session
+    FROM events_with_gaps
+),
+sessions AS (
+    SELECT 
+        user_id,
+        event_type,
+        event_time,
+        page_url,
+        SUM(is_new_session) OVER (PARTITION BY user_id ORDER BY event_time) AS session_id
+    FROM session_boundaries
+)
+SELECT 
+    user_id,
+    session_id,
+    MIN(event_time) AS session_start,
+    MAX(event_time) AS session_end,
+    ROUND(EXTRACT(EPOCH FROM (MAX(event_time) - MIN(event_time))) / 60.0, 1) AS duration_minutes,
+    COUNT(*) AS event_count,
+    COUNT(DISTINCT page_url) AS pages_visited,
+    COUNT(DISTINCT CASE WHEN event_type = 'page_view' THEN page_url END) AS unique_pages_viewed
+FROM sessions
+GROUP BY user_id, session_id
+HAVING COUNT(*) > 1  -- Exclude single-event sessions
+ORDER BY user_id, session_id;
+```
+
+</details>
+
+## Session Metrics by User
+
+<details>
+<summary>Click to reveal user-level session statistics</summary>
+
+```{.sql .interactive .cookbook}
+WITH events_with_gaps AS (
+    SELECT 
+        user_id,
+        event_type,
+        event_time,
+        page_url,
+        LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_event_time
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+session_boundaries AS (
+    SELECT 
+        user_id,
+        event_type,
+        event_time,
+        page_url,
+        CASE 
+            WHEN prev_event_time IS NULL THEN 1
+            WHEN EXTRACT(EPOCH FROM (event_time - prev_event_time)) / 60 > 30 THEN 1
+            ELSE 0 
+        END AS is_new_session
+    FROM events_with_gaps
+),
+sessions AS (
+    SELECT 
+        user_id,
+        event_time,
+        SUM(is_new_session) OVER (PARTITION BY user_id ORDER BY event_time) AS session_id
+    FROM session_boundaries
+),
+session_metrics AS (
+    SELECT 
+        user_id,
+        session_id,
+        ROUND(EXTRACT(EPOCH FROM (MAX(event_time) - MIN(event_time))) / 60.0, 1) AS duration_minutes,
+        COUNT(*) AS event_count
+    FROM sessions
+    GROUP BY user_id, session_id
+)
+SELECT 
+    user_id,
+    COUNT(DISTINCT session_id) AS total_sessions,
+    ROUND(AVG(duration_minutes), 1) AS avg_session_duration,
+    ROUND(MEDIAN(duration_minutes), 1) AS median_session_duration,
+    MAX(duration_minutes) AS max_session_duration,
+    ROUND(AVG(event_count), 1) AS avg_events_per_session,
+    SUM(event_count) AS total_events
+FROM session_metrics
+GROUP BY user_id
+HAVING COUNT(DISTINCT session_id) >= 2
+ORDER BY total_sessions DESC
+LIMIT 20;
+```
+
+</details>
+
+## Conversion Rate by Session
+
+<details>
+<summary>Click to reveal sessions with conversion tracking</summary>
+
+```{.sql .interactive .cookbook}
+WITH events_with_gaps AS (
+    SELECT 
+        user_id,
+        event_type,
+        event_time,
+        LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_event_time
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+session_boundaries AS (
+    SELECT 
+        user_id,
+        event_type,
+        event_time,
+        CASE 
+            WHEN prev_event_time IS NULL THEN 1
+            WHEN EXTRACT(EPOCH FROM (event_time - prev_event_time)) / 60 > 30 THEN 1
+            ELSE 0 
+        END AS is_new_session
+    FROM events_with_gaps
+),
+sessions AS (
+    SELECT 
+        user_id,
+        event_type,
+        event_time,
+        SUM(is_new_session) OVER (PARTITION BY user_id ORDER BY event_time) AS session_id
+    FROM session_boundaries
+),
+session_summary AS (
+    SELECT 
+        user_id,
+        session_id,
+        MIN(event_time) AS session_start,
+        MAX(event_time) AS session_end,
+        COUNT(*) AS event_count,
+        MAX(CASE WHEN event_type = 'purchase' THEN 1 ELSE 0 END) AS has_purchase,
+        MAX(CASE WHEN event_type = 'add_to_cart' THEN 1 ELSE 0 END) AS has_add_to_cart
+    FROM sessions
+    GROUP BY user_id, session_id
+)
+SELECT 
+    DATE_TRUNC('day', session_start) AS date,
+    COUNT(*) AS total_sessions,
+    SUM(has_purchase) AS sessions_with_purchase,
+    ROUND(100.0 * SUM(has_purchase) / COUNT(*), 2) AS conversion_rate,
+    SUM(has_add_to_cart) AS sessions_with_cart_add,
+    ROUND(100.0 * SUM(has_add_to_cart) / COUNT(*), 2) AS cart_rate,
+    ROUND(AVG(event_count), 1) AS avg_events_per_session
+FROM session_summary
+GROUP BY date
+ORDER BY date DESC;
+```
+
+</details>
+
+## Session Path Analysis
+
+<details>
+<summary>Click to reveal most common session paths</summary>
+
+```{.sql .interactive .cookbook}
+WITH events_with_gaps AS (
+    SELECT 
+        user_id,
+        event_type,
+        event_time,
+        page_url,
+        LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_event_time
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+session_boundaries AS (
+    SELECT 
+        user_id,
+        event_type,
+        event_time,
+        page_url,
+        CASE 
+            WHEN prev_event_time IS NULL THEN 1
+            WHEN EXTRACT(EPOCH FROM (event_time - prev_event_time)) / 60 > 30 THEN 1
+            ELSE 0 
+        END AS is_new_session
+    FROM events_with_gaps
+),
+sessions AS (
+    SELECT 
+        user_id,
+        event_type,
+        event_time,
+        page_url,
+        SUM(is_new_session) OVER (PARTITION BY user_id ORDER BY event_time) AS session_id
+    FROM session_boundaries
+),
+session_paths AS (
+    SELECT 
+        user_id,
+        session_id,
+        STRING_AGG(event_type, ' → ' ORDER BY event_time) AS event_path,
+        COUNT(*) AS path_length
+    FROM sessions
+    GROUP BY user_id, session_id
+    HAVING COUNT(*) BETWEEN 3 AND 10  -- Reasonable session length
+)
+SELECT 
+    event_path,
+    COUNT(*) AS session_count,
+    ROUND(AVG(path_length), 1) AS avg_path_length
+FROM session_paths
+GROUP BY event_path
+ORDER BY session_count DESC
+LIMIT 20;
+```
+
+</details>
+
+## Variable Timeout Thresholds
+
+<details>
+<summary>Click to reveal analysis with multiple thresholds</summary>
+
+Compare session counts with different inactivity thresholds:
+
+```{.sql .interactive .cookbook}
+WITH events_with_gaps AS (
+    SELECT 
+        user_id,
+        event_time,
+        LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_event_time
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+gaps AS (
+    SELECT 
+        user_id,
+        event_time,
+        prev_event_time,
+        COALESCE(EXTRACT(EPOCH FROM (event_time - prev_event_time)) / 60.0, 0) AS gap_minutes
+    FROM events_with_gaps
+),
+multi_threshold AS (
+    SELECT 
+        user_id,
+        event_time,
+        SUM(CASE WHEN gap_minutes > 15 OR prev_event_time IS NULL THEN 1 ELSE 0 END) 
+            OVER (PARTITION BY user_id ORDER BY event_time) AS session_15min,
+        SUM(CASE WHEN gap_minutes > 30 OR prev_event_time IS NULL THEN 1 ELSE 0 END) 
+            OVER (PARTITION BY user_id ORDER BY event_time) AS session_30min,
+        SUM(CASE WHEN gap_minutes > 60 OR prev_event_time IS NULL THEN 1 ELSE 0 END) 
+            OVER (PARTITION BY user_id ORDER BY event_time) AS session_60min
+    FROM gaps
+)
+SELECT 
+    '15 minutes' AS threshold,
+    COUNT(DISTINCT user_id || '-' || session_15min) AS total_sessions,
+    ROUND(COUNT(*) * 1.0 / COUNT(DISTINCT user_id || '-' || session_15min), 1) AS avg_events_per_session
+FROM multi_threshold
+UNION ALL
+SELECT 
+    '30 minutes',
+    COUNT(DISTINCT user_id || '-' || session_30min),
+    ROUND(COUNT(*) * 1.0 / COUNT(DISTINCT user_id || '-' || session_30min), 1)
+FROM multi_threshold
+UNION ALL
+SELECT 
+    '60 minutes',
+    COUNT(DISTINCT user_id || '-' || session_60min),
+    ROUND(COUNT(*) * 1.0 / COUNT(DISTINCT user_id || '-' || session_60min), 1)
+FROM multi_threshold;
+```
+
+</details>
+
+## Bounce Detection
+
+<details>
+<summary>Click to reveal bounce rate analysis</summary>
+
+Identify sessions with only one event (bounces):
+
+```{.sql .interactive .cookbook}
+WITH events_with_gaps AS (
+    SELECT 
+        user_id,
+        event_time,
+        page_url,
+        LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_event_time
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+session_boundaries AS (
+    SELECT 
+        user_id,
+        event_time,
+        page_url,
+        CASE 
+            WHEN prev_event_time IS NULL THEN 1
+            WHEN EXTRACT(EPOCH FROM (event_time - prev_event_time)) / 60 > 30 THEN 1
+            ELSE 0 
+        END AS is_new_session
+    FROM events_with_gaps
+),
+sessions AS (
+    SELECT 
+        user_id,
+        event_time,
+        page_url,
+        SUM(is_new_session) OVER (PARTITION BY user_id ORDER BY event_time) AS session_id
+    FROM session_boundaries
+),
+session_summary AS (
+    SELECT 
+        user_id,
+        session_id,
+        MIN(event_time) AS session_start,
+        COUNT(*) AS event_count,
+        MIN(page_url) AS landing_page
+    FROM sessions
+    GROUP BY user_id, session_id
+)
+SELECT 
+    landing_page,
+    COUNT(*) AS total_sessions,
+    SUM(CASE WHEN event_count = 1 THEN 1 ELSE 0 END) AS bounced_sessions,
+    ROUND(100.0 * SUM(CASE WHEN event_count = 1 THEN 1 ELSE 0 END) / COUNT(*), 2) AS bounce_rate
+FROM session_summary
+GROUP BY landing_page
+HAVING COUNT(*) >= 10
+ORDER BY total_sessions DESC
+LIMIT 20;
+```
+
+</details>
+
+## Extensions
+
+1. **Cross-device sessions:** Link sessions across devices using user login
+2. **Session quality scoring:** Score sessions based on engagement metrics
+3. **Funnel analysis:** Track conversion funnels within sessions
+4. **Session replay:** Order events chronologically for debugging
+5. **Anomaly detection:** Flag unusually long or short sessions
+6. **Time-of-day patterns:** Analyze session patterns by hour and day of week

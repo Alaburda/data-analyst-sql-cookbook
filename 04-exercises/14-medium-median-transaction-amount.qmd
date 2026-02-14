@@ -1,0 +1,367 @@
+---
+title: "[Medium] Median Transaction Amount per Category"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Calculate the median transaction amount for each product category. Median is more robust to outliers than mean and gives a better sense of "typical" transaction size.
+
+**Skills tested:** Window functions, Percentiles, NTILE, Median computation
+
+## Schema
+
+### orders
+```
+order_id       INTEGER
+customer_id    INTEGER
+order_date     DATE
+status         VARCHAR
+```
+
+### order_items
+```
+order_item_id  INTEGER
+order_id       INTEGER
+product_id     INTEGER
+quantity       INTEGER
+line_total     DECIMAL
+```
+
+### products
+```
+product_id     INTEGER
+product_name   VARCHAR
+category_id    INTEGER
+price          DECIMAL
+stock_quantity INTEGER
+```
+
+### categories
+```
+category_id    INTEGER PRIMARY KEY
+category_name  VARCHAR
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View transaction distribution by category
+SELECT 
+    c.category_name,
+    COUNT(*) AS transaction_count,
+    ROUND(MIN(oi.line_total), 2) AS min_amount,
+    ROUND(MAX(oi.line_total), 2) AS max_amount,
+    ROUND(AVG(oi.line_total), 2) AS avg_amount
+FROM order_items oi
+JOIN products p ON oi.product_id = p.product_id
+JOIN categories c ON p.category_id = c.category_id
+JOIN orders o ON oi.order_id = o.order_id
+WHERE o.status = 'completed'
+GROUP BY c.category_name
+ORDER BY transaction_count DESC;
+```
+
+## Expected Output
+
+| category_name | transaction_count | median_amount | avg_amount | pct_25 | pct_75 |
+|---------------|-------------------|---------------|------------|--------|--------|
+| Electronics   | 1,245             | 249.99        | 312.45     | 149.99 | 449.99 |
+| Clothing      | 892               | 89.99         | 95.32      | 49.99  | 129.99 |
+| Books         | 567               | 24.99         | 28.45      | 14.99  | 34.99  |
+| ...           | ...               | ...           | ...        | ...    | ...    |
+
+## Requirements
+
+1. Calculate median transaction amount for each category
+2. Show transaction count and average for comparison
+3. Include 25th and 75th percentiles (interquartile range)
+4. Only include completed orders
+5. Sort by transaction count descending
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Use `PERCENTILE_CONT(0.5)` or `MEDIAN()` function:
+```sql
+PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY line_total) AS median_amount
+```
+
+DuckDB also supports `MEDIAN()` directly:
+```sql
+MEDIAN(line_total) AS median_amount
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+For percentiles, use `PERCENTILE_CONT()` with different values:
+```sql
+PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY line_total) AS pct_25,
+PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY line_total) AS pct_75
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+Alternative approach using window functions and filtering for median:
+```sql
+WITH ranked AS (
+    SELECT 
+        category_name,
+        line_total,
+        ROW_NUMBER() OVER (PARTITION BY category_name ORDER BY line_total) AS row_num,
+        COUNT(*) OVER (PARTITION BY category_name) AS total_count
+    FROM ...
+)
+SELECT 
+    category_name,
+    AVG(line_total) AS median_amount
+FROM ranked
+WHERE row_num IN (total_count / 2, (total_count / 2) + 1, (total_count + 1) / 2)
+GROUP BY category_name
+```
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+SELECT 
+    c.category_name,
+    COUNT(*) AS transaction_count,
+    -- Calculate median amount
+    ROUND(AVG(oi.line_total), 2) AS avg_amount,
+    -- Calculate 25th percentile
+    -- Calculate 75th percentile
+FROM order_items oi
+JOIN products p ON oi.product_id = p.product_id
+JOIN categories c ON p.category_id = c.category_id
+JOIN orders o ON oi.order_id = o.order_id
+WHERE o.status = 'completed'
+GROUP BY c.category_name
+ORDER BY transaction_count DESC;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal solution using PERCENTILE_CONT</summary>
+
+```{.sql .interactive .cookbook}
+SELECT 
+    c.category_name,
+    COUNT(*) AS transaction_count,
+    ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY oi.line_total), 2) AS median_amount,
+    ROUND(AVG(oi.line_total), 2) AS avg_amount,
+    ROUND(PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY oi.line_total), 2) AS pct_25,
+    ROUND(PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY oi.line_total), 2) AS pct_75,
+    ROUND(PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY oi.line_total) - 
+          PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY oi.line_total), 2) AS iqr
+FROM order_items oi
+JOIN products p ON oi.product_id = p.product_id
+JOIN categories c ON p.category_id = c.category_id
+JOIN orders o ON oi.order_id = o.order_id
+WHERE o.status = 'completed'
+GROUP BY c.category_name
+ORDER BY transaction_count DESC;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal solution using MEDIAN function</summary>
+
+DuckDB provides a simpler `MEDIAN()` function:
+
+```{.sql .interactive .cookbook}
+SELECT 
+    c.category_name,
+    COUNT(*) AS transaction_count,
+    ROUND(MEDIAN(oi.line_total), 2) AS median_amount,
+    ROUND(AVG(oi.line_total), 2) AS avg_amount,
+    ROUND(QUANTILE_CONT(oi.line_total, 0.25), 2) AS pct_25,
+    ROUND(QUANTILE_CONT(oi.line_total, 0.75), 2) AS pct_75,
+    ROUND(QUANTILE_CONT(oi.line_total, 0.75) - QUANTILE_CONT(oi.line_total, 0.25), 2) AS iqr
+FROM order_items oi
+JOIN products p ON oi.product_id = p.product_id
+JOIN categories c ON p.category_id = c.category_id
+JOIN orders o ON oi.order_id = o.order_id
+WHERE o.status = 'completed'
+GROUP BY c.category_name
+ORDER BY transaction_count DESC;
+```
+
+</details>
+
+## Window Function Approach
+
+<details>
+<summary>Click to reveal manual median calculation</summary>
+
+Calculate median without using built-in percentile functions:
+
+```{.sql .interactive .cookbook}
+WITH ranked_transactions AS (
+    SELECT 
+        c.category_name,
+        oi.line_total,
+        ROW_NUMBER() OVER (PARTITION BY c.category_name ORDER BY oi.line_total) AS row_num,
+        COUNT(*) OVER (PARTITION BY c.category_name) AS total_count
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.product_id
+    JOIN categories c ON p.category_id = c.category_id
+    JOIN orders o ON oi.order_id = o.order_id
+    WHERE o.status = 'completed'
+),
+median_values AS (
+    SELECT 
+        category_name,
+        AVG(line_total) AS median_amount
+    FROM ranked_transactions
+    WHERE row_num IN (
+        FLOOR((total_count + 1) / 2.0),
+        CEIL((total_count + 1) / 2.0)
+    )
+    GROUP BY category_name
+)
+SELECT 
+    mv.category_name,
+    COUNT(*) AS transaction_count,
+    ROUND(mv.median_amount, 2) AS median_amount,
+    ROUND(AVG(oi.line_total), 2) AS avg_amount
+FROM median_values mv
+JOIN order_items oi ON 1=1
+JOIN products p ON oi.product_id = p.product_id
+JOIN categories c ON p.category_id = c.category_id AND c.category_name = mv.category_name
+JOIN orders o ON oi.order_id = o.order_id
+WHERE o.status = 'completed'
+GROUP BY mv.category_name, mv.median_amount
+ORDER BY transaction_count DESC;
+```
+
+</details>
+
+## Time-Series Median
+
+<details>
+<summary>Click to reveal monthly median by category</summary>
+
+Track how median transaction amount changes over time:
+
+```{.sql .interactive .cookbook}
+SELECT 
+    DATE_TRUNC('month', o.order_date) AS month,
+    c.category_name,
+    COUNT(*) AS transaction_count,
+    ROUND(MEDIAN(oi.line_total), 2) AS median_amount,
+    ROUND(AVG(oi.line_total), 2) AS avg_amount,
+    ROUND(AVG(oi.line_total) - MEDIAN(oi.line_total), 2) AS mean_median_diff
+FROM order_items oi
+JOIN products p ON oi.product_id = p.product_id
+JOIN categories c ON p.category_id = c.category_id
+JOIN orders o ON oi.order_id = o.order_id
+WHERE o.status = 'completed'
+  AND o.order_date >= CURRENT_DATE - INTERVAL '6 months'
+GROUP BY month, c.category_name
+HAVING COUNT(*) >= 10  -- Only show months with sufficient data
+ORDER BY month DESC, c.category_name;
+```
+
+</details>
+
+## Full Statistical Summary
+
+<details>
+<summary>Click to reveal complete distribution metrics</summary>
+
+```{.sql .interactive .cookbook}
+SELECT 
+    c.category_name,
+    COUNT(*) AS transaction_count,
+    ROUND(MIN(oi.line_total), 2) AS min_amount,
+    ROUND(QUANTILE_CONT(oi.line_total, 0.1), 2) AS pct_10,
+    ROUND(QUANTILE_CONT(oi.line_total, 0.25), 2) AS pct_25,
+    ROUND(MEDIAN(oi.line_total), 2) AS median_amount,
+    ROUND(AVG(oi.line_total), 2) AS avg_amount,
+    ROUND(QUANTILE_CONT(oi.line_total, 0.75), 2) AS pct_75,
+    ROUND(QUANTILE_CONT(oi.line_total, 0.9), 2) AS pct_90,
+    ROUND(MAX(oi.line_total), 2) AS max_amount,
+    ROUND(STDDEV(oi.line_total), 2) AS std_dev,
+    ROUND((AVG(oi.line_total) - MEDIAN(oi.line_total)) / STDDEV(oi.line_total), 3) AS skewness_proxy
+FROM order_items oi
+JOIN products p ON oi.product_id = p.product_id
+JOIN categories c ON p.category_id = c.category_id
+JOIN orders o ON oi.order_id = o.order_id
+WHERE o.status = 'completed'
+GROUP BY c.category_name
+ORDER BY transaction_count DESC;
+```
+
+**Key insights:**
+- Large difference between mean and median indicates skew (likely outliers)
+- IQR (pct_75 - pct_25) shows spread of middle 50%
+- Standard deviation shows overall variability
+
+</details>
+
+## Customer Segmentation by Median
+
+<details>
+<summary>Click to reveal customer segments based on median spend</summary>
+
+```{.sql .interactive .cookbook}
+WITH customer_medians AS (
+    SELECT 
+        o.customer_id,
+        c.category_name,
+        MEDIAN(oi.line_total) AS median_transaction
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.product_id
+    JOIN categories c ON p.category_id = c.category_id
+    JOIN orders o ON oi.order_id = o.order_id
+    WHERE o.status = 'completed'
+    GROUP BY o.customer_id, c.category_name
+    HAVING COUNT(*) >= 3  -- At least 3 transactions
+),
+category_segments AS (
+    SELECT 
+        category_name,
+        customer_id,
+        median_transaction,
+        NTILE(4) OVER (PARTITION BY category_name ORDER BY median_transaction) AS spending_quartile
+    FROM customer_medians
+)
+SELECT 
+    category_name,
+    spending_quartile,
+    COUNT(DISTINCT customer_id) AS customer_count,
+    ROUND(AVG(median_transaction), 2) AS avg_median_transaction,
+    ROUND(MIN(median_transaction), 2) AS min_median,
+    ROUND(MAX(median_transaction), 2) AS max_median
+FROM category_segments
+GROUP BY category_name, spending_quartile
+ORDER BY category_name, spending_quartile;
+```
+
+</details>
+
+## Extensions
+
+1. **Outlier detection:** Identify transactions beyond 1.5 × IQR from quartiles
+2. **Median by customer segment:** Compare median spend for VIP vs regular customers
+3. **Product-level analysis:** Find products with highest median transaction value
+4. **Seasonal patterns:** Track median changes by season or day of week
+5. **Weighted median:** Weight by quantity sold instead of transaction count
+6. **Approximate median:** Use `APPROX_QUANTILE()` for very large datasets
