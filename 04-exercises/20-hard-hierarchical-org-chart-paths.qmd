@@ -1,0 +1,692 @@
+---
+title: "[Hard] Hierarchical Org Chart Path and Depth"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Given an employee-manager relationship table, compute the full reporting path from each employee to the CEO, calculate depth in the hierarchy, detect cycles, count direct and indirect reports, and identify management spans.
+
+**Skills tested:** Recursive CTEs, Hierarchical queries, Tree traversal, Cycle detection, Path aggregation, Self-joins
+
+## Schema
+
+### employees
+```
+employee_id    INTEGER
+first_name     VARCHAR
+last_name      VARCHAR
+email          VARCHAR
+hire_date      DATE
+manager_id     INTEGER
+department     VARCHAR
+salary         DECIMAL
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View employee-manager relationships
+SELECT 
+    e.employee_id,
+    e.first_name || ' ' || e.last_name AS employee_name,
+    e.department,
+    m.first_name || ' ' || m.last_name AS manager_name,
+    e.manager_id
+FROM employees e
+LEFT JOIN employees m ON e.manager_id = m.employee_id
+ORDER BY e.employee_id
+LIMIT 20;
+```
+
+## Expected Output
+
+| employee_id | employee_name | path_to_ceo                          | depth | direct_reports | total_reports | span_of_control |
+|-------------|---------------|--------------------------------------|-------|----------------|---------------|-----------------|
+| 1           | John Smith    | John Smith                           | 0     | 5              | 23            | 5               |
+| 12          | Sarah Johnson | John Smith → Sarah Johnson           | 1     | 8              | 15            | 8               |
+| 45          | Mike Davis    | John Smith → Sarah Johnson → Mike Davis | 2  | 3              | 7             | 3               |
+
+## Requirements
+
+1. Build complete reporting path from each employee to CEO (top of hierarchy)
+2. Calculate hierarchy depth (0 = CEO, 1 = direct reports to CEO, etc.)
+3. Count direct reports (immediate subordinates)
+4. Count total reports (all subordinates at any level)
+5. Detect and report any cycles in the hierarchy
+6. Calculate span of control (number of people managed at each level)
+7. Handle NULL manager_id for CEO/top-level employees
+8. Format path as: "CEO → VP → Manager → Employee"
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Use recursive CTE to traverse the hierarchy:
+```sql
+WITH RECURSIVE org_hierarchy AS (
+    -- Base case: start with all employees
+    SELECT 
+        employee_id,
+        manager_id,
+        0 AS depth,
+        ARRAY[employee_id] AS path
+    FROM employees
+    WHERE manager_id IS NULL  -- CEO level
+    
+    UNION ALL
+    
+    -- Recursive case: join with employees having this employee as manager
+    SELECT 
+        e.employee_id,
+        e.manager_id,
+        oh.depth + 1,
+        oh.path || e.employee_id
+    FROM employees e
+    JOIN org_hierarchy oh ON e.manager_id = oh.employee_id
+)
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+To detect cycles, check if employee_id already exists in the path:
+```sql
+WHERE NOT (e.employee_id = ANY(oh.path))
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+Convert path array to readable string using STRING_AGG:
+```sql
+SELECT 
+    employee_id,
+    (
+        SELECT STRING_AGG(first_name || ' ' || last_name, ' → ' ORDER BY idx)
+        FROM UNNEST(path) WITH ORDINALITY AS t(emp_id, idx)
+        JOIN employees e ON t.emp_id = e.employee_id
+    ) AS path_string
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 4</summary>
+
+Count reports at each level using self-join:
+```sql
+-- Direct reports
+SELECT 
+    manager_id,
+    COUNT(*) AS direct_reports
+FROM employees
+WHERE manager_id IS NOT NULL
+GROUP BY manager_id
+
+-- Total reports requires recursive aggregation
+```
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+WITH RECURSIVE org_hierarchy AS (
+    -- Base: Start from top of hierarchy (CEO with NULL manager)
+    SELECT 
+        employee_id,
+        first_name,
+        last_name,
+        manager_id,
+        0 AS depth,
+        ARRAY[employee_id] AS path_ids,
+        first_name || ' ' || last_name AS path_names
+    FROM employees
+    WHERE manager_id IS NULL
+    
+    UNION ALL
+    
+    -- Recursive: Add employees at each level
+    SELECT 
+        e.employee_id,
+        e.first_name,
+        e.last_name,
+        e.manager_id,
+        oh.depth + 1,
+        -- Build path arrays
+    FROM employees e
+    JOIN org_hierarchy oh ON e.manager_id = oh.employee_id
+    -- Add cycle detection condition
+)
+SELECT 
+    employee_id,
+    path_names AS reporting_path,
+    depth
+FROM org_hierarchy
+ORDER BY depth, employee_id;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal basic hierarchy with paths</summary>
+
+```{.sql .interactive .cookbook}
+WITH RECURSIVE org_hierarchy AS (
+    -- Base case: employees with no manager (CEO level)
+    SELECT 
+        employee_id,
+        first_name,
+        last_name,
+        manager_id,
+        0 AS depth,
+        CAST(employee_id AS VARCHAR) AS path_ids,
+        first_name || ' ' || last_name AS path_names
+    FROM employees
+    WHERE manager_id IS NULL
+    
+    UNION ALL
+    
+    -- Recursive case
+    SELECT 
+        e.employee_id,
+        e.first_name,
+        e.last_name,
+        e.manager_id,
+        oh.depth + 1,
+        oh.path_ids || ',' || CAST(e.employee_id AS VARCHAR),
+        oh.path_names || ' → ' || e.first_name || ' ' || e.last_name
+    FROM employees e
+    JOIN org_hierarchy oh ON e.manager_id = oh.employee_id
+)
+SELECT 
+    employee_id,
+    first_name || ' ' || last_name AS employee_name,
+    path_names AS reporting_path,
+    depth AS hierarchy_level
+FROM org_hierarchy
+ORDER BY depth, employee_id;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal solution with direct and total reports</summary>
+
+```{.sql .interactive .cookbook}
+WITH RECURSIVE org_hierarchy AS (
+    SELECT 
+        employee_id,
+        first_name,
+        last_name,
+        manager_id,
+        department,
+        0 AS depth,
+        CAST(employee_id AS VARCHAR) AS path_ids,
+        first_name || ' ' || last_name AS path_names
+    FROM employees
+    WHERE manager_id IS NULL
+    
+    UNION ALL
+    
+    SELECT 
+        e.employee_id,
+        e.first_name,
+        e.last_name,
+        e.manager_id,
+        e.department,
+        oh.depth + 1,
+        oh.path_ids || ',' || CAST(e.employee_id AS VARCHAR),
+        oh.path_names || ' → ' || e.first_name || ' ' || e.last_name
+    FROM employees e
+    JOIN org_hierarchy oh ON e.manager_id = oh.employee_id
+),
+direct_reports AS (
+    SELECT 
+        manager_id,
+        COUNT(*) AS direct_count
+    FROM employees
+    WHERE manager_id IS NOT NULL
+    GROUP BY manager_id
+),
+all_reports AS (
+    -- Count all subordinates at any level
+    SELECT 
+        oh_manager.employee_id AS manager_id,
+        COUNT(DISTINCT oh_subordinate.employee_id) AS total_count
+    FROM org_hierarchy oh_manager
+    JOIN org_hierarchy oh_subordinate 
+        ON oh_subordinate.path_ids LIKE oh_manager.path_ids || ',%'
+           OR oh_subordinate.path_ids LIKE '%,' || oh_manager.path_ids || ',%'
+           OR oh_subordinate.path_ids LIKE '%,' || oh_manager.path_ids
+    WHERE oh_manager.employee_id != oh_subordinate.employee_id
+    GROUP BY oh_manager.employee_id
+)
+SELECT 
+    oh.employee_id,
+    oh.first_name || ' ' || oh.last_name AS employee_name,
+    oh.department,
+    oh.path_names AS reporting_path,
+    oh.depth,
+    COALESCE(dr.direct_count, 0) AS direct_reports,
+    COALESCE(ar.total_count, 0) AS total_reports
+FROM org_hierarchy oh
+LEFT JOIN direct_reports dr ON oh.employee_id = dr.manager_id
+LEFT JOIN all_reports ar ON oh.employee_id = ar.manager_id
+ORDER BY oh.depth, oh.employee_id;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal solution with cycle detection</summary>
+
+```{.sql .interactive .cookbook}
+WITH RECURSIVE org_hierarchy AS (
+    SELECT 
+        employee_id,
+        first_name,
+        last_name,
+        manager_id,
+        0 AS depth,
+        ARRAY[employee_id] AS path_ids,
+        first_name || ' ' || last_name AS path_names,
+        FALSE AS has_cycle
+    FROM employees
+    WHERE manager_id IS NULL
+    
+    UNION ALL
+    
+    SELECT 
+        e.employee_id,
+        e.first_name,
+        e.last_name,
+        e.manager_id,
+        oh.depth + 1,
+        oh.path_ids || e.employee_id,
+        oh.path_names || ' → ' || e.first_name || ' ' || e.last_name,
+        CASE 
+            WHEN e.employee_id = ANY(oh.path_ids) THEN TRUE
+            ELSE FALSE
+        END AS has_cycle
+    FROM employees e
+    JOIN org_hierarchy oh ON e.manager_id = oh.employee_id
+    WHERE NOT (e.employee_id = ANY(oh.path_ids))  -- Prevent infinite recursion
+        AND oh.depth < 20  -- Safety limit
+)
+SELECT 
+    employee_id,
+    first_name || ' ' || last_name AS employee_name,
+    path_names AS reporting_path,
+    depth,
+    has_cycle,
+    CASE WHEN has_cycle THEN 'CYCLE DETECTED!' ELSE 'OK' END AS status
+FROM org_hierarchy
+ORDER BY has_cycle DESC, depth, employee_id;
+```
+
+</details>
+
+## Span of Control Analysis
+
+<details>
+<summary>Click to reveal management span analysis</summary>
+
+```{.sql .interactive .cookbook}
+WITH RECURSIVE org_hierarchy AS (
+    SELECT 
+        employee_id,
+        first_name,
+        last_name,
+        manager_id,
+        department,
+        0 AS depth
+    FROM employees
+    WHERE manager_id IS NULL
+    
+    UNION ALL
+    
+    SELECT 
+        e.employee_id,
+        e.first_name,
+        e.last_name,
+        e.manager_id,
+        e.department,
+        oh.depth + 1
+    FROM employees e
+    JOIN org_hierarchy oh ON e.manager_id = oh.employee_id
+    WHERE oh.depth < 20
+),
+direct_reports AS (
+    SELECT 
+        manager_id,
+        COUNT(*) AS direct_count
+    FROM employees
+    WHERE manager_id IS NOT NULL
+    GROUP BY manager_id
+),
+span_stats AS (
+    SELECT 
+        oh.employee_id,
+        oh.first_name || ' ' || oh.last_name AS manager_name,
+        oh.department,
+        oh.depth,
+        COALESCE(dr.direct_count, 0) AS span_of_control
+    FROM org_hierarchy oh
+    LEFT JOIN direct_reports dr ON oh.employee_id = dr.manager_id
+)
+SELECT 
+    depth AS hierarchy_level,
+    COUNT(*) AS managers_at_level,
+    ROUND(AVG(span_of_control), 1) AS avg_span,
+    MIN(span_of_control) AS min_span,
+    MAX(span_of_control) AS max_span,
+    ROUND(STDDEV(span_of_control), 1) AS stddev_span
+FROM span_stats
+WHERE span_of_control > 0
+GROUP BY depth
+ORDER BY depth;
+```
+
+</details>
+
+## Department Hierarchies
+
+<details>
+<summary>Click to reveal department-specific org charts</summary>
+
+```{.sql .interactive .cookbook}
+WITH RECURSIVE org_hierarchy AS (
+    SELECT 
+        employee_id,
+        first_name,
+        last_name,
+        manager_id,
+        department,
+        salary,
+        0 AS depth,
+        CAST(employee_id AS VARCHAR) AS path_ids,
+        first_name || ' ' || last_name AS path_names
+    FROM employees
+    WHERE manager_id IS NULL
+    
+    UNION ALL
+    
+    SELECT 
+        e.employee_id,
+        e.first_name,
+        e.last_name,
+        e.manager_id,
+        e.department,
+        e.salary,
+        oh.depth + 1,
+        oh.path_ids || ',' || CAST(e.employee_id AS VARCHAR),
+        oh.path_names || ' → ' || e.first_name || ' ' || e.last_name
+    FROM employees e
+    JOIN org_hierarchy oh ON e.manager_id = oh.employee_id
+),
+dept_hierarchy AS (
+    SELECT 
+        department,
+        employee_id,
+        first_name || ' ' || last_name AS employee_name,
+        path_names,
+        depth,
+        salary
+    FROM org_hierarchy
+)
+SELECT 
+    department,
+    depth AS level,
+    COUNT(*) AS employees_at_level,
+    ROUND(AVG(salary), 0) AS avg_salary,
+    MIN(salary) AS min_salary,
+    MAX(salary) AS max_salary
+FROM dept_hierarchy
+GROUP BY department, depth
+ORDER BY department, depth;
+```
+
+</details>
+
+## Salary Roll-up
+
+<details>
+<summary>Click to reveal salary aggregation by reporting line</summary>
+
+Calculate total compensation cost for each manager including all subordinates:
+
+```{.sql .interactive .cookbook}
+WITH RECURSIVE org_hierarchy AS (
+    SELECT 
+        employee_id,
+        first_name,
+        last_name,
+        manager_id,
+        salary,
+        0 AS depth,
+        CAST(employee_id AS VARCHAR) AS path_ids
+    FROM employees
+    WHERE manager_id IS NULL
+    
+    UNION ALL
+    
+    SELECT 
+        e.employee_id,
+        e.first_name,
+        e.last_name,
+        e.manager_id,
+        e.salary,
+        oh.depth + 1,
+        oh.path_ids || ',' || CAST(e.employee_id AS VARCHAR)
+    FROM employees e
+    JOIN org_hierarchy oh ON e.manager_id = oh.employee_id
+),
+total_comp AS (
+    SELECT 
+        oh_manager.employee_id AS manager_id,
+        oh_manager.first_name || ' ' || oh_manager.last_name AS manager_name,
+        oh_manager.depth,
+        oh_manager.salary AS own_salary,
+        SUM(oh_sub.salary) AS total_team_salary,
+        COUNT(oh_sub.employee_id) AS team_size
+    FROM org_hierarchy oh_manager
+    LEFT JOIN org_hierarchy oh_sub 
+        ON (oh_sub.path_ids LIKE oh_manager.path_ids || ',%'
+            OR oh_sub.path_ids LIKE '%,' || oh_manager.path_ids || ',%'
+            OR oh_sub.path_ids LIKE '%,' || oh_manager.path_ids)
+           AND oh_manager.employee_id != oh_sub.employee_id
+    GROUP BY oh_manager.employee_id, manager_name, oh_manager.depth, oh_manager.salary
+)
+SELECT 
+    manager_name,
+    depth AS level,
+    team_size,
+    ROUND(own_salary, 0) AS own_salary,
+    ROUND(total_team_salary, 0) AS team_total_salary,
+    ROUND(total_team_salary / NULLIF(team_size, 0), 0) AS avg_subordinate_salary
+FROM total_comp
+WHERE team_size > 0
+ORDER BY team_total_salary DESC
+LIMIT 20;
+```
+
+</details>
+
+## Find Common Manager
+
+<details>
+<summary>Click to reveal lowest common manager between two employees</summary>
+
+```{.sql .interactive .cookbook}
+WITH RECURSIVE org_hierarchy AS (
+    SELECT 
+        employee_id,
+        first_name,
+        last_name,
+        manager_id,
+        0 AS depth,
+        ARRAY[employee_id] AS path_to_top
+    FROM employees
+    WHERE manager_id IS NULL
+    
+    UNION ALL
+    
+    SELECT 
+        e.employee_id,
+        e.first_name,
+        e.last_name,
+        e.manager_id,
+        oh.depth + 1,
+        oh.path_to_top || e.employee_id
+    FROM employees e
+    JOIN org_hierarchy oh ON e.manager_id = oh.employee_id
+    WHERE oh.depth < 20
+),
+employee_paths AS (
+    SELECT 
+        employee_id,
+        first_name || ' ' || last_name AS employee_name,
+        path_to_top,
+        depth
+    FROM org_hierarchy
+)
+-- Find common manager for two specific employees
+SELECT 
+    e1.employee_name AS employee_1,
+    e2.employee_name AS employee_2,
+    (
+        SELECT emp.first_name || ' ' || emp.last_name
+        FROM UNNEST(
+            -- Find intersection of paths (common managers)
+            (SELECT ARRAY_AGG(x) FROM UNNEST(e1.path_to_top) AS x 
+             WHERE x = ANY(e2.path_to_top))
+        ) AS common_id
+        JOIN employees emp ON emp.employee_id = common_id
+        ORDER BY ARRAY_POSITION(e1.path_to_top, common_id) DESC
+        LIMIT 1
+    ) AS lowest_common_manager
+FROM employee_paths e1
+CROSS JOIN employee_paths e2
+WHERE e1.employee_id < e2.employee_id  -- Avoid duplicates
+    AND e1.employee_id IN (SELECT employee_id FROM employees LIMIT 5)
+    AND e2.employee_id IN (SELECT employee_id FROM employees LIMIT 5)
+LIMIT 10;
+```
+
+</details>
+
+## Organizational Levels
+
+<details>
+<summary>Click to reveal employees by organizational level</summary>
+
+```{.sql .interactive .cookbook}
+WITH RECURSIVE org_hierarchy AS (
+    SELECT 
+        employee_id,
+        first_name,
+        last_name,
+        department,
+        salary,
+        manager_id,
+        0 AS level,
+        'C-Level' AS level_name
+    FROM employees
+    WHERE manager_id IS NULL
+    
+    UNION ALL
+    
+    SELECT 
+        e.employee_id,
+        e.first_name,
+        e.last_name,
+        e.department,
+        e.salary,
+        e.manager_id,
+        oh.level + 1,
+        CASE 
+            WHEN oh.level + 1 = 1 THEN 'VP'
+            WHEN oh.level + 1 = 2 THEN 'Director'
+            WHEN oh.level + 1 = 3 THEN 'Manager'
+            WHEN oh.level + 1 = 4 THEN 'Lead'
+            ELSE 'Individual Contributor'
+        END
+    FROM employees e
+    JOIN org_hierarchy oh ON e.manager_id = oh.employee_id
+    WHERE oh.level < 10
+)
+SELECT 
+    level,
+    level_name,
+    COUNT(*) AS employee_count,
+    COUNT(DISTINCT department) AS departments,
+    ROUND(AVG(salary), 0) AS avg_salary,
+    ROUND(MEDIAN(salary), 0) AS median_salary,
+    MIN(salary) AS min_salary,
+    MAX(salary) AS max_salary
+FROM org_hierarchy
+GROUP BY level, level_name
+ORDER BY level;
+```
+
+</details>
+
+## Peer Analysis
+
+<details>
+<summary>Click to reveal peer comparison within same manager</summary>
+
+```{.sql .interactive .cookbook}
+WITH peer_groups AS (
+    SELECT 
+        e.employee_id,
+        e.first_name || ' ' || e.last_name AS employee_name,
+        e.department,
+        e.salary,
+        e.manager_id,
+        m.first_name || ' ' || m.last_name AS manager_name,
+        COUNT(*) OVER (PARTITION BY e.manager_id) AS peer_count,
+        RANK() OVER (PARTITION BY e.manager_id ORDER BY e.salary DESC) AS salary_rank_among_peers,
+        ROUND(AVG(e.salary) OVER (PARTITION BY e.manager_id), 0) AS avg_peer_salary
+    FROM employees e
+    LEFT JOIN employees m ON e.manager_id = m.employee_id
+    WHERE e.manager_id IS NOT NULL
+)
+SELECT 
+    employee_name,
+    department,
+    manager_name,
+    salary,
+    peer_count,
+    salary_rank_among_peers,
+    avg_peer_salary,
+    ROUND(100.0 * (salary - avg_peer_salary) / avg_peer_salary, 1) AS pct_diff_from_peer_avg
+FROM peer_groups
+WHERE peer_count >= 3
+ORDER BY manager_name, salary DESC;
+```
+
+</details>
+
+## Extensions
+
+1. **Promotion path analysis:** Identify typical career paths through the organization
+2. **Succession planning:** Find employees ready to move up based on tenure, performance
+3. **Organizational bottlenecks:** Identify managers with too many direct reports
+4. **Department cross-reporting:** Find employees who report across department boundaries
+5. **Compensation equity:** Analyze salary fairness within peer groups and levels
+6. **Reporting distance:** Calculate how many levels separate any two employees
+7. **Organizational changes:** Track hierarchy changes over time with historical data
+8. **Matrix organizations:** Handle dual reporting relationships

@@ -1,0 +1,764 @@
+---
+title: "[Hard] Complex Session Reconstruction with Nested Events"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Reconstruct complex user sessions where events can overlap (e.g., multiple tabs), sessions can split and merge based on context switches, and nested events (modal opens, form interactions) need proper grouping. Requires advanced windowing, priority logic, and handling of concurrent event streams.
+
+**Skills tested:** Advanced windowing, Complex state machines, Event correlation, Concurrent stream handling, Priority-based grouping, Nested aggregation, Advanced LAG/LEAD patterns
+
+## Schema
+
+### user_events
+```
+event_id       INTEGER
+user_id        INTEGER
+event_type     VARCHAR
+event_time     TIMESTAMP
+page_url       VARCHAR
+session_id     VARCHAR (browser session ID)
+tab_id         VARCHAR
+device_id      VARCHAR
+```
+
+### event_metadata
+```
+event_id       INTEGER
+metadata_key   VARCHAR
+metadata_value VARCHAR
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View complex event patterns for a sample user
+SELECT 
+    event_id,
+    event_type,
+    event_time,
+    page_url,
+    session_id,
+    tab_id
+FROM user_events
+WHERE user_id IN (
+    SELECT user_id 
+    FROM user_events 
+    GROUP BY user_id 
+    HAVING COUNT(DISTINCT tab_id) > 1  -- Users with multi-tab behavior
+    LIMIT 1
+)
+ORDER BY event_time
+LIMIT 30;
+```
+
+## Expected Output
+
+| user_id | logical_session_id | session_start       | session_end         | duration_min | tabs_used | events | primary_context | split_reason    |
+|---------|-------------------|---------------------|---------------------|--------------|-----------|--------|-----------------|-----------------|
+| 123     | 1                 | 2024-01-20 10:00:00 | 2024-01-20 10:15:00 | 15.0         | 2         | 45     | shopping        | null            |
+| 123     | 2                 | 2024-01-20 10:35:00 | 2024-01-20 10:42:00 | 7.0          | 1         | 12     | checkout        | inactivity      |
+| 123     | 3                 | 2024-01-20 14:15:00 | 2024-01-20 14:28:00 | 13.0         | 3         | 38     | browsing        | context_switch  |
+
+## Requirements
+
+1. **Multi-tab Session Handling:**
+   - Merge events from multiple tabs into single logical session
+   - Handle concurrent events in different tabs
+   - Detect tab switches and primary tab
+
+2. **Session Split/Merge Logic:**
+   - Split on inactivity timeout (30 minutes)
+   - Split on context switches (e.g., checkout → browsing)
+   - Merge sessions that resume within window
+   - Handle cross-device continuation
+
+3. **Nested Event Groups:**
+   - Group modal interactions within page views
+   - Track form field sequences
+   - Identify micro-conversions within sessions
+
+4. **Priority-Based Grouping:**
+   - Assign priority to different event types (page_view > click > hover)
+   - Higher priority events anchor session boundaries
+   - Handle conflicting signals
+
+5. **Advanced Metrics:**
+   - Calculate effective session time (excluding idle periods)
+   - Track context switches per session
+   - Measure multi-tasking intensity
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1: Multi-tab merging</summary>
+
+Use session_id from browser to group tabs, then apply custom logic:
+```sql
+WITH tab_activity AS (
+    SELECT 
+        user_id,
+        session_id,  -- Browser session
+        tab_id,
+        event_time,
+        event_type,
+        LAG(event_time) OVER (
+            PARTITION BY user_id, session_id 
+            ORDER BY event_time
+        ) AS prev_event_time
+    FROM user_events
+)
+-- Group by browser session, then subdivide by gaps
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2: Context detection</summary>
+
+Use URL patterns and event sequences to detect context:
+```sql
+CASE 
+    WHEN page_url LIKE '%/checkout%' THEN 'checkout'
+    WHEN page_url LIKE '%/cart%' THEN 'cart'
+    WHEN event_type = 'purchase' THEN 'conversion'
+    WHEN page_url LIKE '%/product/%' THEN 'product_view'
+    ELSE 'browsing'
+END AS page_context
+```
+
+Then detect context switches using LAG.
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3: Nested event grouping</summary>
+
+Use conditional cumulative sums to group nested events:
+```sql
+WITH event_hierarchy AS (
+    SELECT 
+        *,
+        CASE 
+            WHEN event_type = 'page_view' THEN 1
+            ELSE 0
+        END AS is_page_start,
+        SUM(CASE WHEN event_type = 'page_view' THEN 1 ELSE 0 END) 
+            OVER (PARTITION BY user_id ORDER BY event_time) AS page_group_id
+    FROM user_events
+)
+-- All events between page_view events belong to that page
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 4: Overlapping event handling</summary>
+
+For concurrent events, use event_time ranges:
+```sql
+WITH event_ranges AS (
+    SELECT 
+        *,
+        event_time AS start_time,
+        LEAD(event_time, 1, event_time + INTERVAL '1 hour') 
+            OVER (PARTITION BY user_id, tab_id ORDER BY event_time) AS end_time
+    FROM user_events
+)
+-- Check for overlaps between tabs
+SELECT *
+FROM event_ranges e1
+JOIN event_ranges e2 
+    ON e1.user_id = e2.user_id
+    AND e1.tab_id != e2.tab_id
+    AND e1.start_time < e2.end_time
+    AND e1.end_time > e2.start_time
+```
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+WITH enhanced_events AS (
+    SELECT 
+        user_id,
+        event_id,
+        event_type,
+        event_time,
+        page_url,
+        session_id,
+        tab_id,
+        -- Add context classification
+        CASE 
+            WHEN page_url LIKE '%checkout%' THEN 'checkout'
+            WHEN page_url LIKE '%cart%' THEN 'cart'
+            ELSE 'browsing'
+        END AS page_context,
+        -- Calculate gaps
+        LAG(event_time) OVER (
+            PARTITION BY user_id, session_id 
+            ORDER BY event_time
+        ) AS prev_event_time
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+session_boundaries AS (
+    SELECT 
+        *,
+        -- Create new session on gap > 30 min or context switch
+        CASE 
+            WHEN prev_event_time IS NULL THEN 1
+            WHEN event_time - prev_event_time > INTERVAL '30 minutes' THEN 1
+            -- Add more split conditions
+            ELSE 0
+        END AS is_new_session
+    FROM enhanced_events
+),
+logical_sessions AS (
+    SELECT 
+        *,
+        SUM(is_new_session) OVER (
+            PARTITION BY user_id 
+            ORDER BY event_time
+        ) AS logical_session_id
+    FROM session_boundaries
+)
+SELECT 
+    user_id,
+    logical_session_id,
+    MIN(event_time) AS session_start,
+    MAX(event_time) AS session_end,
+    COUNT(*) AS event_count,
+    COUNT(DISTINCT tab_id) AS tabs_used
+FROM logical_sessions
+GROUP BY user_id, logical_session_id
+ORDER BY user_id, logical_session_id;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal basic multi-tab session reconstruction</summary>
+
+```{.sql .interactive .cookbook}
+WITH tab_events AS (
+    SELECT 
+        user_id,
+        event_id,
+        event_type,
+        event_time,
+        page_url,
+        session_id,
+        tab_id,
+        LAG(event_time) OVER (
+            PARTITION BY user_id, session_id 
+            ORDER BY event_time
+        ) AS prev_event_any_tab,
+        LAG(event_time) OVER (
+            PARTITION BY user_id, session_id, tab_id 
+            ORDER BY event_time
+        ) AS prev_event_same_tab
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+session_splits AS (
+    SELECT 
+        *,
+        CASE 
+            WHEN prev_event_any_tab IS NULL THEN 1
+            WHEN EXTRACT(EPOCH FROM (event_time - prev_event_any_tab)) / 60 > 30 THEN 1
+            ELSE 0
+        END AS is_new_logical_session
+    FROM tab_events
+),
+logical_sessions AS (
+    SELECT 
+        user_id,
+        event_id,
+        event_type,
+        event_time,
+        page_url,
+        tab_id,
+        SUM(is_new_logical_session) OVER (
+            PARTITION BY user_id 
+            ORDER BY event_time
+        ) AS logical_session_id
+    FROM session_splits
+)
+SELECT 
+    user_id,
+    logical_session_id,
+    MIN(event_time) AS session_start,
+    MAX(event_time) AS session_end,
+    ROUND(EXTRACT(EPOCH FROM (MAX(event_time) - MIN(event_time))) / 60.0, 1) AS duration_minutes,
+    COUNT(*) AS total_events,
+    COUNT(DISTINCT tab_id) AS tabs_used,
+    COUNT(DISTINCT page_url) AS unique_pages
+FROM logical_sessions
+GROUP BY user_id, logical_session_id
+HAVING COUNT(*) > 1
+ORDER BY user_id, session_start;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal session with context-based splits</summary>
+
+```{.sql .interactive .cookbook}
+WITH events_with_context AS (
+    SELECT 
+        user_id,
+        event_id,
+        event_type,
+        event_time,
+        page_url,
+        session_id,
+        tab_id,
+        CASE 
+            WHEN page_url LIKE '%/checkout%' OR event_type = 'checkout_start' THEN 'checkout'
+            WHEN page_url LIKE '%/cart%' THEN 'cart'
+            WHEN page_url LIKE '%/product/%' THEN 'product_view'
+            WHEN event_type = 'purchase' THEN 'purchase'
+            ELSE 'browsing'
+        END AS page_context,
+        LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_event_time,
+        LAG(
+            CASE 
+                WHEN page_url LIKE '%/checkout%' OR event_type = 'checkout_start' THEN 'checkout'
+                WHEN page_url LIKE '%/cart%' THEN 'cart'
+                WHEN page_url LIKE '%/product/%' THEN 'product_view'
+                WHEN event_type = 'purchase' THEN 'purchase'
+                ELSE 'browsing'
+            END
+        ) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_context
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+session_boundaries AS (
+    SELECT 
+        *,
+        CASE 
+            -- New session on first event
+            WHEN prev_event_time IS NULL THEN 1
+            -- Inactivity split (30 min)
+            WHEN EXTRACT(EPOCH FROM (event_time - prev_event_time)) / 60 > 30 THEN 1
+            -- Context switch split (checkout -> browsing, purchase -> browsing)
+            WHEN prev_context IN ('checkout', 'purchase') AND page_context = 'browsing' THEN 1
+            ELSE 0
+        END AS is_new_session,
+        CASE 
+            WHEN prev_event_time IS NULL THEN NULL
+            WHEN EXTRACT(EPOCH FROM (event_time - prev_event_time)) / 60 > 30 THEN 'inactivity'
+            WHEN prev_context IN ('checkout', 'purchase') AND page_context = 'browsing' THEN 'context_switch'
+            ELSE NULL
+        END AS split_reason
+    FROM events_with_context
+),
+logical_sessions AS (
+    SELECT 
+        *,
+        SUM(is_new_session) OVER (PARTITION BY user_id ORDER BY event_time) AS logical_session_id
+    FROM session_boundaries
+)
+SELECT 
+    user_id,
+    logical_session_id,
+    MIN(event_time) AS session_start,
+    MAX(event_time) AS session_end,
+    ROUND(EXTRACT(EPOCH FROM (MAX(event_time) - MIN(event_time))) / 60.0, 1) AS duration_minutes,
+    COUNT(*) AS events,
+    COUNT(DISTINCT tab_id) AS tabs_used,
+    -- Get dominant context
+    (
+        SELECT page_context 
+        FROM logical_sessions ls2 
+        WHERE ls2.user_id = logical_sessions.user_id 
+            AND ls2.logical_session_id = logical_sessions.logical_session_id
+        GROUP BY page_context 
+        ORDER BY COUNT(*) DESC 
+        LIMIT 1
+    ) AS primary_context,
+    MAX(split_reason) AS split_reason
+FROM logical_sessions
+GROUP BY user_id, logical_session_id
+HAVING COUNT(*) >= 2
+ORDER BY user_id, session_start;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal nested event grouping (page → interactions)</summary>
+
+```{.sql .interactive .cookbook}
+WITH page_view_groups AS (
+    SELECT 
+        user_id,
+        event_id,
+        event_type,
+        event_time,
+        page_url,
+        tab_id,
+        -- Create groups: each page_view starts a new group
+        SUM(CASE WHEN event_type = 'page_view' THEN 1 ELSE 0 END) 
+            OVER (PARTITION BY user_id ORDER BY event_time) AS page_group_id,
+        -- Track if this is the page view itself
+        CASE WHEN event_type = 'page_view' THEN 1 ELSE 0 END AS is_page_view
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '7 days'
+),
+page_interactions AS (
+    SELECT 
+        user_id,
+        page_group_id,
+        -- Page view details
+        MAX(CASE WHEN is_page_view = 1 THEN page_url END) AS page_url,
+        MAX(CASE WHEN is_page_view = 1 THEN event_time END) AS page_view_time,
+        -- Interaction counts
+        COUNT(CASE WHEN event_type = 'click' THEN 1 END) AS clicks,
+        COUNT(CASE WHEN event_type = 'scroll' THEN 1 END) AS scrolls,
+        COUNT(CASE WHEN event_type = 'form_interaction' THEN 1 END) AS form_interactions,
+        COUNT(CASE WHEN event_type LIKE 'modal_%' THEN 1 END) AS modal_events,
+        -- Time on page (until next page view or end)
+        ROUND(EXTRACT(EPOCH FROM (MAX(event_time) - MAX(CASE WHEN is_page_view = 1 THEN event_time END))) / 60.0, 2) AS time_on_page_minutes,
+        COUNT(*) - SUM(is_page_view) AS interaction_count
+    FROM page_view_groups
+    WHERE page_group_id > 0  -- Exclude events before first page view
+    GROUP BY user_id, page_group_id
+)
+SELECT 
+    user_id,
+    page_group_id,
+    page_url,
+    page_view_time,
+    time_on_page_minutes,
+    clicks,
+    scrolls,
+    form_interactions,
+    modal_events,
+    interaction_count,
+    CASE 
+        WHEN interaction_count = 0 THEN 'bounce'
+        WHEN time_on_page_minutes < 0.5 THEN 'quick_exit'
+        WHEN interaction_count >= 10 THEN 'highly_engaged'
+        WHEN interaction_count >= 5 THEN 'engaged'
+        ELSE 'moderate'
+    END AS engagement_level
+FROM page_interactions
+WHERE page_url IS NOT NULL  -- Only pages that had a page_view
+ORDER BY user_id, page_view_time
+LIMIT 50;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal overlapping tab detection</summary>
+
+```{.sql .interactive .cookbook}
+WITH tab_activity_windows AS (
+    SELECT 
+        user_id,
+        tab_id,
+        event_time AS event_start,
+        LEAD(event_time, 1, event_time + INTERVAL '1 hour') 
+            OVER (PARTITION BY user_id, tab_id ORDER BY event_time) AS event_end,
+        event_type,
+        page_url
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '7 days'
+),
+overlapping_tabs AS (
+    SELECT DISTINCT
+        t1.user_id,
+        t1.tab_id AS tab1,
+        t2.tab_id AS tab2,
+        t1.event_start AS tab1_time,
+        t2.event_start AS tab2_time,
+        t1.page_url AS tab1_page,
+        t2.page_url AS tab2_page,
+        -- Calculate overlap duration
+        EXTRACT(EPOCH FROM (
+            LEAST(t1.event_end, t2.event_end) - GREATEST(t1.event_start, t2.event_start)
+        )) / 60.0 AS overlap_minutes
+    FROM tab_activity_windows t1
+    JOIN tab_activity_windows t2 
+        ON t1.user_id = t2.user_id
+        AND t1.tab_id < t2.tab_id  -- Avoid duplicates
+        AND t1.event_start < t2.event_end
+        AND t2.event_start < t1.event_end
+    WHERE EXTRACT(EPOCH FROM (
+            LEAST(t1.event_end, t2.event_end) - GREATEST(t1.event_start, t2.event_start)
+        )) > 0  -- Actually overlapping
+),
+tab_overlap_summary AS (
+    SELECT 
+        user_id,
+        COUNT(*) AS overlap_instances,
+        ROUND(AVG(overlap_minutes), 2) AS avg_overlap_minutes,
+        ROUND(SUM(overlap_minutes), 2) AS total_overlap_minutes,
+        COUNT(DISTINCT tab1) + COUNT(DISTINCT tab2) AS tabs_involved
+    FROM overlapping_tabs
+    GROUP BY user_id
+)
+SELECT 
+    user_id,
+    overlap_instances,
+    avg_overlap_minutes,
+    total_overlap_minutes,
+    tabs_involved,
+    CASE 
+        WHEN overlap_instances >= 20 THEN 'heavy_multi_tasker'
+        WHEN overlap_instances >= 10 THEN 'frequent_multi_tasker'
+        WHEN overlap_instances >= 5 THEN 'occasional_multi_tasker'
+        ELSE 'sequential_user'
+    END AS user_behavior_type
+FROM tab_overlap_summary
+ORDER BY overlap_instances DESC
+LIMIT 20;
+```
+
+</details>
+
+## Effective Session Time
+
+<details>
+<summary>Click to reveal active time calculation (excluding idle periods)</summary>
+
+```{.sql .interactive .cookbook}
+WITH event_gaps AS (
+    SELECT 
+        user_id,
+        event_time,
+        LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_event_time,
+        EXTRACT(EPOCH FROM (
+            event_time - LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time)
+        )) / 60.0 AS gap_minutes
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '7 days'
+),
+active_periods AS (
+    SELECT 
+        user_id,
+        event_time,
+        prev_event_time,
+        gap_minutes,
+        -- Count only gaps < 5 minutes as active time
+        CASE 
+            WHEN gap_minutes IS NULL THEN 0
+            WHEN gap_minutes <= 5 THEN gap_minutes
+            ELSE 0
+        END AS active_gap_minutes,
+        -- Create session groups
+        SUM(CASE 
+            WHEN gap_minutes > 30 OR gap_minutes IS NULL THEN 1 
+            ELSE 0 
+        END) OVER (PARTITION BY user_id ORDER BY event_time) AS session_id
+    FROM event_gaps
+),
+session_metrics AS (
+    SELECT 
+        user_id,
+        session_id,
+        MIN(event_time) AS session_start,
+        MAX(event_time) AS session_end,
+        ROUND(EXTRACT(EPOCH FROM (MAX(event_time) - MIN(event_time))) / 60.0, 2) AS total_session_minutes,
+        ROUND(SUM(active_gap_minutes), 2) AS active_minutes,
+        COUNT(*) AS event_count
+    FROM active_periods
+    GROUP BY user_id, session_id
+)
+SELECT 
+    user_id,
+    session_id,
+    session_start,
+    session_end,
+    total_session_minutes,
+    active_minutes,
+    ROUND(100.0 * active_minutes / NULLIF(total_session_minutes, 0), 1) AS active_time_pct,
+    event_count,
+    ROUND(active_minutes / NULLIF(event_count, 0), 2) AS avg_seconds_per_event
+FROM session_metrics
+WHERE total_session_minutes > 0
+    AND event_count >= 3
+ORDER BY user_id, session_start
+LIMIT 50;
+```
+
+</details>
+
+## Event Priority and Anchoring
+
+<details>
+<summary>Click to reveal priority-based session anchoring</summary>
+
+```{.sql .interactive .cookbook}
+WITH event_priorities AS (
+    SELECT 
+        user_id,
+        event_id,
+        event_type,
+        event_time,
+        page_url,
+        -- Assign priorities
+        CASE event_type
+            WHEN 'purchase' THEN 1
+            WHEN 'checkout_start' THEN 2
+            WHEN 'add_to_cart' THEN 3
+            WHEN 'page_view' THEN 4
+            WHEN 'click' THEN 5
+            WHEN 'scroll' THEN 6
+            ELSE 7
+        END AS event_priority,
+        LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_event_time
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '7 days'
+),
+anchor_events AS (
+    -- High priority events that anchor sessions
+    SELECT 
+        user_id,
+        event_id,
+        event_time,
+        event_type,
+        event_priority
+    FROM event_priorities
+    WHERE event_priority <= 3  -- Purchase, checkout, add_to_cart
+),
+session_anchors AS (
+    SELECT 
+        ep.user_id,
+        ep.event_id,
+        ep.event_type,
+        ep.event_time,
+        ep.event_priority,
+        -- Find nearest anchor event before this event
+        (
+            SELECT ae.event_id
+            FROM anchor_events ae
+            WHERE ae.user_id = ep.user_id
+                AND ae.event_time <= ep.event_time
+                AND ae.event_time >= ep.event_time - INTERVAL '30 minutes'
+            ORDER BY ae.event_time DESC, ae.event_priority ASC
+            LIMIT 1
+        ) AS anchor_event_id,
+        -- Session boundary logic
+        CASE 
+            WHEN ep.prev_event_time IS NULL THEN 1
+            WHEN EXTRACT(EPOCH FROM (ep.event_time - ep.prev_event_time)) / 60 > 30 THEN 1
+            WHEN ep.event_priority <= 3 THEN 1  -- New session on anchor events
+            ELSE 0
+        END AS is_session_start
+    FROM event_priorities ep
+),
+sessions AS (
+    SELECT 
+        *,
+        SUM(is_session_start) OVER (PARTITION BY user_id ORDER BY event_time) AS session_id
+    FROM session_anchors
+)
+SELECT 
+    user_id,
+    session_id,
+    MIN(event_time) AS session_start,
+    MAX(event_time) AS session_end,
+    COUNT(*) AS events,
+    MIN(event_priority) AS highest_priority_event,
+    COUNT(DISTINCT anchor_event_id) AS anchor_events,
+    MAX(CASE WHEN event_priority = 1 THEN event_type END) AS had_purchase,
+    MAX(CASE WHEN event_priority = 2 THEN event_type END) AS had_checkout
+FROM sessions
+GROUP BY user_id, session_id
+ORDER BY user_id, session_start
+LIMIT 50;
+```
+
+</details>
+
+## Cross-Device Session Continuation
+
+<details>
+<summary>Click to reveal cross-device session linking</summary>
+
+```{.sql .interactive .cookbook}
+WITH device_sessions AS (
+    SELECT 
+        user_id,
+        device_id,
+        event_time,
+        event_type,
+        page_url,
+        LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_event_time,
+        LAG(device_id) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_device
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '7 days'
+        AND user_id IS NOT NULL
+),
+device_switches AS (
+    SELECT 
+        user_id,
+        device_id,
+        event_time,
+        event_type,
+        page_url,
+        prev_device,
+        EXTRACT(EPOCH FROM (event_time - prev_event_time)) / 60.0 AS time_since_prev_minutes,
+        CASE 
+            WHEN prev_device IS NULL THEN 'first_device'
+            WHEN prev_device != device_id AND time_since_prev_minutes <= 15 THEN 'quick_switch'
+            WHEN prev_device != device_id AND time_since_prev_minutes <= 60 THEN 'moderate_switch'
+            WHEN prev_device != device_id THEN 'delayed_switch'
+            ELSE 'same_device'
+        END AS device_transition,
+        -- Session boundary
+        CASE 
+            WHEN prev_event_time IS NULL THEN 1
+            WHEN time_since_prev_minutes > 30 THEN 1
+            WHEN prev_device != device_id AND time_since_prev_minutes > 15 THEN 1
+            ELSE 0
+        END AS is_new_session
+    FROM device_sessions
+),
+cross_device_sessions AS (
+    SELECT 
+        *,
+        SUM(is_new_session) OVER (PARTITION BY user_id ORDER BY event_time) AS session_id
+    FROM device_switches
+)
+SELECT 
+    user_id,
+    session_id,
+    MIN(event_time) AS session_start,
+    MAX(event_time) AS session_end,
+    COUNT(DISTINCT device_id) AS devices_used,
+    STRING_AGG(DISTINCT device_id, ', ' ORDER BY device_id) AS device_list,
+    COUNT(*) AS total_events,
+    SUM(CASE WHEN device_transition LIKE '%switch%' THEN 1 ELSE 0 END) AS device_switches,
+    MAX(device_transition) AS switch_type
+FROM cross_device_sessions
+GROUP BY user_id, session_id
+HAVING COUNT(DISTINCT device_id) > 1  -- Only multi-device sessions
+ORDER BY user_id, session_start
+LIMIT 30;
+```
+
+</details>
+
+## Extensions
+
+1. **Intent classification:** Use ML-like scoring to classify session intent (research, purchase, support)
+2. **Anomaly detection:** Flag unusual session patterns (bot-like behavior, fraud indicators)
+3. **Session quality scoring:** Comprehensive engagement score based on multiple factors
+4. **Journey mapping:** Visualize user paths through website with session transitions
+5. **Session replay preparation:** Structure data for session replay tools
+6. **Real-time session tracking:** Adapt logic for streaming/real-time session detection
+7. **Mobile app sessions:** Handle app backgrounding, push notifications, deep links
+8. **A/B test attribution:** Assign experiments to sessions with proper exclusions
