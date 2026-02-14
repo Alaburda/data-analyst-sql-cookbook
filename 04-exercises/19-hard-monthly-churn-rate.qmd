@@ -427,17 +427,17 @@ churn_revenue AS (
     GROUP BY month
 )
 SELECT 
-    month,
-    ROUND(current_month_revenue, 2) AS mrr,
-    ROUND(churned_revenue, 2) AS churned_mrr,
-    ROUND(100.0 * churned_revenue / NULLIF(prev_month_total_revenue, 0), 2) AS revenue_churn_rate,
-    ROUND(churned_revenue / NULLIF(
-        SUM(CASE WHEN prev_month_revenue > 0 AND revenue = 0 THEN 1 ELSE 0 END), 0
+    cr.month,
+    ROUND(cr.current_month_revenue, 2) AS mrr,
+    ROUND(cr.churned_revenue, 2) AS churned_mrr,
+    ROUND(100.0 * cr.churned_revenue / NULLIF(cr.prev_month_total_revenue, 0), 2) AS revenue_churn_rate,
+    ROUND(cr.churned_revenue / NULLIF(
+        COUNT(CASE WHEN crt.prev_month_revenue > 0 AND crt.revenue = 0 THEN 1 END), 0
     ), 2) AS avg_revenue_per_churned_customer
-FROM churn_revenue, customer_revenue_timeline
-WHERE customer_revenue_timeline.month = churn_revenue.month
-GROUP BY churn_revenue.month, current_month_revenue, churned_revenue, prev_month_total_revenue
-ORDER BY month DESC;
+FROM churn_revenue cr
+INNER JOIN customer_revenue_timeline crt ON crt.month = cr.month
+GROUP BY cr.month, cr.current_month_revenue, cr.churned_revenue, cr.prev_month_total_revenue
+ORDER BY cr.month DESC;
 ```
 
 </details>

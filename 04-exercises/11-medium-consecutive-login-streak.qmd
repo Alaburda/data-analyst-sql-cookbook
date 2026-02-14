@@ -27,8 +27,12 @@ order_date     DATE
 
 ## Sample Data
 
+For this exercise, we'll use order dates as a proxy for login activity. Since the cookbook database doesn't have a dedicated login events table, we'll create sample data from the orders table.
+
+**Note:** This exercise uses `CREATE TEMP TABLE` to prepare sample data. This approach is used here specifically because we need to reference the same login dataset multiple times in our queries. In production, you would typically work with an actual user_events or login_logs table.
+
 ```{.sql .interactive .cookbook}
--- Create sample login data from orders
+-- Create sample login data from orders (simulating a login events table)
 CREATE TEMP TABLE user_logins AS
 SELECT DISTINCT
     customer_id AS user_id,

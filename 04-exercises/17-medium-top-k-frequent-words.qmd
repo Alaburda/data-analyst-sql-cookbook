@@ -221,9 +221,11 @@ SELECT
 FROM filtered_words fw
 JOIN categories c ON fw.category_id = c.category_id
 GROUP BY c.category_name, fw.word
-QUALIFY rank_in_category <= 10  -- Top 10 per category
+QUALIFY rank_in_category <= 10  -- Top 10 per category (DuckDB-specific syntax)
 ORDER BY c.category_name, rank_in_category;
 ```
+
+**Note:** `QUALIFY` is a DuckDB-specific clause that filters window function results. In standard SQL or other databases, you would need to wrap this in a CTE and use WHERE instead.
 
 </details>
 
