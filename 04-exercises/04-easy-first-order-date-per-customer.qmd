@@ -1,0 +1,176 @@
+---
+title: "[Easy] First Order Date Per Customer"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+For each customer, find their earliest order date. This is useful for customer lifecycle analysis, cohort studies, and understanding customer behavior patterns.
+
+**Skills tested:** Aggregation, GROUP BY, MIN function
+
+## Schema
+
+### customers
+```
+customer_id      INTEGER PRIMARY KEY
+first_name       VARCHAR
+last_name        VARCHAR
+signup_date      DATE
+```
+
+### orders
+```
+order_id       INTEGER PRIMARY KEY
+customer_id    INTEGER (FK → customers)
+order_date     DATE
+status         VARCHAR
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View sample customers with their orders
+SELECT 
+    c.customer_id,
+    c.first_name || ' ' || c.last_name AS customer_name,
+    o.order_id,
+    o.order_date,
+    o.status
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+WHERE c.customer_id IN (1, 2, 3, 4, 5)
+ORDER BY c.customer_id, o.order_date;
+```
+
+## Expected Output
+
+| customer_id | customer_name | first_order_date | days_to_first_order | total_orders |
+|-------------|---------------|------------------|---------------------|--------------|
+| 1           | John Smith    | 2023-02-15       | 45                  | 12           |
+| 2           | Jane Doe      | 2023-03-01       | 10                  | 8            |
+| 3           | Bob Wilson    | NULL             | NULL                | 0            |
+| ...         | ...           | ...              | ...                 | ...          |
+
+## Requirements
+
+1. Return one row per customer
+2. Show the earliest (minimum) order date
+3. Include customers who have never ordered (first_order_date should be NULL)
+4. Calculate days between signup and first order
+5. Include total order count per customer
+6. Order by first order date
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Use `LEFT JOIN` from customers to orders to include customers with no orders:
+```sql
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+Use `MIN(o.order_date)` to find the earliest order date. It will return NULL for customers with no orders.
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+Calculate days to first order:
+```sql
+MIN(o.order_date) - c.signup_date AS days_to_first_order
+```
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+SELECT 
+    c.customer_id,
+    c.first_name || ' ' || c.last_name AS customer_name,
+    -- Find minimum order date
+    -- Calculate days between signup and first order
+    -- Count total orders
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+-- Add GROUP BY
+ORDER BY first_order_date;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal solution</summary>
+
+```{.sql .interactive .cookbook}
+SELECT 
+    c.customer_id,
+    c.first_name || ' ' || c.last_name AS customer_name,
+    c.signup_date,
+    MIN(o.order_date) AS first_order_date,
+    MIN(o.order_date) - c.signup_date AS days_to_first_order,
+    COUNT(o.order_id) AS total_orders
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id, c.first_name, c.last_name, c.signup_date
+ORDER BY first_order_date;
+```
+
+</details>
+
+## Alternative: Using Window Functions
+
+<details>
+<summary>Click to reveal window function approach</summary>
+
+You can also use `ROW_NUMBER()` to identify the first order:
+
+```{.sql .interactive .cookbook}
+WITH ranked_orders AS (
+    SELECT 
+        customer_id,
+        order_date,
+        ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date) AS rn
+    FROM orders
+)
+SELECT 
+    c.customer_id,
+    c.first_name || ' ' || c.last_name AS customer_name,
+    c.signup_date,
+    ro.order_date AS first_order_date,
+    ro.order_date - c.signup_date AS days_to_first_order,
+    COUNT(o.order_id) AS total_orders
+FROM customers c
+LEFT JOIN ranked_orders ro 
+    ON c.customer_id = ro.customer_id 
+    AND ro.rn = 1
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id, c.first_name, c.last_name, c.signup_date, ro.order_date
+ORDER BY first_order_date;
+```
+
+This approach is more verbose but can be useful when you need other details from the first order row.
+
+</details>
+
+## Extensions
+
+1. **Conversion rate:** Calculate what percentage of customers placed at least one order
+2. **Time to purchase segments:** Group customers by how quickly they made their first purchase (0-7 days, 8-30 days, 31-90 days, 90+ days, never)
+3. **First order details:** Include the first order's total value and items purchased
+4. **Cohort analysis:** Group by signup month and analyze first purchase patterns
+5. **Churn risk:** Identify customers who haven't ordered in 90+ days since their first order

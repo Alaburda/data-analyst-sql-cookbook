@@ -1,0 +1,203 @@
+---
+title: "[Easy] Low-Stock Products"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Return products that are below a stock threshold, sorted by the severity of the shortage. This helps prioritize restocking efforts.
+
+**Skills tested:** Filtering, Aggregation, Calculated fields, ORDER BY
+
+## Schema
+
+### products
+```
+product_id       INTEGER PRIMARY KEY
+product_name     VARCHAR
+category         VARCHAR
+unit_price       DECIMAL
+stock_quantity   INTEGER
+reorder_level    INTEGER  -- Threshold for restocking
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View sample products with stock levels
+SELECT 
+    product_id,
+    product_name,
+    category,
+    unit_price,
+    stock_quantity,
+    reorder_level
+FROM products
+ORDER BY stock_quantity
+LIMIT 10;
+```
+
+## Expected Output
+
+| product_id | product_name      | category    | stock_quantity | reorder_level | shortage | shortage_pct |
+|------------|-------------------|-------------|----------------|---------------|----------|--------------|
+| 45         | Premium Widget    | Hardware    | 5              | 50            | 45       | 90.0%        |
+| 23         | Deluxe Gadget     | Electronics | 12             | 40            | 28       | 70.0%        |
+| 67         | Basic Tool        | Tools       | 30             | 60            | 30       | 50.0%        |
+| ...        | ...               | ...         | ...            | ...           | ...      | ...          |
+
+## Requirements
+
+1. Return only products where `stock_quantity < reorder_level`
+2. Calculate the shortage amount: `reorder_level - stock_quantity`
+3. Calculate shortage percentage: `shortage / reorder_level * 100`
+4. Sort by shortage amount (highest shortage first)
+5. Include product details (name, category, pricing)
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Use a simple WHERE clause to filter low-stock products:
+```sql
+WHERE stock_quantity < reorder_level
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+Calculate shortage with:
+```sql
+reorder_level - stock_quantity AS shortage
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+Calculate percentage shortage:
+```sql
+ROUND(100.0 * (reorder_level - stock_quantity) / reorder_level, 1) AS shortage_pct
+```
+
+Note: Use `100.0` (not `100`) to ensure floating-point division.
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+SELECT 
+    product_id,
+    product_name,
+    category,
+    stock_quantity,
+    reorder_level,
+    -- Calculate shortage
+    -- Calculate shortage percentage
+FROM products
+WHERE -- Filter for low stock
+ORDER BY -- Sort by shortage (highest first)
+;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal solution</summary>
+
+```{.sql .interactive .cookbook}
+SELECT 
+    product_id,
+    product_name,
+    category,
+    unit_price,
+    stock_quantity,
+    reorder_level,
+    reorder_level - stock_quantity AS shortage,
+    ROUND(100.0 * (reorder_level - stock_quantity) / reorder_level, 1) AS shortage_pct
+FROM products
+WHERE stock_quantity < reorder_level
+ORDER BY shortage DESC;
+```
+
+</details>
+
+## Alternative: With Priority Levels
+
+<details>
+<summary>Click to reveal solution with priority categorization</summary>
+
+Add priority levels based on shortage severity:
+
+```{.sql .interactive .cookbook}
+SELECT 
+    product_id,
+    product_name,
+    category,
+    stock_quantity,
+    reorder_level,
+    reorder_level - stock_quantity AS shortage,
+    ROUND(100.0 * (reorder_level - stock_quantity) / reorder_level, 1) AS shortage_pct,
+    CASE 
+        WHEN stock_quantity = 0 THEN 'OUT OF STOCK'
+        WHEN stock_quantity < reorder_level * 0.25 THEN 'CRITICAL'
+        WHEN stock_quantity < reorder_level * 0.50 THEN 'HIGH'
+        ELSE 'MODERATE'
+    END AS priority
+FROM products
+WHERE stock_quantity < reorder_level
+ORDER BY 
+    CASE 
+        WHEN stock_quantity = 0 THEN 1
+        WHEN stock_quantity < reorder_level * 0.25 THEN 2
+        WHEN stock_quantity < reorder_level * 0.50 THEN 3
+        ELSE 4
+    END,
+    shortage DESC;
+```
+
+</details>
+
+## Alternative: With Restocking Cost
+
+<details>
+<summary>Click to reveal solution with cost analysis</summary>
+
+Calculate the cost to restock to reorder level:
+
+```{.sql .interactive .cookbook}
+SELECT 
+    product_id,
+    product_name,
+    category,
+    stock_quantity,
+    reorder_level,
+    reorder_level - stock_quantity AS units_needed,
+    unit_price,
+    ROUND((reorder_level - stock_quantity) * unit_price, 2) AS restock_cost
+FROM products
+WHERE stock_quantity < reorder_level
+ORDER BY restock_cost DESC;
+```
+
+This helps prioritize restocking based on investment required.
+
+</details>
+
+## Extensions
+
+1. **Category analysis:** Group low-stock products by category
+2. **Cost prioritization:** Order by restocking cost instead of quantity
+3. **Supplier information:** Join with suppliers table to identify which suppliers to contact
+4. **Sales velocity:** Join with order_items to see if low stock is due to high demand
+5. **Historical trends:** Compare current stock levels to historical averages

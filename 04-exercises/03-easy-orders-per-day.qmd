@@ -1,0 +1,189 @@
+---
+title: "[Easy] Orders Per Day"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Count the number of orders placed each day for the last N days, filling in zeros for days with no orders. This pattern is essential for time-series reporting and spotting trends.
+
+**Skills tested:** Date functions, Aggregation, LEFT JOIN with calendar dimension, COALESCE
+
+## Schema
+
+### orders
+```
+order_id       INTEGER PRIMARY KEY
+customer_id    INTEGER
+order_date     DATE
+status         VARCHAR
+```
+
+### calendar
+```
+date           DATE PRIMARY KEY
+year           INTEGER
+month          INTEGER
+month_name     VARCHAR
+day_of_week    VARCHAR
+is_weekend     BOOLEAN
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View recent orders
+SELECT order_date, COUNT(*) as order_count
+FROM orders
+WHERE order_date >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY order_date
+ORDER BY order_date DESC
+LIMIT 10;
+```
+
+```{.sql .interactive .cookbook}
+-- View calendar structure
+SELECT * FROM calendar 
+WHERE date >= CURRENT_DATE - INTERVAL '10 days'
+ORDER BY date;
+```
+
+## Expected Output
+
+For the last 30 days, your query should return:
+
+| date       | day_of_week | order_count | is_weekend |
+|------------|-------------|-------------|------------|
+| 2024-01-15 | Monday      | 12          | false      |
+| 2024-01-16 | Tuesday     | 8           | false      |
+| 2024-01-17 | Wednesday   | 0           | false      |
+| 2024-01-18 | Thursday    | 15          | false      |
+| ...        | ...         | ...         | ...        |
+
+## Requirements
+
+1. Return one row per day for the last 30 days
+2. Include days with zero orders (zero-fill)
+3. Only count completed orders
+4. Include day of week information
+5. Order by date descending (most recent first)
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Use the `calendar` table as your base to ensure all days are represented:
+```sql
+FROM calendar c
+LEFT JOIN orders o ON c.date = o.order_date
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+Filter the calendar to the last N days using:
+```sql
+WHERE c.date >= CURRENT_DATE - INTERVAL '30 days'
+  AND c.date <= CURRENT_DATE
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+Use `COALESCE(COUNT(o.order_id), 0)` to handle days with no orders. Or use `COUNT(o.order_id)` which naturally returns 0 when no rows match.
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+SELECT 
+    c.date,
+    c.day_of_week,
+    -- Count orders (handling zero-fill)
+    c.is_weekend
+FROM calendar c
+LEFT JOIN orders o 
+    ON c.date = o.order_date
+    -- Add status filter in JOIN to count only completed orders
+WHERE c.date >= CURRENT_DATE - INTERVAL '30 days'
+  AND c.date <= CURRENT_DATE
+-- Add GROUP BY
+ORDER BY c.date DESC;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal solution</summary>
+
+```{.sql .interactive .cookbook}
+SELECT 
+    c.date,
+    c.day_of_week,
+    COUNT(o.order_id) AS order_count,
+    c.is_weekend
+FROM calendar c
+LEFT JOIN orders o 
+    ON c.date = o.order_date
+    AND o.status = 'completed'
+WHERE c.date >= CURRENT_DATE - INTERVAL '30 days'
+  AND c.date <= CURRENT_DATE
+GROUP BY c.date, c.day_of_week, c.is_weekend
+ORDER BY c.date DESC;
+```
+
+**Key insight:** By putting `o.status = 'completed'` in the JOIN condition (not WHERE), we ensure incomplete orders don't affect the zero-fill logic.
+
+</details>
+
+## Alternative Solution Without Calendar Table
+
+<details>
+<summary>Click to reveal alternative using GENERATE_SERIES</summary>
+
+If your database doesn't have a calendar table, you can generate dates on the fly:
+
+```{.sql .interactive .cookbook}
+WITH date_series AS (
+    SELECT 
+        DATE_TRUNC('day', d.date)::DATE AS date,
+        DAYNAME(d.date) AS day_of_week,
+        DAYOFWEEK(d.date) IN (0, 6) AS is_weekend
+    FROM (
+        SELECT CURRENT_DATE - INTERVAL (n) DAY AS date
+        FROM GENERATE_SERIES(0, 29) AS t(n)
+    ) d
+)
+SELECT 
+    ds.date,
+    ds.day_of_week,
+    COUNT(o.order_id) AS order_count,
+    ds.is_weekend
+FROM date_series ds
+LEFT JOIN orders o 
+    ON ds.date = o.order_date
+    AND o.status = 'completed'
+GROUP BY ds.date, ds.day_of_week, ds.is_weekend
+ORDER BY ds.date DESC;
+```
+
+</details>
+
+## Extensions
+
+1. **Weekly aggregation:** Roll up to week level with week-over-week comparison
+2. **Moving average:** Calculate 7-day moving average of orders
+3. **Status breakdown:** Show counts by order status (completed, pending, cancelled)
+4. **Weekday vs weekend:** Compare average orders on weekdays vs weekends
+5. **Year-over-year:** Compare order counts to same dates last year

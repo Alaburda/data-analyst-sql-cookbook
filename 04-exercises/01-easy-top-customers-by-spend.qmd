@@ -1,0 +1,160 @@
+---
+title: "[Easy] Top Customers by Total Spend"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Given `orders` and `order_items` tables, return customers ranked by their total spend across all completed orders.
+
+**Skills tested:** Joins, Aggregation, ORDER BY
+
+## Schema
+
+### customers
+```
+customer_id    INTEGER PRIMARY KEY
+first_name     VARCHAR
+last_name      VARCHAR
+customer_segment VARCHAR
+city           VARCHAR
+signup_date    DATE
+```
+
+### orders
+```
+order_id       INTEGER PRIMARY KEY
+customer_id    INTEGER (FK → customers)
+order_date     DATE
+status         VARCHAR  -- 'completed', 'pending', 'cancelled'
+```
+
+### order_items
+```
+order_item_id  INTEGER PRIMARY KEY
+order_id       INTEGER (FK → orders)
+product_id     INTEGER
+quantity       INTEGER
+unit_price     DECIMAL
+line_total     DECIMAL  -- quantity * unit_price
+```
+
+## Sample Data
+
+Explore the data:
+
+```{.sql .interactive .cookbook}
+-- View sample customers
+SELECT * FROM customers LIMIT 5;
+```
+
+```{.sql .interactive .cookbook}
+-- View sample orders
+SELECT * FROM orders LIMIT 5;
+```
+
+```{.sql .interactive .cookbook}
+-- View sample order items
+SELECT * FROM order_items LIMIT 5;
+```
+
+## Expected Output
+
+Your query should return:
+
+| customer_id | customer_name | total_spend | order_count | rank |
+|-------------|---------------|-------------|-------------|------|
+| 123         | John Smith    | 15,234.50   | 45          | 1    |
+| 456         | Jane Doe      | 12,890.25   | 38          | 2    |
+| ...         | ...           | ...         | ...         | ...  |
+
+## Requirements
+
+1. Only include completed orders (`status = 'completed'`)
+2. Calculate total spend by summing `line_total` from `order_items`
+3. Include the count of orders per customer
+4. Rank customers by total spend (highest first)
+5. Include customer's full name (concatenated)
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Start by joining the three tables:
+- `customers` → `orders` (on `customer_id`)
+- `orders` → `order_items` (on `order_id`)
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+Use `GROUP BY customer_id` and aggregate functions:
+- `SUM(line_total)` for total spend
+- `COUNT(DISTINCT order_id)` for order count
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+Use `ORDER BY` to sort by total spend in descending order. The row number in the result effectively acts as the rank.
+
+</details>
+
+## Solution Template
+
+Try to solve it yourself first! Here's a template to get you started:
+
+```{.sql .interactive .cookbook}
+-- Your solution here
+SELECT 
+    c.customer_id,
+    -- Add customer name
+    -- Add total spend
+    -- Add order count
+FROM customers c
+-- Add necessary joins
+WHERE -- Add filter for completed orders
+-- Add GROUP BY
+-- Add ORDER BY
+LIMIT 20;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal solution</summary>
+
+```{.sql .interactive .cookbook}
+SELECT 
+    c.customer_id,
+    c.first_name || ' ' || c.last_name AS customer_name,
+    ROUND(SUM(oi.line_total), 2) AS total_spend,
+    COUNT(DISTINCT o.order_id) AS order_count,
+    ROW_NUMBER() OVER (ORDER BY SUM(oi.line_total) DESC) AS rank
+FROM customers c
+INNER JOIN orders o ON c.customer_id = o.customer_id
+INNER JOIN order_items oi ON o.order_id = oi.order_id
+WHERE o.status = 'completed'
+GROUP BY c.customer_id, c.first_name, c.last_name
+ORDER BY total_spend DESC
+LIMIT 20;
+```
+
+</details>
+
+## Extensions
+
+Try these variations to deepen your understanding:
+
+1. **Filter by date range:** Only include orders from the last 12 months
+2. **Segment analysis:** Break down spend by customer segment
+3. **Top N per segment:** Find top 5 customers in each segment
+4. **Growth analysis:** Compare spend between two time periods
