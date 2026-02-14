@@ -1,0 +1,735 @@
+---
+title: "[Hard] Approximate Distinct Count and Heavy Hitters"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Implement approximate distinct counting (similar to HyperLogLog) and heavy-hitter detection (finding frequent items) using SQL techniques. Use sampling, bitmasks, and statistical methods to efficiently count distinct values and identify top-K most frequent items in large datasets.
+
+**Skills tested:** Approximate algorithms, Hashing, Sampling techniques, Bitmap operations, Statistical estimation, Count-Min Sketch concepts, Heavy-hitter algorithms
+
+## Schema
+
+### user_events
+```
+event_id       INTEGER
+user_id        INTEGER
+event_type     VARCHAR
+event_time     TIMESTAMP
+page_url       VARCHAR
+session_id     VARCHAR
+```
+
+### products
+```
+product_id     INTEGER
+product_name   VARCHAR
+category       VARCHAR
+price          DECIMAL
+```
+
+### order_items
+```
+order_item_id  INTEGER
+order_id       INTEGER
+product_id     INTEGER
+quantity       INTEGER
+unit_price     DECIMAL
+line_total     DECIMAL
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- Examine event distribution
+SELECT 
+    event_type,
+    COUNT(*) AS event_count,
+    COUNT(DISTINCT user_id) AS unique_users,
+    COUNT(DISTINCT DATE_TRUNC('day', event_time)) AS active_days
+FROM user_events
+WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+GROUP BY event_type
+ORDER BY event_count DESC;
+```
+
+## Expected Output
+
+### Approximate Distinct Count
+| method          | estimated_distinct | actual_distinct | error_pct | time_ms |
+|-----------------|-------------------|-----------------|-----------|---------|
+| Exact Count     | 15234             | 15234           | 0.00%     | 450     |
+| HLL Approx      | 15180             | 15234           | 0.35%     | 45      |
+| Sampling (10%)  | 15400             | 15234           | 1.09%     | 50      |
+| Linear Count    | 15290             | 15234           | 0.37%     | 80      |
+
+### Heavy Hitters
+| item        | exact_count | heavy_hitter_score | rank | frequency_pct |
+|-------------|-------------|-------------------|------|---------------|
+| Product_123 | 8542        | 8500              | 1    | 15.2%         |
+| Product_456 | 6234        | 6200              | 2    | 11.1%         |
+| Product_789 | 4521        | 4500              | 3    | 8.0%          |
+
+## Requirements
+
+1. **Approximate Distinct Count:**
+   - Implement sampling-based estimation
+   - Use hash-based cardinality estimation (Linear Counting)
+   - Compare accuracy vs performance tradeoffs
+   - Provide confidence intervals
+
+2. **Heavy Hitter Detection:**
+   - Find top-K most frequent items efficiently
+   - Implement frequency threshold detection
+   - Use space-efficient counting (Count-Min Sketch concept)
+   - Handle ties appropriately
+
+3. **Performance Optimization:**
+   - Demonstrate performance improvement over exact counts
+   - Use appropriate sampling rates
+   - Minimize memory usage for large datasets
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1: Hash-based sampling</summary>
+
+Use hash function to create consistent sample:
+```sql
+-- Sample ~10% of data deterministically
+SELECT user_id
+FROM user_events
+WHERE MOD(ABS(HASH(user_id)), 100) < 10
+```
+
+Then scale up the distinct count by the inverse of sample rate.
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2: Linear Counting approximation</summary>
+
+Linear Counting uses bitmap approach:
+```sql
+WITH hashed_values AS (
+    SELECT DISTINCT
+        MOD(ABS(HASH(user_id)), 1000000) AS hash_value
+    FROM user_events
+),
+bitmap_estimate AS (
+    SELECT 
+        COUNT(*) AS distinct_hashes,
+        1000000 AS bitmap_size
+    FROM hashed_values
+)
+SELECT 
+    -- Linear Counting formula: m * ln(m / V)
+    -- where m = bitmap size, V = empty buckets
+    ROUND(-1000000 * LN((1000000 - distinct_hashes) / 1000000.0)) AS estimated_distinct
+FROM bitmap_estimate
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3: Heavy hitters with aggregation</summary>
+
+Use multiple passes to find heavy hitters:
+```sql
+-- First pass: sample and find candidates
+WITH sample AS (
+    SELECT product_id
+    FROM order_items
+    WHERE MOD(ABS(HASH(order_item_id)), 10) = 0  -- 10% sample
+),
+candidates AS (
+    SELECT product_id, COUNT(*) * 10 AS est_count
+    FROM sample
+    GROUP BY product_id
+    HAVING COUNT(*) * 10 > 1000  -- Threshold
+)
+-- Second pass: exact count for candidates
+SELECT 
+    oi.product_id,
+    COUNT(*) AS exact_count
+FROM order_items oi
+WHERE oi.product_id IN (SELECT product_id FROM candidates)
+GROUP BY oi.product_id
+ORDER BY exact_count DESC
+LIMIT 10
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 4: Confidence intervals</summary>
+
+For sampling-based estimates, use standard error:
+```sql
+standard_error = sqrt(distinct_count * (1 - sample_rate) / sample_size)
+confidence_interval_95 = estimate ± 1.96 * standard_error
+```
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+-- Approximate distinct count using sampling
+WITH sampled_data AS (
+    SELECT user_id
+    FROM user_events
+    WHERE MOD(ABS(HASH(user_id)), 100) < 10  -- 10% sample
+),
+sample_distinct AS (
+    SELECT COUNT(DISTINCT user_id) AS sample_count
+    FROM sampled_data
+)
+SELECT 
+    sample_count,
+    -- Scale up by inverse sample rate
+    ROUND(sample_count * 10) AS estimated_total_distinct
+FROM sample_distinct;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal sampling-based approximate distinct</summary>
+
+```{.sql .interactive .cookbook}
+WITH sample_rates AS (
+    SELECT 1 AS rate, '1%' AS label
+    UNION ALL SELECT 5, '5%'
+    UNION ALL SELECT 10, '10%'
+    UNION ALL SELECT 25, '25%'
+),
+exact_count AS (
+    SELECT COUNT(DISTINCT user_id) AS actual_distinct
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+sampled_estimates AS (
+    SELECT 
+        sr.label AS sample_rate,
+        sr.rate,
+        COUNT(DISTINCT ue.user_id) * (100.0 / sr.rate) AS estimated_distinct,
+        COUNT(DISTINCT ue.user_id) AS sample_distinct_count
+    FROM sample_rates sr
+    CROSS JOIN user_events ue
+    WHERE MOD(ABS(HASH(ue.user_id)), 100) < sr.rate
+        AND ue.event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+    GROUP BY sr.label, sr.rate
+)
+SELECT 
+    se.sample_rate,
+    ROUND(se.estimated_distinct, 0) AS estimated_distinct,
+    ec.actual_distinct,
+    ROUND(100.0 * ABS(se.estimated_distinct - ec.actual_distinct) / ec.actual_distinct, 2) AS error_pct,
+    se.sample_distinct_count AS sample_size
+FROM sampled_estimates se
+CROSS JOIN exact_count ec
+ORDER BY se.rate;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal Linear Counting approximation</summary>
+
+```{.sql .interactive .cookbook}
+-- Linear Counting: more accurate for moderate cardinalities
+WITH hash_config AS (
+    SELECT 100000 AS bitmap_size  -- Adjust based on expected cardinality
+),
+hashed_users AS (
+    SELECT DISTINCT
+        MOD(ABS(HASH(user_id)), (SELECT bitmap_size FROM hash_config)) AS hash_bucket
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+bitmap_stats AS (
+    SELECT 
+        COUNT(*) AS occupied_buckets,
+        (SELECT bitmap_size FROM hash_config) AS total_buckets
+    FROM hashed_users
+),
+linear_count_estimate AS (
+    SELECT 
+        total_buckets,
+        occupied_buckets,
+        -- Linear Counting formula: -m * ln(V_n / m)
+        -- where m = bitmap size, V_n = empty buckets
+        ROUND(-total_buckets * LN((total_buckets - occupied_buckets) * 1.0 / total_buckets)) AS estimated_distinct
+    FROM bitmap_stats
+),
+exact_count AS (
+    SELECT COUNT(DISTINCT user_id) AS actual_distinct
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+)
+SELECT 
+    'Linear Counting' AS method,
+    lc.estimated_distinct,
+    ec.actual_distinct,
+    ROUND(100.0 * ABS(lc.estimated_distinct - ec.actual_distinct) / ec.actual_distinct, 2) AS error_pct,
+    lc.occupied_buckets || ' / ' || lc.total_buckets AS bitmap_usage
+FROM linear_count_estimate lc
+CROSS JOIN exact_count ec;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal HyperLogLog-inspired approximation</summary>
+
+```{.sql .interactive .cookbook}
+-- Simplified HyperLogLog concept using leading zeros in hash
+WITH hash_values AS (
+    SELECT 
+        user_id,
+        -- Get hash and count leading zeros (approximated with log)
+        ABS(HASH(user_id)) AS hash_val,
+        -- Use modulo to get "register" (bucket)
+        MOD(ABS(HASH(user_id)), 64) AS register_idx
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+leading_zeros AS (
+    SELECT 
+        register_idx,
+        -- Approximate leading zeros using bit length
+        -- Higher hash values suggest more distinct items
+        MAX(FLOOR(LOG2(hash_val + 1))) AS max_leading_bit
+    FROM hash_values
+    GROUP BY register_idx
+),
+hll_estimate AS (
+    SELECT 
+        -- HLL estimate: alpha * m^2 / sum(2^-M[j])
+        -- Simplified version using harmonic mean
+        ROUND(POW(2, AVG(max_leading_bit)) * 64 * 0.7213) AS estimated_distinct
+    FROM leading_zeros
+),
+exact_count AS (
+    SELECT COUNT(DISTINCT user_id) AS actual_distinct
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+)
+SELECT 
+    'HyperLogLog-like' AS method,
+    he.estimated_distinct,
+    ec.actual_distinct,
+    ROUND(100.0 * ABS(he.estimated_distinct - ec.actual_distinct) / ec.actual_distinct, 2) AS error_pct
+FROM hll_estimate he
+CROSS JOIN exact_count ec;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal heavy hitters with sampling</summary>
+
+```{.sql .interactive .cookbook}
+-- Two-pass algorithm: sample to find candidates, then exact count
+WITH sample_rate AS (
+    SELECT 10 AS rate  -- 10% sample
+),
+sampled_items AS (
+    SELECT 
+        oi.product_id,
+        COUNT(*) * (100.0 / (SELECT rate FROM sample_rate)) AS estimated_count
+    FROM order_items oi
+    WHERE MOD(ABS(HASH(oi.order_item_id)), 100) < (SELECT rate FROM sample_rate)
+    GROUP BY oi.product_id
+),
+candidates AS (
+    SELECT product_id
+    FROM sampled_items
+    WHERE estimated_count >= 100  -- Threshold for "heavy hitter"
+),
+exact_counts AS (
+    SELECT 
+        oi.product_id,
+        p.product_name,
+        COUNT(*) AS exact_count
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.product_id
+    WHERE oi.product_id IN (SELECT product_id FROM candidates)
+    GROUP BY oi.product_id, p.product_name
+),
+total_count AS (
+    SELECT COUNT(*) AS total FROM order_items
+)
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY ec.exact_count DESC) AS rank,
+    ec.product_id,
+    ec.product_name,
+    ec.exact_count,
+    si.estimated_count AS sample_estimate,
+    ROUND(100.0 * ec.exact_count / tc.total, 2) AS frequency_pct
+FROM exact_counts ec
+JOIN sampled_items si ON ec.product_id = si.product_id
+CROSS JOIN total_count tc
+ORDER BY ec.exact_count DESC
+LIMIT 20;
+```
+
+</details>
+
+## Count-Min Sketch Simulation
+
+<details>
+<summary>Click to reveal Count-Min Sketch concept</summary>
+
+```{.sql .interactive .cookbook}
+-- Simulate Count-Min Sketch using multiple hash functions
+WITH events AS (
+    SELECT 
+        product_id,
+        -- Create multiple hash values (simulating different hash functions)
+        MOD(ABS(HASH(product_id)), 1000) AS hash1,
+        MOD(ABS(HASH(product_id || 'salt1')), 1000) AS hash2,
+        MOD(ABS(HASH(product_id || 'salt2')), 1000) AS hash3,
+        MOD(ABS(HASH(product_id || 'salt3')), 1000) AS hash4
+    FROM order_items
+),
+sketch_counts AS (
+    -- Count occurrences in each "sketch row"
+    SELECT hash1 AS bucket, 1 AS sketch_row, COUNT(*) AS count FROM events GROUP BY hash1
+    UNION ALL
+    SELECT hash2, 2, COUNT(*) FROM events GROUP BY hash2
+    UNION ALL
+    SELECT hash3, 3, COUNT(*) FROM events GROUP BY hash3
+    UNION ALL
+    SELECT hash4, 4, COUNT(*) FROM events GROUP BY hash4
+),
+product_estimates AS (
+    SELECT DISTINCT
+        e.product_id,
+        -- Estimate is minimum across all sketch rows (reduces overcount)
+        LEAST(
+            (SELECT MIN(sc.count) FROM sketch_counts sc WHERE sc.bucket = e.hash1 AND sc.sketch_row = 1),
+            (SELECT MIN(sc.count) FROM sketch_counts sc WHERE sc.bucket = e.hash2 AND sc.sketch_row = 2),
+            (SELECT MIN(sc.count) FROM sketch_counts sc WHERE sc.bucket = e.hash3 AND sc.sketch_row = 3),
+            (SELECT MIN(sc.count) FROM sketch_counts sc WHERE sc.bucket = e.hash4 AND sc.sketch_row = 4)
+        ) AS estimated_count
+    FROM events e
+),
+exact_counts AS (
+    SELECT 
+        product_id,
+        COUNT(*) AS exact_count
+    FROM order_items
+    GROUP BY product_id
+)
+SELECT 
+    ec.product_id,
+    p.product_name,
+    ec.exact_count,
+    pe.estimated_count AS cms_estimate,
+    ABS(ec.exact_count - pe.estimated_count) AS error,
+    ROUND(100.0 * ABS(ec.exact_count - pe.estimated_count) / ec.exact_count, 2) AS error_pct
+FROM exact_counts ec
+JOIN product_estimates pe ON ec.product_id = pe.product_id
+JOIN products p ON ec.product_id = p.product_id
+WHERE ec.exact_count >= 50  -- Only show significant items
+ORDER BY ec.exact_count DESC
+LIMIT 20;
+```
+
+</details>
+
+## Misra-Gries Heavy Hitters
+
+<details>
+<summary>Click to reveal Misra-Gries algorithm concept</summary>
+
+```{.sql .interactive .cookbook}
+-- Misra-Gries: maintain top-k counters, decrement all when full
+-- This SQL version shows the concept with aggregation
+WITH item_counts AS (
+    SELECT 
+        product_id,
+        COUNT(*) AS frequency
+    FROM order_items
+    GROUP BY product_id
+),
+total_items AS (
+    SELECT COUNT(*) AS total FROM order_items
+),
+threshold_calc AS (
+    SELECT 
+        total * 1.0 / 100 AS threshold  -- Items appearing > 1% of time
+    FROM total_items
+),
+heavy_hitters AS (
+    SELECT 
+        ic.product_id,
+        p.product_name,
+        ic.frequency,
+        ROUND(100.0 * ic.frequency / ti.total, 2) AS frequency_pct,
+        tc.threshold
+    FROM item_counts ic
+    JOIN products p ON ic.product_id = p.product_id
+    CROSS JOIN total_items ti
+    CROSS JOIN threshold_calc tc
+    WHERE ic.frequency > tc.threshold
+)
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY frequency DESC) AS rank,
+    product_id,
+    product_name,
+    frequency,
+    frequency_pct || '%' AS percentage,
+    CASE 
+        WHEN frequency_pct >= 10 THEN 'Dominant'
+        WHEN frequency_pct >= 5 THEN 'Very Heavy'
+        WHEN frequency_pct >= 2 THEN 'Heavy'
+        ELSE 'Frequent'
+    END AS hitter_class
+FROM heavy_hitters
+ORDER BY frequency DESC;
+```
+
+</details>
+
+## Lossy Counting
+
+<details>
+<summary>Click to reveal Lossy Counting for streaming frequent items</summary>
+
+```{.sql .interactive .cookbook}
+-- Lossy Counting: divide stream into windows and track frequencies
+WITH window_size AS (
+    SELECT 1000 AS w  -- Window size parameter
+),
+windowed_events AS (
+    SELECT 
+        product_id,
+        FLOOR(ROW_NUMBER() OVER (ORDER BY order_item_id) / (SELECT w FROM window_size)) AS window_id
+    FROM order_items
+),
+window_counts AS (
+    SELECT 
+        product_id,
+        window_id,
+        COUNT(*) AS window_freq
+    FROM windowed_events
+    GROUP BY product_id, window_id
+),
+item_summary AS (
+    SELECT 
+        product_id,
+        SUM(window_freq) AS total_freq,
+        COUNT(DISTINCT window_id) AS windows_present,
+        MAX(window_id) AS max_window
+    FROM window_counts
+    GROUP BY product_id
+),
+support_threshold AS (
+    SELECT 
+        MAX(max_window) AS num_windows,
+        0.01 AS support  -- 1% minimum support
+    FROM item_summary
+),
+frequent_items AS (
+    SELECT 
+        i.product_id,
+        p.product_name,
+        i.total_freq,
+        i.windows_present,
+        st.num_windows,
+        ROUND(100.0 * i.total_freq / (st.num_windows * (SELECT w FROM window_size)), 2) AS estimated_support_pct
+    FROM item_summary i
+    JOIN products p ON i.product_id = p.product_id
+    CROSS JOIN support_threshold st
+    WHERE 100.0 * i.total_freq / (st.num_windows * (SELECT w FROM window_size)) >= st.support * 100
+)
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY total_freq DESC) AS rank,
+    product_id,
+    product_name,
+    total_freq AS frequency,
+    estimated_support_pct || '%' AS support,
+    windows_present || ' / ' || num_windows AS window_coverage
+FROM frequent_items
+ORDER BY total_freq DESC
+LIMIT 20;
+```
+
+</details>
+
+## Bloom Filter Simulation
+
+<details>
+<summary>Click to reveal Bloom filter membership testing</summary>
+
+```{.sql .interactive .cookbook}
+-- Bloom filter: probabilistic set membership
+-- Create filter from period 1, test against period 2
+WITH period1_users AS (
+    SELECT DISTINCT user_id
+    FROM user_events
+    WHERE event_time BETWEEN CURRENT_TIMESTAMP - INTERVAL '60 days' 
+                        AND CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+bloom_bits AS (
+    -- Create bloom filter bits using multiple hash functions
+    SELECT DISTINCT
+        MOD(ABS(HASH(user_id)), 10000) AS bit_pos
+    FROM period1_users
+    UNION
+    SELECT DISTINCT
+        MOD(ABS(HASH(user_id || 'h2')), 10000)
+    FROM period1_users
+    UNION
+    SELECT DISTINCT
+        MOD(ABS(HASH(user_id || 'h3')), 10000)
+    FROM period1_users
+),
+period2_users AS (
+    SELECT DISTINCT user_id
+    FROM user_events
+    WHERE event_time BETWEEN CURRENT_TIMESTAMP - INTERVAL '30 days' 
+                        AND CURRENT_TIMESTAMP
+),
+bloom_test AS (
+    SELECT 
+        p2.user_id,
+        -- Check if all hash bits are set (probable membership)
+        CASE WHEN 
+            MOD(ABS(HASH(p2.user_id)), 10000) IN (SELECT bit_pos FROM bloom_bits)
+            AND MOD(ABS(HASH(p2.user_id || 'h2')), 10000) IN (SELECT bit_pos FROM bloom_bits)
+            AND MOD(ABS(HASH(p2.user_id || 'h3')), 10000) IN (SELECT bit_pos FROM bloom_bits)
+        THEN 1 ELSE 0 END AS bloom_positive,
+        CASE WHEN p2.user_id IN (SELECT user_id FROM period1_users) 
+        THEN 1 ELSE 0 END AS actual_member
+    FROM period2_users p2
+)
+SELECT 
+    'Total users tested' AS metric,
+    COUNT(*) AS count
+FROM bloom_test
+UNION ALL
+SELECT 
+    'Bloom filter positives',
+    SUM(bloom_positive)
+FROM bloom_test
+UNION ALL
+SELECT 
+    'Actual members',
+    SUM(actual_member)
+FROM bloom_test
+UNION ALL
+SELECT 
+    'True positives',
+    SUM(CASE WHEN bloom_positive = 1 AND actual_member = 1 THEN 1 ELSE 0 END)
+FROM bloom_test
+UNION ALL
+SELECT 
+    'False positives',
+    SUM(CASE WHEN bloom_positive = 1 AND actual_member = 0 THEN 1 ELSE 0 END)
+FROM bloom_test
+UNION ALL
+SELECT 
+    'False positive rate (%)',
+    ROUND(100.0 * SUM(CASE WHEN bloom_positive = 1 AND actual_member = 0 THEN 1 ELSE 0 END) / 
+          NULLIF(SUM(CASE WHEN actual_member = 0 THEN 1 ELSE 0 END), 0), 2)
+FROM bloom_test;
+```
+
+</details>
+
+## Performance Comparison
+
+<details>
+<summary>Click to reveal method comparison table</summary>
+
+```{.sql .interactive .cookbook}
+-- Compare different approximation methods
+WITH methods AS (
+    SELECT 'Exact COUNT DISTINCT' AS method
+    UNION ALL SELECT 'Sampling (10%)'
+    UNION ALL SELECT 'Linear Counting'
+    UNION ALL SELECT 'Hash-based estimate'
+),
+exact_result AS (
+    SELECT 
+        'Exact COUNT DISTINCT' AS method,
+        COUNT(DISTINCT user_id) AS result
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+sample_result AS (
+    SELECT 
+        'Sampling (10%)' AS method,
+        COUNT(DISTINCT user_id) * 10 AS result
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+        AND MOD(ABS(HASH(user_id)), 100) < 10
+),
+linear_count AS (
+    SELECT 
+        'Linear Counting' AS method,
+        ROUND(-100000 * LN((100000 - COUNT(DISTINCT MOD(ABS(HASH(user_id)), 100000))) / 100000.0)) AS result
+    FROM user_events
+    WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+),
+hash_estimate AS (
+    SELECT 
+        'Hash-based estimate' AS method,
+        POW(2, AVG(FLOOR(LOG2(ABS(HASH(user_id)) + 1)))) * 64 AS result
+    FROM (
+        SELECT user_id, MOD(ABS(HASH(user_id)), 64) AS bucket
+        FROM user_events
+        WHERE event_time >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+    ) bucketed
+    GROUP BY bucket
+),
+all_results AS (
+    SELECT * FROM exact_result
+    UNION ALL SELECT * FROM sample_result
+    UNION ALL SELECT * FROM linear_count
+    UNION ALL SELECT * FROM hash_estimate
+)
+SELECT 
+    ar.method,
+    ROUND(ar.result, 0) AS estimated_distinct,
+    er.result AS actual_distinct,
+    ROUND(100.0 * ABS(ar.result - er.result) / er.result, 2) AS error_pct,
+    CASE 
+        WHEN ar.method = 'Exact COUNT DISTINCT' THEN 'Baseline'
+        WHEN ar.error_pct < 1 THEN 'Excellent'
+        WHEN ar.error_pct < 5 THEN 'Good'
+        WHEN ar.error_pct < 10 THEN 'Acceptable'
+        ELSE 'Poor'
+    END AS accuracy_rating
+FROM all_results ar
+CROSS JOIN exact_result er
+ORDER BY 
+    CASE 
+        WHEN ar.method = 'Exact COUNT DISTINCT' THEN 1
+        ELSE 2
+    END,
+    ar.error_pct;
+```
+
+</details>
+
+## Extensions
+
+1. **Adaptive sampling:** Dynamically adjust sample rate based on data distribution
+2. **MinHash for similarity:** Estimate Jaccard similarity between sets efficiently
+3. **Reservoir sampling:** Maintain fixed-size random sample from streaming data
+4. **T-digest:** Approximate percentiles and quantiles efficiently
+5. **Cardinality estimation cascade:** Use multiple estimators and pick best based on range
+6. **Distributed heavy hitters:** Combine sketches across partitions/shards
+7. **Time-decayed heavy hitters:** Weight recent items more heavily
+8. **Multi-dimensional heavy hitters:** Find frequent item combinations

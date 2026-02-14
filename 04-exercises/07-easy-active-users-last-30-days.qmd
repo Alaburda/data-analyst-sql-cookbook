@@ -1,0 +1,298 @@
+---
+title: "[Easy] Active Users in Last 30 Days"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Count distinct users who performed any event (order, support ticket, subscription change) in the last 30 days. This is a fundamental engagement metric.
+
+**Skills tested:** DISTINCT, Date filtering, UNION, Multiple table aggregation
+
+## Schema
+
+### orders
+```
+order_id       INTEGER
+customer_id    INTEGER
+order_date     DATE
+status         VARCHAR
+```
+
+### support_tickets
+```
+ticket_id      INTEGER
+customer_id    INTEGER
+created_date   DATE
+```
+
+### subscriptions
+```
+subscription_id  INTEGER
+customer_id      INTEGER
+valid_from       DATE
+valid_to         DATE
+status           VARCHAR
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- Check recent activity across all tables
+SELECT 'orders' AS source, COUNT(DISTINCT customer_id) AS active_users
+FROM orders
+WHERE order_date >= CURRENT_DATE - INTERVAL '30 days'
+UNION ALL
+SELECT 'support_tickets', COUNT(DISTINCT customer_id)
+FROM support_tickets
+WHERE created_date >= CURRENT_DATE - INTERVAL '30 days'
+UNION ALL
+SELECT 'subscriptions', COUNT(DISTINCT customer_id)
+FROM subscriptions
+WHERE valid_from >= CURRENT_DATE - INTERVAL '30 days';
+```
+
+## Expected Output
+
+### Simple Count:
+```
+active_users_30d
+----------------
+158
+```
+
+### Detailed Breakdown:
+| customer_id | first_name | last_name | last_activity_date | activity_type |
+|-------------|------------|-----------|-------------------|---------------|
+| 123         | John       | Smith     | 2024-01-20        | order         |
+| 124         | Jane       | Doe       | 2024-01-19        | support       |
+| 125         | Bob        | Wilson    | 2024-01-18        | subscription  |
+| ...         | ...        | ...       | ...               | ...           |
+
+## Requirements
+
+1. Count users active in the last 30 days
+2. Consider activity from multiple sources (orders, tickets, subscriptions)
+3. Use `DISTINCT` to count each user only once
+4. Handle date filtering correctly
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Combine customer IDs from all activity tables using UNION:
+```sql
+SELECT customer_id FROM orders WHERE order_date >= ...
+UNION
+SELECT customer_id FROM support_tickets WHERE created_date >= ...
+UNION
+SELECT customer_id FROM subscriptions WHERE valid_from >= ...
+```
+
+Note: `UNION` automatically removes duplicates, unlike `UNION ALL`.
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+Wrap the UNION in a CTE or subquery, then count distinct:
+```sql
+WITH active_users AS (
+    SELECT customer_id FROM ...
+    UNION
+    SELECT customer_id FROM ...
+)
+SELECT COUNT(DISTINCT customer_id) FROM active_users
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+Date filtering: Use `CURRENT_DATE - INTERVAL '30 days'` in DuckDB, or `DATE_SUB(CURRENT_DATE, INTERVAL 30 DAY)` in MySQL.
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+-- Count distinct active users
+WITH active_users AS (
+    SELECT customer_id 
+    FROM orders 
+    WHERE -- Add date filter
+    
+    UNION
+    
+    SELECT customer_id 
+    FROM support_tickets 
+    WHERE -- Add date filter
+    
+    UNION
+    
+    SELECT customer_id 
+    FROM subscriptions 
+    WHERE -- Add date filter
+)
+SELECT COUNT(DISTINCT customer_id) AS active_users_30d
+FROM active_users;
+```
+
+## Solutions
+
+<details>
+<summary>Click to reveal solution - Simple count</summary>
+
+```{.sql .interactive .cookbook}
+WITH active_users AS (
+    SELECT customer_id 
+    FROM orders 
+    WHERE order_date >= CURRENT_DATE - INTERVAL '30 days'
+    
+    UNION
+    
+    SELECT customer_id 
+    FROM support_tickets 
+    WHERE created_date >= CURRENT_DATE - INTERVAL '30 days'
+    
+    UNION
+    
+    SELECT customer_id 
+    FROM subscriptions 
+    WHERE valid_from >= CURRENT_DATE - INTERVAL '30 days'
+)
+SELECT COUNT(DISTINCT customer_id) AS active_users_30d
+FROM active_users;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal solution - With customer details</summary>
+
+```{.sql .interactive .cookbook}
+WITH active_users AS (
+    SELECT customer_id, order_date AS activity_date, 'order' AS activity_type
+    FROM orders 
+    WHERE order_date >= CURRENT_DATE - INTERVAL '30 days'
+    
+    UNION ALL
+    
+    SELECT customer_id, created_date, 'support_ticket'
+    FROM support_tickets 
+    WHERE created_date >= CURRENT_DATE - INTERVAL '30 days'
+    
+    UNION ALL
+    
+    SELECT customer_id, valid_from, 'new_subscription'
+    FROM subscriptions 
+    WHERE valid_from >= CURRENT_DATE - INTERVAL '30 days'
+),
+latest_activity AS (
+    SELECT 
+        customer_id,
+        MAX(activity_date) AS last_activity_date,
+        -- Get the activity type of the most recent activity
+        FIRST_VALUE(activity_type) OVER (
+            PARTITION BY customer_id 
+            ORDER BY activity_date DESC
+        ) AS activity_type
+    FROM active_users
+    GROUP BY customer_id, activity_type, activity_date
+)
+SELECT DISTINCT
+    la.customer_id,
+    c.first_name,
+    c.last_name,
+    la.last_activity_date,
+    la.activity_type
+FROM latest_activity la
+JOIN customers c ON la.customer_id = c.customer_id
+ORDER BY la.last_activity_date DESC
+LIMIT 20;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal solution - Activity breakdown</summary>
+
+```{.sql .interactive .cookbook}
+WITH active_users AS (
+    SELECT customer_id, 'order' AS source
+    FROM orders 
+    WHERE order_date >= CURRENT_DATE - INTERVAL '30 days'
+    
+    UNION ALL
+    
+    SELECT customer_id, 'support_ticket'
+    FROM support_tickets 
+    WHERE created_date >= CURRENT_DATE - INTERVAL '30 days'
+    
+    UNION ALL
+    
+    SELECT customer_id, 'subscription'
+    FROM subscriptions 
+    WHERE valid_from >= CURRENT_DATE - INTERVAL '30 days'
+)
+SELECT 
+    source,
+    COUNT(DISTINCT customer_id) AS active_users
+FROM active_users
+GROUP BY source
+UNION ALL
+SELECT 
+    'total (deduplicated)' AS source,
+    COUNT(DISTINCT customer_id)
+FROM active_users;
+```
+
+</details>
+
+## Alternative: Using EXISTS
+
+<details>
+<summary>Click to reveal EXISTS approach</summary>
+
+Instead of UNION, you can check if a customer has any activity:
+
+```{.sql .interactive .cookbook}
+SELECT COUNT(*) AS active_users_30d
+FROM customers c
+WHERE EXISTS (
+    SELECT 1 FROM orders o 
+    WHERE o.customer_id = c.customer_id 
+      AND o.order_date >= CURRENT_DATE - INTERVAL '30 days'
+)
+OR EXISTS (
+    SELECT 1 FROM support_tickets st 
+    WHERE st.customer_id = c.customer_id 
+      AND st.created_date >= CURRENT_DATE - INTERVAL '30 days'
+)
+OR EXISTS (
+    SELECT 1 FROM subscriptions s 
+    WHERE s.customer_id = c.customer_id 
+      AND s.valid_from >= CURRENT_DATE - INTERVAL '30 days'
+);
+```
+
+This approach can be more efficient in some databases.
+
+</details>
+
+## Extensions
+
+1. **Daily active users (DAU):** Change to last 24 hours
+2. **Monthly active users (MAU):** Extend to last month
+3. **Activity trends:** Calculate DAU/MAU for each of the last 12 months
+4. **Cohort analysis:** Break down by user signup month
+5. **Activity intensity:** Count users by number of activities (1, 2-5, 6-10, 11+)
+6. **Stickiness ratio:** Calculate DAU/MAU ratio (engagement metric)

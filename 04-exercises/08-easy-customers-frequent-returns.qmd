@@ -1,0 +1,259 @@
+---
+title: "[Easy] Customers with Frequent Returns"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Find customers whose return rate exceeds X% over their last Y orders. This helps identify customers who may need special attention or products with quality issues.
+
+**Skills tested:** Joins, Conditional aggregation, Filtering, Ratio calculations
+
+## Schema
+
+### customers
+```
+customer_id      INTEGER PRIMARY KEY
+first_name       VARCHAR
+last_name        VARCHAR
+customer_segment VARCHAR
+```
+
+### orders
+```
+order_id       INTEGER PRIMARY KEY
+customer_id    INTEGER (FK → customers)
+order_date     DATE
+status         VARCHAR  -- 'completed', 'returned', 'cancelled', 'pending'
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View sample order status distribution
+SELECT 
+    status,
+    COUNT(*) AS order_count,
+    ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 1) AS pct
+FROM orders
+GROUP BY status
+ORDER BY order_count DESC;
+```
+
+```{.sql .interactive .cookbook}
+-- Sample customer with their order statuses
+SELECT 
+    c.customer_id,
+    c.first_name || ' ' || c.last_name AS customer_name,
+    o.order_id,
+    o.order_date,
+    o.status
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+WHERE c.customer_id = 1
+ORDER BY o.order_date;
+```
+
+## Expected Output
+
+For customers with return rate > 20% over last 10 orders:
+
+| customer_id | customer_name | total_orders | returned_orders | return_rate_pct | last_order_date |
+|-------------|---------------|--------------|-----------------|-----------------|-----------------|
+| 45          | John Smith    | 10           | 4               | 40.0%           | 2024-01-15      |
+| 23          | Jane Doe      | 15           | 4               | 26.7%           | 2024-01-12      |
+| 67          | Bob Wilson    | 8            | 2               | 25.0%           | 2024-01-10      |
+| ...         | ...           | ...          | ...             | ...             | ...             |
+
+## Requirements
+
+1. Consider only each customer's last Y orders (e.g., 10)
+2. Calculate return rate as: `returned_orders / total_orders * 100`
+3. Filter for customers with return rate > X% (e.g., 20%)
+4. Show total orders, returned orders, and return percentage
+5. Exclude customers with too few orders (< Y orders)
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Use `ROW_NUMBER()` to identify the last Y orders per customer:
+```sql
+ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date DESC) AS order_recency
+```
+
+Then filter `WHERE order_recency <= Y`.
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+Use conditional aggregation to count returned orders:
+```sql
+SUM(CASE WHEN status = 'returned' THEN 1 ELSE 0 END) AS returned_orders
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+Calculate percentage with:
+```sql
+ROUND(100.0 * SUM(CASE WHEN status = 'returned' THEN 1 ELSE 0 END) / COUNT(*), 1)
+```
+
+Use `100.0` (not `100`) for floating-point division.
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+WITH recent_orders AS (
+    SELECT 
+        customer_id,
+        order_id,
+        order_date,
+        status,
+        -- Add ROW_NUMBER to identify last Y orders
+    FROM orders
+),
+customer_return_stats AS (
+    SELECT 
+        customer_id,
+        COUNT(*) AS total_orders,
+        -- Count returned orders
+        -- Calculate return rate
+        MAX(order_date) AS last_order_date
+    FROM recent_orders
+    WHERE -- Filter to last Y orders
+    GROUP BY customer_id
+)
+SELECT 
+    crs.customer_id,
+    c.first_name || ' ' || c.last_name AS customer_name,
+    crs.total_orders,
+    crs.returned_orders,
+    crs.return_rate_pct,
+    crs.last_order_date
+FROM customer_return_stats crs
+JOIN customers c ON crs.customer_id = c.customer_id
+WHERE -- Filter for high return rate and minimum order count
+ORDER BY crs.return_rate_pct DESC;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal solution</summary>
+
+```{.sql .interactive .cookbook}
+WITH recent_orders AS (
+    SELECT 
+        customer_id,
+        order_id,
+        order_date,
+        status,
+        ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date DESC) AS order_recency
+    FROM orders
+),
+customer_return_stats AS (
+    SELECT 
+        customer_id,
+        COUNT(*) AS total_orders,
+        SUM(CASE WHEN status = 'returned' THEN 1 ELSE 0 END) AS returned_orders,
+        ROUND(100.0 * SUM(CASE WHEN status = 'returned' THEN 1 ELSE 0 END) / COUNT(*), 1) AS return_rate_pct,
+        MAX(order_date) AS last_order_date
+    FROM recent_orders
+    WHERE order_recency <= 10  -- Last 10 orders
+    GROUP BY customer_id
+    HAVING COUNT(*) >= 5  -- Must have at least 5 orders for meaningful stats
+)
+SELECT 
+    crs.customer_id,
+    c.first_name || ' ' || c.last_name AS customer_name,
+    c.customer_segment,
+    crs.total_orders,
+    crs.returned_orders,
+    crs.return_rate_pct,
+    crs.last_order_date
+FROM customer_return_stats crs
+JOIN customers c ON crs.customer_id = c.customer_id
+WHERE crs.return_rate_pct > 20  -- Return rate threshold
+ORDER BY crs.return_rate_pct DESC, crs.returned_orders DESC
+LIMIT 20;
+```
+
+</details>
+
+## Alternative: All-Time Return Rate
+
+<details>
+<summary>Click to reveal solution for all-time statistics</summary>
+
+If you want to analyze all orders (not just recent Y):
+
+```{.sql .interactive .cookbook}
+SELECT 
+    c.customer_id,
+    c.first_name || ' ' || c.last_name AS customer_name,
+    c.customer_segment,
+    COUNT(o.order_id) AS total_orders,
+    SUM(CASE WHEN o.status = 'returned' THEN 1 ELSE 0 END) AS returned_orders,
+    SUM(CASE WHEN o.status = 'completed' THEN 1 ELSE 0 END) AS completed_orders,
+    ROUND(100.0 * SUM(CASE WHEN o.status = 'returned' THEN 1 ELSE 0 END) / COUNT(*), 1) AS return_rate_pct,
+    MAX(o.order_date) AS last_order_date
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id, c.first_name, c.last_name, c.customer_segment
+HAVING COUNT(o.order_id) >= 5
+   AND ROUND(100.0 * SUM(CASE WHEN o.status = 'returned' THEN 1 ELSE 0 END) / COUNT(*), 1) > 20
+ORDER BY return_rate_pct DESC
+LIMIT 20;
+```
+
+</details>
+
+## Product-Level Analysis
+
+<details>
+<summary>Click to reveal product return rate analysis</summary>
+
+Find products with high return rates:
+
+```{.sql .interactive .cookbook}
+SELECT 
+    p.product_id,
+    p.product_name,
+    p.category,
+    COUNT(DISTINCT o.order_id) AS times_ordered,
+    SUM(CASE WHEN o.status = 'returned' THEN 1 ELSE 0 END) AS returned_count,
+    ROUND(100.0 * SUM(CASE WHEN o.status = 'returned' THEN 1 ELSE 0 END) / COUNT(DISTINCT o.order_id), 1) AS return_rate_pct
+FROM products p
+JOIN order_items oi ON p.product_id = oi.product_id
+JOIN orders o ON oi.order_id = o.order_id
+GROUP BY p.product_id, p.product_name, p.category
+HAVING COUNT(DISTINCT o.order_id) >= 10  -- At least 10 orders
+   AND ROUND(100.0 * SUM(CASE WHEN o.status = 'returned' THEN 1 ELSE 0 END) / COUNT(DISTINCT o.order_id), 1) > 15
+ORDER BY return_rate_pct DESC
+LIMIT 20;
+```
+
+</details>
+
+## Extensions
+
+1. **Trend analysis:** Compare return rates across different time periods
+2. **Segment breakdown:** Analyze return rates by customer segment
+3. **Product correlation:** Find which products are most often returned together
+4. **Time to return:** Calculate average days between order and return
+5. **Return reasons:** If you have a returns table with reasons, analyze patterns
+6. **CLV impact:** Calculate how returns affect customer lifetime value

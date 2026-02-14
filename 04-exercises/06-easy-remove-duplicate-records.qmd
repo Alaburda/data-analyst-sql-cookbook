@@ -1,0 +1,245 @@
+---
+title: "[Easy] Remove Duplicate Records"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Detect and (conceptually) delete duplicate rows by business key, keeping only the row with the earliest/first ID. This is a common data cleaning task.
+
+**Skills tested:** Window functions, ROW_NUMBER(), Deduplication logic
+
+## Schema
+
+For this exercise, imagine we have a `customer_staging` table with duplicates:
+
+```
+id               INTEGER  -- System-generated ID
+customer_email   VARCHAR  -- Business key
+first_name       VARCHAR
+last_name        VARCHAR
+signup_date      DATE
+```
+
+## Sample Data
+
+Since we're working with a clean database, let's create a sample scenario with duplicates:
+
+```{.sql .interactive .cookbook}
+-- Create a sample table with duplicates
+CREATE TEMP TABLE customer_staging AS
+SELECT 1 AS id, 'john@email.com' AS customer_email, 'John' AS first_name, 'Smith' AS last_name, '2023-01-15'::DATE AS signup_date
+UNION ALL SELECT 2, 'john@email.com', 'John', 'Smith', '2023-01-15'::DATE
+UNION ALL SELECT 3, 'jane@email.com', 'Jane', 'Doe', '2023-02-20'::DATE
+UNION ALL SELECT 4, 'bob@email.com', 'Bob', 'Wilson', '2023-03-10'::DATE
+UNION ALL SELECT 5, 'bob@email.com', 'Bob', 'Wilson', '2023-03-10'::DATE
+UNION ALL SELECT 6, 'bob@email.com', 'Bob', 'Wilson', '2023-03-10'::DATE
+UNION ALL SELECT 7, 'alice@email.com', 'Alice', 'Brown', '2023-04-05'::DATE;
+
+SELECT * FROM customer_staging ORDER BY customer_email, id;
+```
+
+## Expected Output
+
+After deduplication, we should keep only the first occurrence:
+
+| id | customer_email | first_name | last_name | signup_date | row_num |
+|----|----------------|------------|-----------|-------------|---------|
+| 1  | john@email.com | John       | Smith     | 2023-01-15  | 1       |
+| 3  | jane@email.com | Jane       | Doe       | 2023-02-20  | 1       |
+| 4  | bob@email.com  | Bob        | Wilson    | 2023-03-10  | 1       |
+| 7  | alice@email.com| Alice      | Brown     | 2023-04-05  | 1       |
+
+## Requirements
+
+1. Identify duplicates based on `customer_email` (business key)
+2. Keep only the row with the smallest `id` for each email
+3. Show which rows would be kept vs deleted
+4. Handle cases where some rows are unique (no duplicates)
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Use `ROW_NUMBER()` window function partitioned by the business key:
+```sql
+ROW_NUMBER() OVER (PARTITION BY customer_email ORDER BY id) AS row_num
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+Rows with `row_num = 1` are the ones to keep. Rows with `row_num > 1` are duplicates to delete.
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+Wrap the window function in a CTE, then filter:
+```sql
+WITH numbered AS (
+    SELECT *, ROW_NUMBER() OVER (...) AS row_num
+    FROM customer_staging
+)
+SELECT * FROM numbered WHERE row_num = 1
+```
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+-- First, let's identify duplicates
+WITH numbered AS (
+    SELECT 
+        *,
+        -- Add ROW_NUMBER window function
+    FROM customer_staging
+)
+SELECT * 
+FROM numbered
+-- Show all rows with row numbers to see duplicates
+ORDER BY customer_email, id;
+```
+
+## Solutions
+
+<details>
+<summary>Click to reveal solution - Identify duplicates</summary>
+
+```{.sql .interactive .cookbook}
+-- Show all rows with their row numbers
+WITH numbered AS (
+    SELECT 
+        *,
+        ROW_NUMBER() OVER (PARTITION BY customer_email ORDER BY id) AS row_num
+    FROM customer_staging
+)
+SELECT 
+    id,
+    customer_email,
+    first_name,
+    last_name,
+    signup_date,
+    row_num,
+    CASE WHEN row_num = 1 THEN 'KEEP' ELSE 'DELETE' END AS action
+FROM numbered
+ORDER BY customer_email, id;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal solution - Keep only first occurrence</summary>
+
+```{.sql .interactive .cookbook}
+-- Keep only the first occurrence of each email
+WITH numbered AS (
+    SELECT 
+        *,
+        ROW_NUMBER() OVER (PARTITION BY customer_email ORDER BY id) AS row_num
+    FROM customer_staging
+)
+SELECT 
+    id,
+    customer_email,
+    first_name,
+    last_name,
+    signup_date
+FROM numbered
+WHERE row_num = 1
+ORDER BY id;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal actual DELETE statement</summary>
+
+In practice, you would delete duplicates like this:
+
+```sql
+-- Using a CTE with DELETE (PostgreSQL, DuckDB)
+WITH numbered AS (
+    SELECT 
+        id,
+        ROW_NUMBER() OVER (PARTITION BY customer_email ORDER BY id) AS row_num
+    FROM customer_staging
+)
+DELETE FROM customer_staging
+WHERE id IN (
+    SELECT id FROM numbered WHERE row_num > 1
+);
+```
+
+Or using a self-join:
+
+```sql
+DELETE FROM customer_staging cs1
+WHERE EXISTS (
+    SELECT 1 
+    FROM customer_staging cs2
+    WHERE cs2.customer_email = cs1.customer_email
+      AND cs2.id < cs1.id
+);
+```
+
+</details>
+
+## Alternative: Using DISTINCT ON (PostgreSQL/DuckDB)
+
+<details>
+<summary>Click to reveal DISTINCT ON approach</summary>
+
+DuckDB and PostgreSQL support `DISTINCT ON`:
+
+```{.sql .interactive .cookbook}
+-- Keep first occurrence using DISTINCT ON
+SELECT DISTINCT ON (customer_email)
+    id,
+    customer_email,
+    first_name,
+    last_name,
+    signup_date
+FROM customer_staging
+ORDER BY customer_email, id;
+```
+
+This is more concise but less portable across databases.
+
+</details>
+
+## Finding Statistics About Duplicates
+
+```{.sql .interactive .cookbook}
+-- How many duplicates do we have?
+WITH numbered AS (
+    SELECT 
+        customer_email,
+        ROW_NUMBER() OVER (PARTITION BY customer_email ORDER BY id) AS row_num
+    FROM customer_staging
+)
+SELECT 
+    COUNT(*) AS total_rows,
+    COUNT(DISTINCT customer_email) AS unique_emails,
+    COUNT(*) - COUNT(DISTINCT customer_email) AS duplicate_rows,
+    SUM(CASE WHEN row_num > 1 THEN 1 ELSE 0 END) AS rows_to_delete
+FROM numbered;
+```
+
+## Extensions
+
+1. **Composite keys:** Handle duplicates based on multiple columns (email + phone)
+2. **Keep latest instead:** Keep the row with the maximum ID (most recent)
+3. **Merge duplicates:** Combine information from duplicate rows before deleting
+4. **Fuzzy matching:** Detect near-duplicates (similar emails, slight name variations)
+5. **Audit trail:** Log which rows were deleted and when

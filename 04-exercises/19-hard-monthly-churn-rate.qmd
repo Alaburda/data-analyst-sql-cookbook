@@ -1,0 +1,581 @@
+---
+title: "[Hard] Monthly Churn Rate and Cohort Analysis"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Calculate monthly churn rate using proper churn definition (churned = active in previous month but NOT active in current month), track cohort-level churn patterns, and compute both gross and net churn including reactivations.
+
+**Skills tested:** Advanced cohort analysis, Churn definitions, Lead/Lag functions, Complex date logic, Self-joins, Reactivation tracking
+
+## Schema
+
+### customers
+```
+customer_id    INTEGER
+email          VARCHAR
+first_name     VARCHAR
+last_name      VARCHAR
+created_date   DATE
+```
+
+### orders
+```
+order_id       INTEGER
+customer_id    INTEGER
+order_date     DATE
+status         VARCHAR
+```
+
+### order_items
+```
+order_item_id  INTEGER
+order_id       INTEGER
+product_id     INTEGER
+quantity       INTEGER
+unit_price     DECIMAL
+line_total     DECIMAL
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View customer activity patterns over recent months
+SELECT 
+    DATE_TRUNC('month', o.order_date) AS order_month,
+    COUNT(DISTINCT o.customer_id) AS active_customers,
+    COUNT(DISTINCT o.order_id) AS total_orders,
+    ROUND(SUM(oi.line_total), 2) AS total_revenue
+FROM orders o
+JOIN order_items oi ON o.order_id = oi.order_id
+WHERE o.status = 'completed'
+    AND o.order_date >= CURRENT_DATE - INTERVAL '12 months'
+GROUP BY order_month
+ORDER BY order_month DESC;
+```
+
+## Expected Output
+
+### Churn Analysis Table
+| month      | active_customers | churned_customers | churn_rate | reactivated | net_churn_rate |
+|------------|------------------|-------------------|------------|-------------|----------------|
+| 2024-03    | 1250             | 180               | 14.4%      | 45          | 10.8%          |
+| 2024-02    | 1320             | 165               | 12.5%      | 38          | 9.6%           |
+| 2024-01    | 1385             | 195               | 14.1%      | 52          | 10.3%          |
+
+### Cohort Churn Table
+| cohort_month | month_1_churn | month_2_churn | month_3_churn | month_6_churn |
+|--------------|---------------|---------------|---------------|---------------|
+| 2023-10      | 18.5%         | 28.3%         | 35.2%         | 48.7%         |
+| 2023-09      | 20.1%         | 30.5%         | 37.8%         | 51.2%         |
+
+## Requirements
+
+1. Calculate month-over-month churn rate: % of previous month's active customers who did NOT make a purchase this month
+2. Track churned customers, reactivated customers (returned after churning), and net churn
+3. Build cohort-level cumulative churn rates (what % of original cohort has churned by month N)
+4. Calculate revenue churn rate (MRR lost from churned customers)
+5. Only include completed orders
+6. Handle edge cases: first-time vs returning customers, one-time purchasers
+7. Analyze last 12 months of data
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Create a list of all months and all customers who were ever active:
+```sql
+WITH all_months AS (
+    SELECT DISTINCT DATE_TRUNC('month', order_date) AS month
+    FROM orders
+    WHERE order_date >= CURRENT_DATE - INTERVAL '12 months'
+),
+customer_months AS (
+    SELECT DISTINCT 
+        DATE_TRUNC('month', o.order_date) AS month,
+        o.customer_id
+    FROM orders o
+    WHERE o.status = 'completed'
+)
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+Use LEAD/LAG to identify month-over-month activity changes:
+```sql
+LAG(was_active) OVER (PARTITION BY customer_id ORDER BY month) AS was_active_prev_month
+```
+
+Then define churn as: `was_active_prev_month = 1 AND was_active_current_month = 0`
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+For cohort analysis, track first purchase month and compute cumulative churn:
+```sql
+WITH first_purchases AS (
+    SELECT 
+        customer_id,
+        MIN(DATE_TRUNC('month', order_date)) AS cohort_month
+    FROM orders
+    WHERE status = 'completed'
+    GROUP BY customer_id
+)
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 4</summary>
+
+Reactivation = customer was inactive for at least one month, then became active again:
+```sql
+CASE 
+    WHEN prev_active = 0 AND current_active = 1 
+         AND has_earlier_activity = 1 
+    THEN 1 ELSE 0 
+END AS is_reactivation
+```
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+WITH monthly_activity AS (
+    SELECT DISTINCT
+        DATE_TRUNC('month', order_date) AS month,
+        customer_id,
+        1 AS was_active
+    FROM orders
+    WHERE status = 'completed'
+        AND order_date >= CURRENT_DATE - INTERVAL '13 months'
+),
+all_months AS (
+    SELECT DISTINCT month FROM monthly_activity
+),
+customer_timeline AS (
+    SELECT 
+        m.month,
+        c.customer_id,
+        COALESCE(ma.was_active, 0) AS is_active,
+        LAG(COALESCE(ma.was_active, 0)) OVER (
+            PARTITION BY c.customer_id ORDER BY m.month
+        ) AS was_active_prev_month
+    FROM (SELECT DISTINCT customer_id FROM monthly_activity) c
+    CROSS JOIN all_months m
+    LEFT JOIN monthly_activity ma 
+        ON c.customer_id = ma.customer_id AND m.month = ma.month
+)
+SELECT 
+    month,
+    SUM(is_active) AS active_customers,
+    -- Calculate churned (was active last month, not active this month)
+    -- Calculate churn rate
+FROM customer_timeline
+WHERE month >= CURRENT_DATE - INTERVAL '12 months'
+GROUP BY month
+ORDER BY month DESC;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal basic churn rate solution</summary>
+
+```{.sql .interactive .cookbook}
+WITH monthly_activity AS (
+    SELECT DISTINCT
+        DATE_TRUNC('month', order_date) AS month,
+        customer_id,
+        1 AS was_active
+    FROM orders
+    WHERE status = 'completed'
+        AND order_date >= CURRENT_DATE - INTERVAL '13 months'
+),
+all_months AS (
+    SELECT DISTINCT month FROM monthly_activity
+),
+customer_timeline AS (
+    SELECT 
+        m.month,
+        c.customer_id,
+        COALESCE(ma.was_active, 0) AS is_active,
+        LAG(COALESCE(ma.was_active, 0)) OVER (
+            PARTITION BY c.customer_id ORDER BY m.month
+        ) AS was_active_prev_month
+    FROM (SELECT DISTINCT customer_id FROM monthly_activity) c
+    CROSS JOIN all_months m
+    LEFT JOIN monthly_activity ma 
+        ON c.customer_id = ma.customer_id AND m.month = ma.month
+),
+churn_calc AS (
+    SELECT 
+        month,
+        SUM(is_active) AS active_customers,
+        SUM(CASE 
+            WHEN was_active_prev_month = 1 AND is_active = 0 
+            THEN 1 ELSE 0 
+        END) AS churned_customers,
+        SUM(was_active_prev_month) AS prev_month_active
+    FROM customer_timeline
+    WHERE month >= CURRENT_DATE - INTERVAL '12 months'
+    GROUP BY month
+)
+SELECT 
+    month,
+    active_customers,
+    churned_customers,
+    prev_month_active,
+    ROUND(100.0 * churned_customers / NULLIF(prev_month_active, 0), 2) AS churn_rate_pct
+FROM churn_calc
+ORDER BY month DESC;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal churn with reactivations</summary>
+
+```{.sql .interactive .cookbook}
+WITH monthly_activity AS (
+    SELECT DISTINCT
+        DATE_TRUNC('month', order_date) AS month,
+        customer_id
+    FROM orders
+    WHERE status = 'completed'
+        AND order_date >= CURRENT_DATE - INTERVAL '13 months'
+),
+all_months AS (
+    SELECT DISTINCT month FROM monthly_activity
+),
+customer_timeline AS (
+    SELECT 
+        m.month,
+        c.customer_id,
+        CASE WHEN ma.customer_id IS NOT NULL THEN 1 ELSE 0 END AS is_active,
+        LAG(CASE WHEN ma.customer_id IS NOT NULL THEN 1 ELSE 0 END, 1, 0) OVER (
+            PARTITION BY c.customer_id ORDER BY m.month
+        ) AS was_active_prev_month,
+        MIN(ma.month) OVER (PARTITION BY c.customer_id) AS first_active_month
+    FROM (SELECT DISTINCT customer_id FROM monthly_activity) c
+    CROSS JOIN all_months m
+    LEFT JOIN monthly_activity ma 
+        ON c.customer_id = ma.customer_id AND m.month = ma.month
+),
+customer_states AS (
+    SELECT 
+        month,
+        customer_id,
+        is_active,
+        was_active_prev_month,
+        first_active_month,
+        CASE 
+            WHEN was_active_prev_month = 1 AND is_active = 0 
+            THEN 1 ELSE 0 
+        END AS is_churned,
+        CASE 
+            WHEN was_active_prev_month = 0 AND is_active = 1 
+                 AND month > first_active_month
+            THEN 1 ELSE 0 
+        END AS is_reactivated
+    FROM customer_timeline
+    WHERE month >= CURRENT_DATE - INTERVAL '12 months'
+)
+SELECT 
+    month,
+    SUM(is_active) AS active_customers,
+    SUM(is_churned) AS churned_customers,
+    SUM(is_reactivated) AS reactivated_customers,
+    SUM(was_active_prev_month) AS prev_month_active,
+    ROUND(100.0 * SUM(is_churned) / NULLIF(SUM(was_active_prev_month), 0), 2) AS gross_churn_rate,
+    ROUND(100.0 * (SUM(is_churned) - SUM(is_reactivated)) / NULLIF(SUM(was_active_prev_month), 0), 2) AS net_churn_rate
+FROM customer_states
+GROUP BY month
+ORDER BY month DESC;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal cohort-level churn analysis</summary>
+
+```{.sql .interactive .cookbook}
+WITH first_purchase AS (
+    SELECT 
+        customer_id,
+        MIN(DATE_TRUNC('month', order_date)) AS cohort_month
+    FROM orders
+    WHERE status = 'completed'
+    GROUP BY customer_id
+),
+monthly_activity AS (
+    SELECT DISTINCT
+        DATE_TRUNC('month', order_date) AS month,
+        customer_id
+    FROM orders
+    WHERE status = 'completed'
+        AND order_date >= CURRENT_DATE - INTERVAL '12 months'
+),
+cohort_sizes AS (
+    SELECT 
+        cohort_month,
+        COUNT(DISTINCT customer_id) AS cohort_size
+    FROM first_purchase
+    WHERE cohort_month >= CURRENT_DATE - INTERVAL '12 months'
+    GROUP BY cohort_month
+),
+cohort_activity AS (
+    SELECT 
+        fp.cohort_month,
+        fp.customer_id,
+        ma.month AS activity_month,
+        DATEDIFF('month', fp.cohort_month, ma.month) AS months_since_cohort
+    FROM first_purchase fp
+    LEFT JOIN monthly_activity ma ON fp.customer_id = ma.customer_id
+    WHERE fp.cohort_month >= CURRENT_DATE - INTERVAL '12 months'
+),
+active_by_month AS (
+    SELECT 
+        cohort_month,
+        months_since_cohort,
+        COUNT(DISTINCT customer_id) AS active_customers
+    FROM cohort_activity
+    WHERE activity_month IS NOT NULL
+    GROUP BY cohort_month, months_since_cohort
+)
+SELECT 
+    cs.cohort_month,
+    cs.cohort_size,
+    COALESCE(am0.active_customers, 0) AS month_0_active,
+    COALESCE(am1.active_customers, 0) AS month_1_active,
+    COALESCE(am2.active_customers, 0) AS month_2_active,
+    COALESCE(am3.active_customers, 0) AS month_3_active,
+    ROUND(100.0 * (cs.cohort_size - COALESCE(am1.active_customers, 0)) / cs.cohort_size, 1) AS month_1_churn_pct,
+    ROUND(100.0 * (cs.cohort_size - COALESCE(am2.active_customers, 0)) / cs.cohort_size, 1) AS month_2_churn_pct,
+    ROUND(100.0 * (cs.cohort_size - COALESCE(am3.active_customers, 0)) / cs.cohort_size, 1) AS month_3_churn_pct
+FROM cohort_sizes cs
+LEFT JOIN active_by_month am0 ON cs.cohort_month = am0.cohort_month AND am0.months_since_cohort = 0
+LEFT JOIN active_by_month am1 ON cs.cohort_month = am1.cohort_month AND am1.months_since_cohort = 1
+LEFT JOIN active_by_month am2 ON cs.cohort_month = am2.cohort_month AND am2.months_since_cohort = 2
+LEFT JOIN active_by_month am3 ON cs.cohort_month = am3.cohort_month AND am3.months_since_cohort = 3
+WHERE cs.cohort_size >= 10
+ORDER BY cs.cohort_month DESC;
+```
+
+</details>
+
+## Revenue Churn
+
+<details>
+<summary>Click to reveal MRR churn analysis</summary>
+
+Calculate revenue churn (Monthly Recurring Revenue lost from churned customers):
+
+```{.sql .interactive .cookbook}
+WITH monthly_revenue AS (
+    SELECT 
+        DATE_TRUNC('month', o.order_date) AS month,
+        o.customer_id,
+        SUM(oi.line_total) AS revenue
+    FROM orders o
+    JOIN order_items oi ON o.order_id = oi.order_id
+    WHERE o.status = 'completed'
+        AND o.order_date >= CURRENT_DATE - INTERVAL '13 months'
+    GROUP BY month, o.customer_id
+),
+all_months AS (
+    SELECT DISTINCT month FROM monthly_revenue
+),
+customer_revenue_timeline AS (
+    SELECT 
+        m.month,
+        c.customer_id,
+        COALESCE(mr.revenue, 0) AS revenue,
+        LAG(COALESCE(mr.revenue, 0)) OVER (
+            PARTITION BY c.customer_id ORDER BY m.month
+        ) AS prev_month_revenue
+    FROM (SELECT DISTINCT customer_id FROM monthly_revenue) c
+    CROSS JOIN all_months m
+    LEFT JOIN monthly_revenue mr 
+        ON c.customer_id = mr.customer_id AND m.month = mr.month
+),
+churn_revenue AS (
+    SELECT 
+        month,
+        SUM(revenue) AS current_month_revenue,
+        SUM(CASE 
+            WHEN prev_month_revenue > 0 AND revenue = 0 
+            THEN prev_month_revenue 
+            ELSE 0 
+        END) AS churned_revenue,
+        SUM(prev_month_revenue) AS prev_month_total_revenue
+    FROM customer_revenue_timeline
+    WHERE month >= CURRENT_DATE - INTERVAL '12 months'
+    GROUP BY month
+)
+SELECT 
+    cr.month,
+    ROUND(cr.current_month_revenue, 2) AS mrr,
+    ROUND(cr.churned_revenue, 2) AS churned_mrr,
+    ROUND(100.0 * cr.churned_revenue / NULLIF(cr.prev_month_total_revenue, 0), 2) AS revenue_churn_rate,
+    ROUND(cr.churned_revenue / NULLIF(
+        COUNT(CASE WHEN crt.prev_month_revenue > 0 AND crt.revenue = 0 THEN 1 END), 0
+    ), 2) AS avg_revenue_per_churned_customer
+FROM churn_revenue cr
+INNER JOIN customer_revenue_timeline crt ON crt.month = cr.month
+GROUP BY cr.month, cr.current_month_revenue, cr.churned_revenue, cr.prev_month_total_revenue
+ORDER BY cr.month DESC;
+```
+
+</details>
+
+## Quick Ratio
+
+<details>
+<summary>Click to reveal quick ratio (growth efficiency)</summary>
+
+Quick Ratio = (New Customers + Reactivated) / Churned Customers. Higher is better.
+
+```{.sql .interactive .cookbook}
+WITH first_purchase AS (
+    SELECT 
+        customer_id,
+        MIN(DATE_TRUNC('month', order_date)) AS first_month
+    FROM orders
+    WHERE status = 'completed'
+    GROUP BY customer_id
+),
+monthly_activity AS (
+    SELECT DISTINCT
+        DATE_TRUNC('month', order_date) AS month,
+        customer_id
+    FROM orders
+    WHERE status = 'completed'
+        AND order_date >= CURRENT_DATE - INTERVAL '13 months'
+),
+all_months AS (
+    SELECT DISTINCT month FROM monthly_activity
+),
+customer_timeline AS (
+    SELECT 
+        m.month,
+        c.customer_id,
+        fp.first_month,
+        CASE WHEN ma.customer_id IS NOT NULL THEN 1 ELSE 0 END AS is_active,
+        LAG(CASE WHEN ma.customer_id IS NOT NULL THEN 1 ELSE 0 END, 1, 0) OVER (
+            PARTITION BY c.customer_id ORDER BY m.month
+        ) AS was_active_prev
+    FROM (SELECT DISTINCT customer_id FROM monthly_activity) c
+    CROSS JOIN all_months m
+    LEFT JOIN monthly_activity ma ON c.customer_id = ma.customer_id AND m.month = ma.month
+    JOIN first_purchase fp ON c.customer_id = fp.customer_id
+),
+customer_states AS (
+    SELECT 
+        month,
+        SUM(CASE WHEN is_active = 1 AND month = first_month THEN 1 ELSE 0 END) AS new_customers,
+        SUM(CASE WHEN was_active_prev = 1 AND is_active = 0 THEN 1 ELSE 0 END) AS churned,
+        SUM(CASE WHEN was_active_prev = 0 AND is_active = 1 AND month > first_month THEN 1 ELSE 0 END) AS reactivated
+    FROM customer_timeline
+    WHERE month >= CURRENT_DATE - INTERVAL '12 months'
+    GROUP BY month
+)
+SELECT 
+    month,
+    new_customers,
+    reactivated,
+    churned,
+    ROUND((new_customers + reactivated) * 1.0 / NULLIF(churned, 0), 2) AS quick_ratio
+FROM customer_states
+ORDER BY month DESC;
+```
+
+</details>
+
+## Cohort Churn Curves
+
+<details>
+<summary>Click to reveal average churn curve across cohorts</summary>
+
+```{.sql .interactive .cookbook}
+WITH first_purchase AS (
+    SELECT 
+        customer_id,
+        MIN(DATE_TRUNC('month', order_date)) AS cohort_month
+    FROM orders
+    WHERE status = 'completed'
+    GROUP BY customer_id
+),
+monthly_activity AS (
+    SELECT DISTINCT
+        DATE_TRUNC('month', order_date) AS month,
+        customer_id
+    FROM orders
+    WHERE status = 'completed'
+),
+cohort_activity AS (
+    SELECT 
+        fp.cohort_month,
+        fp.customer_id,
+        ma.month,
+        DATEDIFF('month', fp.cohort_month, ma.month) AS months_since_cohort
+    FROM first_purchase fp
+    LEFT JOIN monthly_activity ma ON fp.customer_id = ma.customer_id
+    WHERE fp.cohort_month >= CURRENT_DATE - INTERVAL '12 months'
+        AND fp.cohort_month <= CURRENT_DATE - INTERVAL '6 months'
+),
+cohort_sizes AS (
+    SELECT 
+        cohort_month,
+        COUNT(DISTINCT customer_id) AS cohort_size
+    FROM first_purchase
+    WHERE cohort_month >= CURRENT_DATE - INTERVAL '12 months'
+        AND cohort_month <= CURRENT_DATE - INTERVAL '6 months'
+    GROUP BY cohort_month
+),
+retention_by_cohort AS (
+    SELECT 
+        ca.cohort_month,
+        ca.months_since_cohort,
+        COUNT(DISTINCT ca.customer_id) AS retained_customers,
+        cs.cohort_size
+    FROM cohort_activity ca
+    JOIN cohort_sizes cs ON ca.cohort_month = cs.cohort_month
+    WHERE ca.month IS NOT NULL
+        AND ca.months_since_cohort BETWEEN 0 AND 6
+    GROUP BY ca.cohort_month, ca.months_since_cohort, cs.cohort_size
+)
+SELECT 
+    months_since_cohort,
+    ROUND(AVG(100.0 * (cohort_size - retained_customers) / cohort_size), 1) AS avg_churn_rate,
+    ROUND(MIN(100.0 * (cohort_size - retained_customers) / cohort_size), 1) AS min_churn_rate,
+    ROUND(MAX(100.0 * (cohort_size - retained_customers) / cohort_size), 1) AS max_churn_rate,
+    COUNT(DISTINCT cohort_month) AS cohort_count
+FROM retention_by_cohort
+GROUP BY months_since_cohort
+ORDER BY months_since_cohort;
+```
+
+</details>
+
+## Extensions
+
+1. **Predicted churn:** Use historical patterns to predict which active customers will churn next month
+2. **Churn reasons analysis:** Correlate churn with product categories, price points, or order frequency
+3. **Win-back campaigns:** Identify churned customers with highest likelihood to reactivate
+4. **Cohort comparison:** Compare churn rates across acquisition channels or customer segments
+5. **Seasonal churn patterns:** Detect if churn varies by season or time of year
+6. **Early churn indicators:** Find leading indicators in first 30/60/90 days that predict long-term churn

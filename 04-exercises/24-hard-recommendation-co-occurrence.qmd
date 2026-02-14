@@ -1,0 +1,831 @@
+---
+title: "[Hard] Recommendation-Style Co-occurrence with Significance"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Build a product recommendation engine by computing co-occurrence scores (products purchased together) with statistical significance measures. Implement multiple scoring methods: lift, Jaccard similarity, Pointwise Mutual Information (PMI), and confidence. Return top-K recommendations per product with proper filtering for statistical significance.
+
+**Skills tested:** Self-joins, Co-occurrence matrices, Statistical scoring, Recommendation algorithms, Association rules, Confidence intervals, Multiple scoring methods
+
+## Schema
+
+### orders
+```
+order_id       INTEGER
+customer_id    INTEGER
+order_date     DATE
+status         VARCHAR
+```
+
+### order_items
+```
+order_item_id  INTEGER
+order_id       INTEGER
+product_id     INTEGER
+quantity       INTEGER
+unit_price     DECIMAL
+line_total     DECIMAL
+```
+
+### products
+```
+product_id     INTEGER
+product_name   VARCHAR
+category       VARCHAR
+price          DECIMAL
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View co-purchase patterns
+SELECT 
+    oi1.product_id AS product_a,
+    oi2.product_id AS product_b,
+    COUNT(DISTINCT oi1.order_id) AS times_bought_together
+FROM order_items oi1
+JOIN order_items oi2 
+    ON oi1.order_id = oi2.order_id
+    AND oi1.product_id < oi2.product_id
+JOIN orders o ON oi1.order_id = o.order_id
+WHERE o.status = 'completed'
+GROUP BY oi1.product_id, oi2.product_id
+ORDER BY times_bought_together DESC
+LIMIT 20;
+```
+
+## Expected Output
+
+| product_id | product_name      | recommended_product_id | recommended_product | co_occurrences | lift_score | jaccard | pmi_score | confidence | recommendation_strength |
+|------------|-------------------|----------------------|-------------------|---------------|-----------|---------|-----------|-----------|------------------------|
+| 1234       | Laptop Pro        | 5678                 | Wireless Mouse     | 156           | 8.42      | 0.23    | 3.45      | 0.67      | Very Strong           |
+| 1234       | Laptop Pro        | 9012                 | Laptop Bag         | 142           | 7.89      | 0.21    | 3.28      | 0.61      | Strong                |
+| 1234       | Laptop Pro        | 3456                 | USB-C Hub          | 98            | 6.12      | 0.15    | 2.89      | 0.42      | Moderate              |
+
+## Requirements
+
+1. **Co-occurrence Counting:**
+   - Find all product pairs purchased together in same order
+   - Count how many times each pair co-occurs
+   - Handle symmetric relationships (A→B same as B→A)
+
+2. **Statistical Scoring Methods:**
+   - **Lift:** P(A,B) / (P(A) × P(B)) - measures how much more likely B is purchased with A vs alone
+   - **Jaccard Similarity:** |A ∩ B| / |A ∪ B| - proportion of shared orders
+   - **PMI (Pointwise Mutual Information):** log(P(A,B) / (P(A) × P(B))) - information theory measure
+   - **Confidence:** P(B|A) = P(A,B) / P(A) - probability of B given A
+   - **Support:** P(A,B) - absolute frequency
+
+3. **Filtering:**
+   - Minimum support threshold (e.g., co-occur at least 10 times)
+   - Minimum confidence threshold (e.g., 0.1 or 10%)
+   - Statistical significance (avoid spurious correlations)
+   - Same-category filtering options
+
+4. **Top-K Recommendations:**
+   - Return top K recommendations per product
+   - Sort by composite score or specific metric
+   - Handle ties appropriately
+   - Exclude trivial recommendations
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1: Product co-occurrence</summary>
+
+Self-join order_items on order_id:
+```sql
+SELECT 
+    oi1.product_id AS product_a,
+    oi2.product_id AS product_b,
+    COUNT(DISTINCT oi1.order_id) AS co_occurrence_count
+FROM order_items oi1
+JOIN order_items oi2 
+    ON oi1.order_id = oi2.order_id
+    AND oi1.product_id < oi2.product_id  -- Avoid duplicates and self-pairs
+GROUP BY oi1.product_id, oi2.product_id
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2: Calculate lift score</summary>
+
+```sql
+WITH product_orders AS (
+    SELECT 
+        product_id,
+        COUNT(DISTINCT order_id) AS product_order_count
+    FROM order_items
+    GROUP BY product_id
+),
+total_orders AS (
+    SELECT COUNT(DISTINCT order_id) AS total FROM orders WHERE status = 'completed'
+)
+SELECT 
+    co.product_a,
+    co.product_b,
+    co.co_occurrence_count,
+    -- Lift = P(A,B) / (P(A) * P(B))
+    (co.co_occurrence_count * 1.0 / t.total) / 
+    ((pa.product_order_count * 1.0 / t.total) * (pb.product_order_count * 1.0 / t.total)) AS lift
+FROM co_occurrences co
+JOIN product_orders pa ON co.product_a = pa.product_id
+JOIN product_orders pb ON co.product_b = pb.product_id
+CROSS JOIN total_orders t
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3: Jaccard similarity</summary>
+
+Jaccard = |A ∩ B| / |A ∪ B|
+```sql
+-- Intersection is co-occurrence count
+-- Union is: orders_with_A + orders_with_B - orders_with_both
+jaccard = co_occurrence_count * 1.0 / 
+          (orders_with_a + orders_with_b - co_occurrence_count)
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 4: Top-K per product</summary>
+
+Use ROW_NUMBER() with PARTITION BY:
+```sql
+WITH ranked_recommendations AS (
+    SELECT 
+        *,
+        ROW_NUMBER() OVER (
+            PARTITION BY product_a 
+            ORDER BY lift DESC, co_occurrence_count DESC
+        ) AS rank
+    FROM product_scores
+)
+SELECT *
+FROM ranked_recommendations
+WHERE rank <= 10  -- Top 10 per product
+```
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+WITH co_occurrences AS (
+    SELECT 
+        oi1.product_id AS product_a,
+        oi2.product_id AS product_b,
+        COUNT(DISTINCT oi1.order_id) AS co_count
+    FROM order_items oi1
+    JOIN order_items oi2 
+        ON oi1.order_id = oi2.order_id
+        AND oi1.product_id < oi2.product_id
+    JOIN orders o ON oi1.order_id = o.order_id
+    WHERE o.status = 'completed'
+    GROUP BY oi1.product_id, oi2.product_id
+    HAVING COUNT(DISTINCT oi1.order_id) >= 5  -- Minimum support
+),
+product_stats AS (
+    SELECT 
+        product_id,
+        COUNT(DISTINCT order_id) AS order_count
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.order_id
+    WHERE o.status = 'completed'
+    GROUP BY product_id
+)
+SELECT 
+    co.product_a,
+    co.product_b,
+    co.co_count,
+    -- Calculate lift
+FROM co_occurrences co
+JOIN product_stats pa ON co.product_a = pa.product_id
+JOIN product_stats pb ON co.product_b = pb.product_id
+ORDER BY co.product_a, co.co_count DESC;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal basic co-occurrence with lift</summary>
+
+```{.sql .interactive .cookbook}
+WITH completed_orders AS (
+    SELECT order_id
+    FROM orders
+    WHERE status = 'completed'
+),
+co_occurrences AS (
+    SELECT 
+        oi1.product_id AS product_a,
+        oi2.product_id AS product_b,
+        COUNT(DISTINCT oi1.order_id) AS co_occurrence_count
+    FROM order_items oi1
+    JOIN order_items oi2 
+        ON oi1.order_id = oi2.order_id
+        AND oi1.product_id != oi2.product_id
+    WHERE oi1.order_id IN (SELECT order_id FROM completed_orders)
+    GROUP BY oi1.product_id, oi2.product_id
+    HAVING COUNT(DISTINCT oi1.order_id) >= 10  -- Minimum support
+),
+product_stats AS (
+    SELECT 
+        product_id,
+        COUNT(DISTINCT order_id) AS order_count
+    FROM order_items
+    WHERE order_id IN (SELECT order_id FROM completed_orders)
+    GROUP BY product_id
+),
+total_orders AS (
+    SELECT COUNT(*) AS total FROM completed_orders
+),
+lift_scores AS (
+    SELECT 
+        co.product_a,
+        co.product_b,
+        co.co_occurrence_count,
+        pa.order_count AS product_a_orders,
+        pb.order_count AS product_b_orders,
+        t.total AS total_orders,
+        -- Lift = P(A,B) / (P(A) * P(B))
+        ROUND(
+            (co.co_occurrence_count * 1.0 / t.total) / 
+            ((pa.order_count * 1.0 / t.total) * (pb.order_count * 1.0 / t.total)),
+            2
+        ) AS lift_score,
+        -- Confidence = P(B|A) = P(A,B) / P(A)
+        ROUND(co.co_occurrence_count * 1.0 / pa.order_count, 3) AS confidence
+    FROM co_occurrences co
+    JOIN product_stats pa ON co.product_a = pa.product_id
+    JOIN product_stats pb ON co.product_b = pb.product_id
+    CROSS JOIN total_orders t
+)
+SELECT 
+    ls.product_a,
+    pa.product_name AS product_a_name,
+    ls.product_b,
+    pb.product_name AS product_b_name,
+    ls.co_occurrence_count,
+    ls.lift_score,
+    ls.confidence
+FROM lift_scores ls
+JOIN products pa ON ls.product_a = pa.product_id
+JOIN products pb ON ls.product_b = pb.product_id
+WHERE ls.lift_score > 1.5  -- Only meaningful associations
+ORDER BY ls.product_a, ls.lift_score DESC
+LIMIT 50;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal multi-metric scoring</summary>
+
+```{.sql .interactive .cookbook}
+WITH completed_orders AS (
+    SELECT order_id FROM orders WHERE status = 'completed'
+),
+co_occurrences AS (
+    SELECT 
+        oi1.product_id AS product_a,
+        oi2.product_id AS product_b,
+        COUNT(DISTINCT oi1.order_id) AS co_count
+    FROM order_items oi1
+    JOIN order_items oi2 
+        ON oi1.order_id = oi2.order_id
+        AND oi1.product_id != oi2.product_id
+    WHERE oi1.order_id IN (SELECT order_id FROM completed_orders)
+    GROUP BY oi1.product_id, oi2.product_id
+),
+product_stats AS (
+    SELECT 
+        product_id,
+        COUNT(DISTINCT order_id) AS order_count
+    FROM order_items
+    WHERE order_id IN (SELECT order_id FROM completed_orders)
+    GROUP BY product_id
+),
+total_orders AS (
+    SELECT COUNT(*) AS total FROM completed_orders
+),
+all_scores AS (
+    SELECT 
+        co.product_a,
+        co.product_b,
+        co.co_count,
+        pa.order_count AS a_orders,
+        pb.order_count AS b_orders,
+        t.total AS total_orders,
+        -- Support
+        ROUND(co.co_count * 1.0 / t.total, 4) AS support,
+        -- Confidence: P(B|A)
+        ROUND(co.co_count * 1.0 / pa.order_count, 3) AS confidence,
+        -- Lift
+        ROUND(
+            (co.co_count * 1.0 / t.total) / 
+            ((pa.order_count * 1.0 / t.total) * (pb.order_count * 1.0 / t.total)),
+            2
+        ) AS lift,
+        -- Jaccard: intersection / union
+        ROUND(
+            co.co_count * 1.0 / 
+            (pa.order_count + pb.order_count - co.co_count),
+            3
+        ) AS jaccard,
+        -- PMI: log(P(A,B) / (P(A) * P(B)))
+        ROUND(
+            LOG(
+                (co.co_count * 1.0 / t.total) / 
+                ((pa.order_count * 1.0 / t.total) * (pb.order_count * 1.0 / t.total))
+            ),
+            2
+        ) AS pmi
+    FROM co_occurrences co
+    JOIN product_stats pa ON co.product_a = pa.product_id
+    JOIN product_stats pb ON co.product_b = pb.product_id
+    CROSS JOIN total_orders t
+    WHERE co.co_count >= 10  -- Minimum support threshold
+)
+SELECT 
+    s.product_a,
+    pa.product_name AS product_name,
+    s.product_b AS recommended_product_id,
+    pb.product_name AS recommended_product,
+    s.co_count AS co_occurrences,
+    s.support,
+    s.confidence,
+    s.lift,
+    s.jaccard,
+    s.pmi,
+    CASE 
+        WHEN s.lift >= 10 AND s.confidence >= 0.3 THEN 'Very Strong'
+        WHEN s.lift >= 5 AND s.confidence >= 0.2 THEN 'Strong'
+        WHEN s.lift >= 3 AND s.confidence >= 0.1 THEN 'Moderate'
+        WHEN s.lift >= 2 THEN 'Weak'
+        ELSE 'Very Weak'
+    END AS recommendation_strength
+FROM all_scores s
+JOIN products pa ON s.product_a = pa.product_id
+JOIN products pb ON s.product_b = pb.product_id
+WHERE s.lift > 1.5  -- Filter for meaningful associations
+    AND s.confidence >= 0.05  -- At least 5% confidence
+ORDER BY s.product_a, s.lift DESC, s.confidence DESC
+LIMIT 100;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal top-K recommendations per product</summary>
+
+```{.sql .interactive .cookbook}
+WITH completed_orders AS (
+    SELECT order_id FROM orders WHERE status = 'completed'
+),
+co_occurrences AS (
+    SELECT 
+        oi1.product_id AS product_a,
+        oi2.product_id AS product_b,
+        COUNT(DISTINCT oi1.order_id) AS co_count
+    FROM order_items oi1
+    JOIN order_items oi2 
+        ON oi1.order_id = oi2.order_id
+        AND oi1.product_id != oi2.product_id
+    WHERE oi1.order_id IN (SELECT order_id FROM completed_orders)
+    GROUP BY oi1.product_id, oi2.product_id
+    HAVING COUNT(DISTINCT oi1.order_id) >= 5
+),
+product_stats AS (
+    SELECT 
+        product_id,
+        COUNT(DISTINCT order_id) AS order_count
+    FROM order_items
+    WHERE order_id IN (SELECT order_id FROM completed_orders)
+    GROUP BY product_id
+),
+total_orders AS (
+    SELECT COUNT(*) AS total FROM completed_orders
+),
+recommendation_scores AS (
+    SELECT 
+        co.product_a,
+        co.product_b,
+        co.co_count,
+        ROUND(co.co_count * 1.0 / pa.order_count, 3) AS confidence,
+        ROUND(
+            (co.co_count * 1.0 / t.total) / 
+            ((pa.order_count * 1.0 / t.total) * (pb.order_count * 1.0 / t.total)),
+            2
+        ) AS lift,
+        -- Composite score (weighted combination)
+        ROUND(
+            0.5 * (co.co_count * 1.0 / pa.order_count) +  -- Confidence weight
+            0.3 * ((co.co_count * 1.0 / t.total) / 
+                   ((pa.order_count * 1.0 / t.total) * (pb.order_count * 1.0 / t.total))) / 10 +  -- Normalized lift
+            0.2 * (co.co_count * 1.0 / 100),  -- Support weight
+            4
+        ) AS composite_score
+    FROM co_occurrences co
+    JOIN product_stats pa ON co.product_a = pa.product_id
+    JOIN product_stats pb ON co.product_b = pb.product_id
+    CROSS JOIN total_orders t
+),
+ranked_recommendations AS (
+    SELECT 
+        product_a,
+        product_b,
+        co_count,
+        confidence,
+        lift,
+        composite_score,
+        ROW_NUMBER() OVER (
+            PARTITION BY product_a 
+            ORDER BY composite_score DESC, lift DESC, co_count DESC
+        ) AS recommendation_rank
+    FROM recommendation_scores
+    WHERE lift > 1.0  -- Only positive associations
+)
+SELECT 
+    rr.recommendation_rank AS rank,
+    rr.product_a AS product_id,
+    pa.product_name,
+    pa.category AS product_category,
+    rr.product_b AS recommended_product_id,
+    pb.product_name AS recommended_product,
+    pb.category AS recommended_category,
+    rr.co_count AS times_bought_together,
+    rr.confidence,
+    rr.lift,
+    rr.composite_score
+FROM ranked_recommendations rr
+JOIN products pa ON rr.product_a = pa.product_id
+JOIN products pb ON rr.product_b = pb.product_id
+WHERE rr.recommendation_rank <= 5  -- Top 5 per product
+ORDER BY rr.product_a, rr.recommendation_rank;
+```
+
+</details>
+
+## Category-Aware Recommendations
+
+<details>
+<summary>Click to reveal cross-category recommendations</summary>
+
+```{.sql .interactive .cookbook}
+WITH completed_orders AS (
+    SELECT order_id FROM orders WHERE status = 'completed'
+),
+co_occurrences AS (
+    SELECT 
+        oi1.product_id AS product_a,
+        oi2.product_id AS product_b,
+        COUNT(DISTINCT oi1.order_id) AS co_count
+    FROM order_items oi1
+    JOIN order_items oi2 
+        ON oi1.order_id = oi2.order_id
+        AND oi1.product_id != oi2.product_id
+    WHERE oi1.order_id IN (SELECT order_id FROM completed_orders)
+    GROUP BY oi1.product_id, oi2.product_id
+    HAVING COUNT(DISTINCT oi1.order_id) >= 5
+),
+product_stats AS (
+    SELECT 
+        product_id,
+        COUNT(DISTINCT order_id) AS order_count
+    FROM order_items
+    WHERE order_id IN (SELECT order_id FROM completed_orders)
+    GROUP BY product_id
+),
+total_orders AS (
+    SELECT COUNT(*) AS total FROM completed_orders
+),
+category_scores AS (
+    SELECT 
+        co.product_a,
+        pa.category AS category_a,
+        co.product_b,
+        pb.category AS category_b,
+        co.co_count,
+        ROUND(
+            (co.co_count * 1.0 / t.total) / 
+            ((psa.order_count * 1.0 / t.total) * (psb.order_count * 1.0 / t.total)),
+            2
+        ) AS lift,
+        CASE 
+            WHEN pa.category = pb.category THEN 'same_category'
+            ELSE 'cross_category'
+        END AS recommendation_type
+    FROM co_occurrences co
+    JOIN products pa ON co.product_a = pa.product_id
+    JOIN products pb ON co.product_b = pb.product_id
+    JOIN product_stats psa ON co.product_a = psa.product_id
+    JOIN product_stats psb ON co.product_b = psb.product_id
+    CROSS JOIN total_orders t
+),
+ranked_by_type AS (
+    SELECT 
+        *,
+        ROW_NUMBER() OVER (
+            PARTITION BY product_a, recommendation_type 
+            ORDER BY lift DESC, co_count DESC
+        ) AS rank_within_type
+    FROM category_scores
+    WHERE lift > 1.5
+)
+SELECT 
+    product_a,
+    category_a,
+    recommendation_type,
+    product_b AS recommended_product,
+    category_b AS recommended_category,
+    co_count,
+    lift,
+    rank_within_type
+FROM ranked_by_type
+WHERE rank_within_type <= 3  -- Top 3 per type
+ORDER BY product_a, recommendation_type, rank_within_type
+LIMIT 50;
+```
+
+</details>
+
+## Time-Aware Recommendations
+
+<details>
+<summary>Click to reveal seasonal/trending co-occurrences</summary>
+
+```{.sql .interactive .cookbook}
+WITH recent_orders AS (
+    SELECT order_id, order_date
+    FROM orders
+    WHERE status = 'completed'
+        AND order_date >= CURRENT_DATE - INTERVAL '90 days'
+),
+recent_co_occurrences AS (
+    SELECT 
+        oi1.product_id AS product_a,
+        oi2.product_id AS product_b,
+        COUNT(DISTINCT oi1.order_id) AS recent_co_count
+    FROM order_items oi1
+    JOIN order_items oi2 
+        ON oi1.order_id = oi2.order_id
+        AND oi1.product_id != oi2.product_id
+    WHERE oi1.order_id IN (SELECT order_id FROM recent_orders)
+    GROUP BY oi1.product_id, oi2.product_id
+),
+historical_orders AS (
+    SELECT order_id
+    FROM orders
+    WHERE status = 'completed'
+        AND order_date BETWEEN CURRENT_DATE - INTERVAL '180 days' 
+                           AND CURRENT_DATE - INTERVAL '90 days'
+),
+historical_co_occurrences AS (
+    SELECT 
+        oi1.product_id AS product_a,
+        oi2.product_id AS product_b,
+        COUNT(DISTINCT oi1.order_id) AS historical_co_count
+    FROM order_items oi1
+    JOIN order_items oi2 
+        ON oi1.order_id = oi2.order_id
+        AND oi1.product_id != oi2.product_id
+    WHERE oi1.order_id IN (SELECT order_id FROM historical_orders)
+    GROUP BY oi1.product_id, oi2.product_id
+),
+trending_pairs AS (
+    SELECT 
+        COALESCE(r.product_a, h.product_a) AS product_a,
+        COALESCE(r.product_b, h.product_b) AS product_b,
+        COALESCE(r.recent_co_count, 0) AS recent_count,
+        COALESCE(h.historical_co_count, 0) AS historical_count,
+        COALESCE(r.recent_co_count, 0) - COALESCE(h.historical_co_count, 0) AS count_change,
+        CASE 
+            WHEN h.historical_co_count = 0 AND r.recent_co_count > 0 THEN 999  -- New pair
+            WHEN h.historical_co_count > 0 
+            THEN ROUND(100.0 * (r.recent_co_count - h.historical_co_count) / h.historical_co_count, 1)
+            ELSE 0
+        END AS pct_change
+    FROM recent_co_occurrences r
+    FULL OUTER JOIN historical_co_occurrences h 
+        ON r.product_a = h.product_a AND r.product_b = h.product_b
+    WHERE COALESCE(r.recent_co_count, 0) >= 5  -- Minimum recent support
+)
+SELECT 
+    tp.product_a,
+    pa.product_name,
+    tp.product_b AS trending_recommendation,
+    pb.product_name AS trending_product_name,
+    tp.recent_count,
+    tp.historical_count,
+    tp.count_change,
+    CASE 
+        WHEN tp.pct_change = 999 THEN 'New Pairing'
+        ELSE tp.pct_change || '%'
+    END AS growth_rate,
+    CASE 
+        WHEN tp.pct_change >= 100 THEN 'Hot Trend'
+        WHEN tp.pct_change >= 50 THEN 'Rising'
+        WHEN tp.pct_change >= 0 THEN 'Stable'
+        ELSE 'Declining'
+    END AS trend_status
+FROM trending_pairs tp
+JOIN products pa ON tp.product_a = pa.product_id
+JOIN products pb ON tp.product_b = pb.product_id
+WHERE tp.pct_change >= 0  -- Only growing or stable
+ORDER BY tp.pct_change DESC, tp.recent_count DESC
+LIMIT 50;
+```
+
+</details>
+
+## Customer Segment Recommendations
+
+<details>
+<summary>Click to reveal segment-specific recommendations</summary>
+
+```{.sql .interactive .cookbook}
+WITH customer_segments AS (
+    SELECT 
+        c.customer_id,
+        CASE 
+            WHEN SUM(oi.line_total) >= 1000 THEN 'high_value'
+            WHEN SUM(oi.line_total) >= 500 THEN 'medium_value'
+            ELSE 'low_value'
+        END AS customer_segment
+    FROM customers c
+    JOIN orders o ON c.customer_id = o.customer_id
+    JOIN order_items oi ON o.order_id = oi.order_id
+    WHERE o.status = 'completed'
+    GROUP BY c.customer_id
+),
+segment_co_occurrences AS (
+    SELECT 
+        cs.customer_segment,
+        oi1.product_id AS product_a,
+        oi2.product_id AS product_b,
+        COUNT(DISTINCT oi1.order_id) AS co_count
+    FROM order_items oi1
+    JOIN order_items oi2 
+        ON oi1.order_id = oi2.order_id
+        AND oi1.product_id != oi2.product_id
+    JOIN orders o ON oi1.order_id = o.order_id
+    JOIN customer_segments cs ON o.customer_id = cs.customer_id
+    WHERE o.status = 'completed'
+    GROUP BY cs.customer_segment, oi1.product_id, oi2.product_id
+    HAVING COUNT(DISTINCT oi1.order_id) >= 3
+),
+segment_product_stats AS (
+    SELECT 
+        cs.customer_segment,
+        oi.product_id,
+        COUNT(DISTINCT oi.order_id) AS order_count
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.order_id
+    JOIN customer_segments cs ON o.customer_id = cs.customer_id
+    WHERE o.status = 'completed'
+    GROUP BY cs.customer_segment, oi.product_id
+),
+segment_recommendations AS (
+    SELECT 
+        sco.customer_segment,
+        sco.product_a,
+        sco.product_b,
+        sco.co_count,
+        ROUND(sco.co_count * 1.0 / spa.order_count, 3) AS segment_confidence,
+        ROW_NUMBER() OVER (
+            PARTITION BY sco.customer_segment, sco.product_a 
+            ORDER BY sco.co_count DESC
+        ) AS rank
+    FROM segment_co_occurrences sco
+    JOIN segment_product_stats spa 
+        ON sco.customer_segment = spa.customer_segment 
+        AND sco.product_a = spa.product_id
+)
+SELECT 
+    sr.customer_segment,
+    sr.product_a,
+    pa.product_name,
+    sr.product_b AS recommended_for_segment,
+    pb.product_name AS recommended_product,
+    sr.co_count,
+    sr.segment_confidence,
+    sr.rank
+FROM segment_recommendations sr
+JOIN products pa ON sr.product_a = pa.product_id
+JOIN products pb ON sr.product_b = pb.product_id
+WHERE sr.rank <= 3  -- Top 3 per product per segment
+ORDER BY sr.customer_segment, sr.product_a, sr.rank;
+```
+
+</details>
+
+## Association Rules Mining
+
+<details>
+<summary>Click to reveal full association rules (A → B)</summary>
+
+```{.sql .interactive .cookbook}
+WITH completed_orders AS (
+    SELECT order_id FROM orders WHERE status = 'completed'
+),
+itemsets AS (
+    SELECT 
+        oi1.product_id AS product_a,
+        oi2.product_id AS product_b,
+        COUNT(DISTINCT oi1.order_id) AS support_count
+    FROM order_items oi1
+    JOIN order_items oi2 
+        ON oi1.order_id = oi2.order_id
+        AND oi1.product_id != oi2.product_id
+    WHERE oi1.order_id IN (SELECT order_id FROM completed_orders)
+    GROUP BY oi1.product_id, oi2.product_id
+),
+product_stats AS (
+    SELECT 
+        product_id,
+        COUNT(DISTINCT order_id) AS product_support_count
+    FROM order_items
+    WHERE order_id IN (SELECT order_id FROM completed_orders)
+    GROUP BY product_id
+),
+total_orders AS (
+    SELECT COUNT(*) AS total FROM completed_orders
+),
+association_rules AS (
+    SELECT 
+        i.product_a AS antecedent,
+        i.product_b AS consequent,
+        i.support_count,
+        t.total AS total_transactions,
+        pa.product_support_count AS antecedent_support,
+        pb.product_support_count AS consequent_support,
+        -- Support: P(A ∩ B)
+        ROUND(i.support_count * 1.0 / t.total, 4) AS support,
+        -- Confidence: P(B|A) = P(A ∩ B) / P(A)
+        ROUND(i.support_count * 1.0 / pa.product_support_count, 4) AS confidence,
+        -- Lift: P(A ∩ B) / (P(A) * P(B))
+        ROUND(
+            (i.support_count * 1.0 / t.total) / 
+            ((pa.product_support_count * 1.0 / t.total) * (pb.product_support_count * 1.0 / t.total)),
+            2
+        ) AS lift,
+        -- Conviction: (1 - P(B)) / (1 - Confidence)
+        ROUND(
+            (1.0 - (pb.product_support_count * 1.0 / t.total)) /
+            NULLIF(1.0 - (i.support_count * 1.0 / pa.product_support_count), 0),
+            2
+        ) AS conviction
+    FROM itemsets i
+    JOIN product_stats pa ON i.product_a = pa.product_id
+    JOIN product_stats pb ON i.product_b = pb.product_id
+    CROSS JOIN total_orders t
+    WHERE i.support_count >= 10  -- Minimum absolute support
+)
+SELECT 
+    ar.antecedent AS if_bought,
+    pa.product_name AS if_bought_name,
+    ar.consequent AS then_buy,
+    pb.product_name AS then_buy_name,
+    ar.support_count AS times_together,
+    ar.support,
+    ar.confidence,
+    ar.lift,
+    ar.conviction,
+    CASE 
+        WHEN ar.lift >= 5 AND ar.confidence >= 0.5 THEN 'Very Strong Rule'
+        WHEN ar.lift >= 3 AND ar.confidence >= 0.3 THEN 'Strong Rule'
+        WHEN ar.lift >= 2 AND ar.confidence >= 0.2 THEN 'Moderate Rule'
+        ELSE 'Weak Rule'
+    END AS rule_strength
+FROM association_rules ar
+JOIN products pa ON ar.antecedent = pa.product_id
+JOIN products pb ON ar.consequent = pb.product_id
+WHERE ar.lift > 1.5  -- Only positive associations
+    AND ar.confidence >= 0.1  -- Minimum 10% confidence
+ORDER BY ar.lift DESC, ar.confidence DESC
+LIMIT 100;
+```
+
+</details>
+
+## Extensions
+
+1. **Collaborative filtering:** User-user or item-item similarity for personalized recommendations
+2. **Content-based recommendations:** Use product attributes (category, price, features)
+3. **Hybrid recommendations:** Combine co-occurrence with content and collaborative signals
+4. **Sequential patterns:** Products bought in sequence (first A, then B later)
+5. **Bundle optimization:** Find optimal product bundles to maximize revenue
+6. **Diversity in recommendations:** Ensure recommendations span multiple categories
+7. **Cold start handling:** Recommend for new products with limited co-occurrence data
+8. **A/B test recommendations:** Track conversion lift from algorithmic recommendations

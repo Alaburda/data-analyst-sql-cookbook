@@ -1,0 +1,218 @@
+---
+title: "[Easy] Customers with No Orders"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+List all customers who have never placed an order. This is useful for identifying potential leads for marketing campaigns.
+
+**Skills tested:** Anti-join, NOT EXISTS, LEFT JOIN with NULL check
+
+## Schema
+
+### customers
+```
+customer_id      INTEGER PRIMARY KEY
+first_name       VARCHAR
+last_name        VARCHAR
+customer_segment VARCHAR
+city             VARCHAR
+signup_date      DATE
+```
+
+### orders
+```
+order_id       INTEGER PRIMARY KEY
+customer_id    INTEGER (FK → customers)
+order_date     DATE
+status         VARCHAR
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View sample customers
+SELECT * FROM customers LIMIT 10;
+```
+
+```{.sql .interactive .cookbook}
+-- Check how many customers have orders vs don't have orders
+SELECT 
+    SUM(CASE WHEN o.order_id IS NULL THEN 1 ELSE 0 END) AS customers_no_orders,
+    SUM(CASE WHEN o.order_id IS NOT NULL THEN 1 ELSE 0 END) AS customers_with_orders
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id;
+```
+
+## Expected Output
+
+Your query should return:
+
+| customer_id | customer_name | customer_segment | signup_date | days_since_signup |
+|-------------|---------------|------------------|-------------|-------------------|
+| 42          | Alice Brown   | Enterprise       | 2023-01-15  | 395               |
+| 87          | Bob Wilson    | SMB              | 2023-03-22  | 329               |
+| ...         | ...           | ...              | ...         | ...               |
+
+## Requirements
+
+1. Return only customers with no orders
+2. Include customer's full name
+3. Include customer segment
+4. Calculate days since signup (useful for prioritizing outreach)
+5. Order by signup date (oldest first - they've been waiting longest!)
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1 - LEFT JOIN approach</summary>
+
+Use a LEFT JOIN from `customers` to `orders`, then filter for rows where the order_id is NULL:
+
+```sql
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.order_id IS NULL
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2 - NOT EXISTS approach</summary>
+
+Use a NOT EXISTS subquery:
+
+```sql
+WHERE NOT EXISTS (
+    SELECT 1 
+    FROM orders o 
+    WHERE o.customer_id = c.customer_id
+)
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3 - Calculate days since signup</summary>
+
+Use DuckDB's date difference function:
+```sql
+CURRENT_DATE - signup_date AS days_since_signup
+```
+
+</details>
+
+## Solution Template
+
+Try to solve it yourself first! Here are templates for both approaches:
+
+### Approach 1: LEFT JOIN
+
+```{.sql .interactive .cookbook}
+SELECT 
+    c.customer_id,
+    -- Add customer name
+    -- Add segment
+    -- Add signup_date
+    -- Calculate days since signup
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+WHERE -- Add filter for customers with no orders
+ORDER BY c.signup_date
+LIMIT 20;
+```
+
+### Approach 2: NOT EXISTS
+
+```{.sql .interactive .cookbook}
+SELECT 
+    customer_id,
+    -- Add customer name
+    -- Add segment
+    -- Add signup_date
+    -- Calculate days since signup
+FROM customers c
+WHERE NOT EXISTS (
+    -- Add subquery
+)
+ORDER BY signup_date
+LIMIT 20;
+```
+
+## Solutions
+
+<details>
+<summary>Click to reveal solution - LEFT JOIN approach</summary>
+
+```{.sql .interactive .cookbook}
+SELECT 
+    c.customer_id,
+    c.first_name || ' ' || c.last_name AS customer_name,
+    c.customer_segment,
+    c.signup_date,
+    CURRENT_DATE - c.signup_date AS days_since_signup
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.order_id IS NULL
+ORDER BY c.signup_date
+LIMIT 20;
+```
+
+</details>
+
+<details>
+<summary>Click to reveal solution - NOT EXISTS approach</summary>
+
+```{.sql .interactive .cookbook}
+SELECT 
+    customer_id,
+    first_name || ' ' || last_name AS customer_name,
+    customer_segment,
+    signup_date,
+    CURRENT_DATE - signup_date AS days_since_signup
+FROM customers c
+WHERE NOT EXISTS (
+    SELECT 1 
+    FROM orders o 
+    WHERE o.customer_id = c.customer_id
+)
+ORDER BY signup_date
+LIMIT 20;
+```
+
+**Note:** The `NOT EXISTS` approach is often more performant for large datasets because it can stop searching once a match is found.
+
+</details>
+
+<details>
+<summary>Click to reveal solution - NOT IN approach (with caution)</summary>
+
+```{.sql .interactive .cookbook}
+SELECT 
+    customer_id,
+    first_name || ' ' || last_name AS customer_name,
+    customer_segment,
+    signup_date,
+    CURRENT_DATE - signup_date AS days_since_signup
+FROM customers c
+WHERE customer_id NOT IN (SELECT customer_id FROM orders)
+ORDER BY signup_date
+LIMIT 20;
+```
+
+**Warning:** Be careful with `NOT IN` if the subquery can return NULLs! It will return no rows if any NULL exists. Use `NOT EXISTS` or add `WHERE customer_id IS NOT NULL` in the subquery.
+
+</details>
+
+## Extensions
+
+1. **Segment analysis:** Count customers without orders by segment
+2. **At-risk customers:** Find customers who signed up more than 90 days ago but never ordered
+3. **Subscription check:** Find customers with active subscriptions but no orders
+4. **Time-based cohorts:** Group by signup month and show conversion rates

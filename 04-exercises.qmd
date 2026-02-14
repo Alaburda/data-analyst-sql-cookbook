@@ -1,0 +1,127 @@
+---
+title: "SQL Exercises"
+---
+
+# Practice SQL with LeetCode-Style Exercises
+
+This section contains 24 hands-on SQL exercises organized by difficulty level. Each exercise is designed to help you master specific SQL patterns and techniques that data analysts encounter regularly.
+
+## How to Use These Exercises
+
+1. **Read the problem statement** - Understand what you're trying to solve
+2. **Study the schema** - Familiarize yourself with the tables and relationships
+3. **Try it yourself first** - Use the solution template to write your query
+4. **Use hints if stuck** - Progressive hints guide you toward the solution
+5. **Compare solutions** - Multiple approaches show different ways to solve each problem
+6. **Explore extensions** - Additional challenges to deepen your understanding
+
+## Exercise Difficulty Levels
+
+### 🟢 Easy (Exercises 1-8)
+
+Perfect for beginners or warming up. Focus on fundamental SQL concepts:
+- Joins and aggregation
+- Filtering and anti-joins
+- Date functions
+- Basic window functions
+
+**Topics covered:**
+- Top customers by spend
+- Customers with no orders
+- Orders per day with zero-fill
+- First order date per customer
+- Low-stock products
+- Removing duplicate records
+- Active users metrics
+- Return rate analysis
+
+### 🟡 Medium (Exercises 9-18)
+
+Intermediate challenges that combine multiple SQL concepts:
+- Window functions (LAG, LEAD, RANK)
+- Gaps-and-islands patterns
+- Market basket analysis
+- Rolling averages
+- Cohort analysis
+
+**Topics covered:**
+- Monthly active users (MAU)
+- Employee salary ranking
+- Consecutive login streaks
+- Product co-purchase pairs
+- Rolling 7-day averages
+- Median calculations
+- Pivoting data
+- Session reconstruction
+- Text analysis
+- Cohort retention
+
+### 🔴 Hard (Exercises 19-24)
+
+Advanced problems requiring sophisticated SQL techniques:
+- Recursive CTEs
+- Complex window functions
+- Statistical calculations
+- Advanced aggregations
+- Performance optimization
+
+**Topics covered:**
+- Churn rate and cohort analysis
+- Hierarchical org chart traversal
+- Customer growth rate analysis
+- Approximate distinct counts
+- Complex session reconstruction
+- Recommendation algorithms
+
+## Interactive SQL
+
+All exercises use the **interactive SQL extension** for Quarto, allowing you to run queries directly in your browser against the cookbook database. Simply click the **▶ Run** button or press `Ctrl+Enter` to execute any SQL block.
+
+## The Cookbook Database
+
+Exercises use a shared DuckDB database that models a B2B SaaS company with the following tables:
+
+- **customers** - Customer dimension with segments and geography
+- **orders** - Transactional fact table
+- **order_items** - Line-level order details
+- **products** - Product catalog
+- **subscriptions** - SCD Type 2 subscription history
+- **support_tickets** - Customer support data
+- **employees** - Employee hierarchy
+- **departments** - Department lookup
+- **calendar** - Date dimension (2022-2025)
+
+## Skills You'll Develop
+
+By completing these exercises, you'll gain proficiency in:
+
+- **Joins** - INNER, LEFT, anti-joins, self-joins, non-equi joins
+- **Aggregation** - GROUP BY, HAVING, conditional aggregation
+- **Window Functions** - ROW_NUMBER, RANK, LAG/LEAD, running totals
+- **Date Arithmetic** - Date functions, calendar joins, time-based analysis
+- **CTEs** - WITH clauses, recursive CTEs
+- **Performance** - Query optimization, index-friendly patterns
+- **Data Quality** - Deduplication, NULL handling, data validation
+- **Analytics** - Cohort analysis, retention, churn, growth metrics
+
+## Tips for Success
+
+1. **Start with Easy** - Build confidence with fundamentals before advancing
+2. **Write SQL, don't just read** - Actively practice writing queries
+3. **Experiment** - Modify solutions to test your understanding
+4. **Read alternative solutions** - Learn multiple approaches to each problem
+5. **Try extensions** - Push yourself with additional challenges
+6. **Focus on patterns** - Recognize reusable SQL patterns you can apply elsewhere
+
+## Beyond the Exercises
+
+Once you've completed these exercises, you'll be well-prepared to:
+
+- Write production-quality SQL for analytics
+- Design efficient queries for large datasets
+- Understand complex business logic in SQL
+- Troubleshoot and optimize slow queries
+- Collaborate effectively with data engineers
+- Build your own analytics solutions
+
+Ready to begin? Start with [Exercise 1: Top Customers by Total Spend](01-easy-top-customers-by-spend.qmd)!

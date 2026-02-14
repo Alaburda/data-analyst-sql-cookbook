@@ -29,6 +29,33 @@ book:
         - 03-recipes/pivoting-and-unpivoting.qmd
         - 03-recipes/filtering.qmd
         - 03-recipes/customer-analytics.qmd
+    - 04-exercises.qmd
+    - part: SQL Exercises
+      chapters:
+        - 04-exercises/01-easy-top-customers-by-spend.qmd
+        - 04-exercises/02-easy-customers-with-no-orders.qmd
+        - 04-exercises/03-easy-orders-per-day.qmd
+        - 04-exercises/04-easy-first-order-date-per-customer.qmd
+        - 04-exercises/05-easy-low-stock-products.qmd
+        - 04-exercises/06-easy-remove-duplicate-records.qmd
+        - 04-exercises/07-easy-active-users-last-30-days.qmd
+        - 04-exercises/08-easy-customers-frequent-returns.qmd
+        - 04-exercises/09-medium-monthly-active-users.qmd
+        - 04-exercises/10-medium-employee-salary-rank.qmd
+        - 04-exercises/11-medium-consecutive-login-streak.qmd
+        - 04-exercises/12-medium-product-co-purchase-pairs.qmd
+        - 04-exercises/13-medium-rolling-7day-average.qmd
+        - 04-exercises/14-medium-median-transaction-amount.qmd
+        - 04-exercises/15-medium-pivot-orders-by-weekday.qmd
+        - 04-exercises/16-medium-sessionization-of-events.qmd
+        - 04-exercises/17-medium-top-k-frequent-words.qmd
+        - 04-exercises/18-medium-cohort-retention-table.qmd
+        - 04-exercises/19-hard-monthly-churn-rate.qmd
+        - 04-exercises/20-hard-hierarchical-org-chart-paths.qmd
+        - 04-exercises/21-hard-top-k-customers-growth-rate.qmd
+        - 04-exercises/22-hard-approx-distinct-heavy-hitters.qmd
+        - 04-exercises/23-hard-complex-session-reconstruction.qmd
+        - 04-exercises/24-hard-recommendation-co-occurrence.qmd
     - goodies.qmd
     - references.qmd
 

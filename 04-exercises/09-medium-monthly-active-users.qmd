@@ -1,0 +1,244 @@
+---
+title: "[Medium] Monthly Active Users (MAU)"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Compute unique users per month and calculate month-over-month growth. MAU is a key engagement metric for SaaS and consumer applications.
+
+**Skills tested:** Date functions, Aggregation, Window functions (LAG), Growth calculations
+
+## Schema
+
+### orders
+```
+order_id       INTEGER
+customer_id    INTEGER
+order_date     DATE
+status         VARCHAR
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View monthly order activity
+SELECT 
+    DATE_TRUNC('month', order_date) AS month,
+    COUNT(DISTINCT customer_id) AS unique_customers,
+    COUNT(*) AS total_orders
+FROM orders
+GROUP BY month
+ORDER BY month DESC
+LIMIT 12;
+```
+
+## Expected Output
+
+| month      | mau  | prev_month_mau | mom_growth | mom_growth_pct |
+|------------|------|----------------|------------|----------------|
+| 2024-01-01 | 145  | 138            | 7          | 5.1%           |
+| 2023-12-01 | 138  | 132            | 6          | 4.5%           |
+| 2023-11-01 | 132  | 125            | 7          | 5.6%           |
+| ...        | ...  | ...            | ...        | ...            |
+
+## Requirements
+
+1. Calculate MAU (Monthly Active Users) as distinct customers per month
+2. Use window function to get previous month's MAU
+3. Calculate absolute growth: `current_month - prev_month`
+4. Calculate percentage growth: `(current - prev) / prev * 100`
+5. Sort by month in descending order
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Use `DATE_TRUNC('month', order_date)` to group orders by month:
+```sql
+SELECT 
+    DATE_TRUNC('month', order_date) AS month,
+    COUNT(DISTINCT customer_id) AS mau
+FROM orders
+GROUP BY month
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+Use `LAG()` window function to access previous month's value:
+```sql
+LAG(mau) OVER (ORDER BY month) AS prev_month_mau
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+Calculate growth percentage carefully:
+```sql
+ROUND(100.0 * (mau - LAG(mau) OVER (ORDER BY month)) 
+      / LAG(mau) OVER (ORDER BY month), 1) AS mom_growth_pct
+```
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+WITH monthly_users AS (
+    SELECT 
+        DATE_TRUNC('month', order_date) AS month,
+        -- Count distinct users
+    FROM orders
+    WHERE status = 'completed'
+    GROUP BY month
+)
+SELECT 
+    month,
+    mau,
+    -- Get previous month's MAU
+    -- Calculate absolute growth
+    -- Calculate percentage growth
+FROM monthly_users
+ORDER BY month DESC;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal solution</summary>
+
+```{.sql .interactive .cookbook}
+WITH monthly_users AS (
+    SELECT 
+        DATE_TRUNC('month', order_date) AS month,
+        COUNT(DISTINCT customer_id) AS mau
+    FROM orders
+    WHERE status = 'completed'
+    GROUP BY month
+)
+SELECT 
+    month,
+    mau,
+    LAG(mau) OVER (ORDER BY month) AS prev_month_mau,
+    mau - LAG(mau) OVER (ORDER BY month) AS mom_growth,
+    ROUND(100.0 * (mau - LAG(mau) OVER (ORDER BY month)) 
+          / LAG(mau) OVER (ORDER BY month), 1) AS mom_growth_pct
+FROM monthly_users
+ORDER BY month DESC;
+```
+
+</details>
+
+## Alternative: Multi-Source MAU
+
+<details>
+<summary>Click to reveal solution with multiple activity sources</summary>
+
+Include activity from orders, support tickets, and subscriptions:
+
+```{.sql .interactive .cookbook}
+WITH all_activity AS (
+    SELECT 
+        customer_id,
+        DATE_TRUNC('month', order_date) AS month
+    FROM orders
+    WHERE status = 'completed'
+    
+    UNION
+    
+    SELECT 
+        customer_id,
+        DATE_TRUNC('month', created_date)
+    FROM support_tickets
+    
+    UNION
+    
+    SELECT 
+        customer_id,
+        DATE_TRUNC('month', valid_from)
+    FROM subscriptions
+),
+monthly_users AS (
+    SELECT 
+        month,
+        COUNT(DISTINCT customer_id) AS mau
+    FROM all_activity
+    GROUP BY month
+)
+SELECT 
+    month,
+    mau,
+    LAG(mau) OVER (ORDER BY month) AS prev_month_mau,
+    mau - LAG(mau) OVER (ORDER BY month) AS mom_growth,
+    ROUND(100.0 * (mau - LAG(mau) OVER (ORDER BY month)) 
+          / LAG(mau) OVER (ORDER BY month), 1) AS mom_growth_pct
+FROM monthly_users
+ORDER BY month DESC;
+```
+
+</details>
+
+## With Cohort Retention
+
+<details>
+<summary>Click to reveal MAU with new vs returning users</summary>
+
+```{.sql .interactive .cookbook}
+WITH user_months AS (
+    SELECT DISTINCT
+        customer_id,
+        DATE_TRUNC('month', order_date) AS month
+    FROM orders
+    WHERE status = 'completed'
+),
+first_month AS (
+    SELECT 
+        customer_id,
+        MIN(month) AS first_active_month
+    FROM user_months
+    GROUP BY customer_id
+),
+monthly_stats AS (
+    SELECT 
+        um.month,
+        COUNT(DISTINCT um.customer_id) AS mau,
+        COUNT(DISTINCT CASE WHEN fm.first_active_month = um.month THEN um.customer_id END) AS new_users,
+        COUNT(DISTINCT CASE WHEN fm.first_active_month < um.month THEN um.customer_id END) AS returning_users
+    FROM user_months um
+    JOIN first_month fm ON um.customer_id = fm.customer_id
+    GROUP BY um.month
+)
+SELECT 
+    month,
+    mau,
+    new_users,
+    returning_users,
+    ROUND(100.0 * returning_users / mau, 1) AS retention_pct,
+    LAG(mau) OVER (ORDER BY month) AS prev_mau,
+    ROUND(100.0 * (mau - LAG(mau) OVER (ORDER BY month)) 
+          / LAG(mau) OVER (ORDER BY month), 1) AS mom_growth_pct
+FROM monthly_stats
+ORDER BY month DESC;
+```
+
+</details>
+
+## Extensions
+
+1. **DAU (Daily Active Users):** Calculate daily instead of monthly
+2. **WAU (Weekly Active Users):** Calculate weekly engagement
+3. **Stickiness ratio:** Calculate DAU/MAU ratio (shows how often users engage)
+4. **Cohort retention:** Track what % of each month's new users return
+5. **Power users:** Identify users active >X days per month
+6. **Seasonal trends:** Compare year-over-year growth

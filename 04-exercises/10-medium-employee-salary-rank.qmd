@@ -1,0 +1,242 @@
+---
+title: "[Medium] Employee Salary Rank by Department"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Rank employees within their departments by salary, demonstrating the difference between `RANK()` and `DENSE_RANK()` for handling ties.
+
+**Skills tested:** Window functions, RANK vs DENSE_RANK, PARTITION BY
+
+## Schema
+
+### employees
+```
+employee_id    INTEGER PRIMARY KEY
+first_name     VARCHAR
+last_name      VARCHAR
+department_id  INTEGER
+salary         DECIMAL
+hire_date      DATE
+manager_id     INTEGER
+```
+
+### departments
+```
+department_id    INTEGER PRIMARY KEY
+department_name  VARCHAR
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View sample employees with their departments
+SELECT 
+    e.employee_id,
+    e.first_name || ' ' || e.last_name AS employee_name,
+    d.department_name,
+    e.salary
+FROM employees e
+JOIN departments d ON e.department_id = d.department_id
+ORDER BY d.department_name, e.salary DESC
+LIMIT 20;
+```
+
+## Expected Output
+
+| department_name | employee_name | salary    | rank | dense_rank | pct_rank |
+|-----------------|---------------|-----------|------|------------|----------|
+| Engineering     | Alice Smith   | 150,000   | 1    | 1          | 0.00     |
+| Engineering     | Bob Jones     | 145,000   | 2    | 2          | 0.05     |
+| Engineering     | Carol White   | 145,000   | 2    | 2          | 0.05     |
+| Engineering     | Dave Brown    | 140,000   | 4    | 3          | 0.15     |
+| Sales           | Eve Davis     | 120,000   | 1    | 1          | 0.00     |
+| ...             | ...           | ...       | ...  | ...        | ...      |
+
+## Requirements
+
+1. Show employee name, department, and salary
+2. Use `RANK()` to rank within department (leaves gaps after ties)
+3. Use `DENSE_RANK()` to rank within department (no gaps)
+4. Include `PERCENT_RANK()` to show relative position
+5. Sort by department and salary descending
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Use `PARTITION BY department_id` to rank within each department:
+```sql
+RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) AS rank
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+The difference between RANK() and DENSE_RANK():
+- `RANK()`: 1, 2, 2, 4, 5 (skips 3 after the tie)
+- `DENSE_RANK()`: 1, 2, 2, 3, 4 (no gaps)
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+`PERCENT_RANK()` returns a value from 0 to 1 showing relative position:
+```sql
+ROUND(PERCENT_RANK() OVER (PARTITION BY department_id ORDER BY salary DESC), 2)
+```
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+SELECT 
+    d.department_name,
+    e.first_name || ' ' || e.last_name AS employee_name,
+    e.salary,
+    -- Add RANK()
+    -- Add DENSE_RANK()
+    -- Add PERCENT_RANK()
+FROM employees e
+JOIN departments d ON e.department_id = d.department_id
+ORDER BY d.department_name, e.salary DESC;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal solution</summary>
+
+```{.sql .interactive .cookbook}
+SELECT 
+    d.department_name,
+    e.first_name || ' ' || e.last_name AS employee_name,
+    e.salary,
+    RANK() OVER (PARTITION BY d.department_id ORDER BY e.salary DESC) AS rank,
+    DENSE_RANK() OVER (PARTITION BY d.department_id ORDER BY e.salary DESC) AS dense_rank,
+    ROUND(PERCENT_RANK() OVER (PARTITION BY d.department_id ORDER BY e.salary DESC), 3) AS pct_rank
+FROM employees e
+JOIN departments d ON e.department_id = d.department_id
+ORDER BY d.department_name, e.salary DESC;
+```
+
+</details>
+
+## Top N Per Department
+
+<details>
+<summary>Click to reveal top 3 earners per department</summary>
+
+Find the top 3 highest-paid employees in each department:
+
+```{.sql .interactive .cookbook}
+WITH ranked_employees AS (
+    SELECT 
+        d.department_name,
+        e.first_name || ' ' || e.last_name AS employee_name,
+        e.salary,
+        DENSE_RANK() OVER (PARTITION BY d.department_id ORDER BY e.salary DESC) AS salary_rank
+    FROM employees e
+    JOIN departments d ON e.department_id = d.department_id
+)
+SELECT 
+    department_name,
+    employee_name,
+    salary,
+    salary_rank
+FROM ranked_employees
+WHERE salary_rank <= 3
+ORDER BY department_name, salary_rank;
+```
+
+Using `DENSE_RANK()` ensures we get all employees tied for 3rd place.
+
+</details>
+
+## Salary Percentiles
+
+<details>
+<summary>Click to reveal percentile analysis</summary>
+
+Show which percentile each employee falls into:
+
+```{.sql .interactive .cookbook}
+SELECT 
+    d.department_name,
+    e.first_name || ' ' || e.last_name AS employee_name,
+    e.salary,
+    NTILE(4) OVER (PARTITION BY d.department_id ORDER BY e.salary DESC) AS quartile,
+    NTILE(10) OVER (PARTITION BY d.department_id ORDER BY e.salary DESC) AS decile,
+    ROUND(PERCENT_RANK() OVER (PARTITION BY d.department_id ORDER BY e.salary DESC) * 100, 1) AS percentile
+FROM employees e
+JOIN departments d ON e.department_id = d.department_id
+ORDER BY d.department_name, e.salary DESC;
+```
+
+</details>
+
+## Salary Gaps
+
+<details>
+<summary>Click to reveal solution with salary gaps</summary>
+
+Show the salary difference from the next higher-paid employee:
+
+```{.sql .interactive .cookbook}
+SELECT 
+    d.department_name,
+    e.first_name || ' ' || e.last_name AS employee_name,
+    e.salary,
+    LEAD(e.salary) OVER (PARTITION BY d.department_id ORDER BY e.salary DESC) AS next_lower_salary,
+    e.salary - LEAD(e.salary) OVER (PARTITION BY d.department_id ORDER BY e.salary DESC) AS salary_gap,
+    DENSE_RANK() OVER (PARTITION BY d.department_id ORDER BY e.salary DESC) AS salary_rank
+FROM employees e
+JOIN departments d ON e.department_id = d.department_id
+ORDER BY d.department_name, e.salary DESC;
+```
+
+</details>
+
+## ROW_NUMBER vs RANK vs DENSE_RANK
+
+```{.sql .interactive .cookbook}
+-- Comparison of ranking functions with identical salaries
+WITH sample_data AS (
+    SELECT 'Alice' AS name, 100 AS score
+    UNION ALL SELECT 'Bob', 90
+    UNION ALL SELECT 'Carol', 90
+    UNION ALL SELECT 'Dave', 90
+    UNION ALL SELECT 'Eve', 85
+)
+SELECT 
+    name,
+    score,
+    ROW_NUMBER() OVER (ORDER BY score DESC) AS row_number,
+    RANK() OVER (ORDER BY score DESC) AS rank,
+    DENSE_RANK() OVER (ORDER BY score DESC) AS dense_rank
+FROM sample_data;
+```
+
+**Output:**
+- ROW_NUMBER: 1, 2, 3, 4, 5 (always unique)
+- RANK: 1, 2, 2, 2, 5 (skips after ties)
+- DENSE_RANK: 1, 2, 2, 2, 3 (no skips)
+
+## Extensions
+
+1. **Salary bands:** Group employees into salary ranges and rank within those
+2. **Tenure-adjusted ranking:** Rank by salary/years_employed ratio
+3. **Department comparison:** Show how each employee ranks company-wide vs department
+4. **Manager salary check:** Flag employees earning more than their manager
+5. **Promotion readiness:** Identify employees in top 25% of their level
