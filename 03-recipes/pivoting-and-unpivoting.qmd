@@ -14,6 +14,8 @@ At this point it's likely you're using a database that supports pivoting and unp
 
 The most basic way to pivot is to use a CASE statement for each column you want to pivot.
 
+![How GROUP BY achieves pivoting](../images/group-by-pivot.gif)
+
 ```{.sql .interactive .pivot}
 
 select 

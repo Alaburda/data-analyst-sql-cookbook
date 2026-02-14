@@ -6,6 +6,8 @@ engine: knitr
 
 I don't like recursive queries because they're too rare in the wild and their syntax is not intuitive. To be fair, this section is more for my own self-learning.
 
+![How recursive CTEs traverse hierarchies](../images/recursive-cte.gif)
+
 ## Qualify events based on first event
 
 Erika Pullum posted a great SQL teaser - I'm not sure what's the use case but it's a great way to apply recursive CTEs.

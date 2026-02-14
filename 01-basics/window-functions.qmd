@@ -116,6 +116,8 @@ ORDER BY revenue_rank;
 
 `LAG()` looks at a previous row; `LEAD()` looks at the next one. Perfect for calculating period-over-period changes:
 
+![How LAG() and LEAD() work](../images/lead-lag.gif)
+
 ```{.sql .interactive .cookbook}
 WITH monthly AS (
     SELECT

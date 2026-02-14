@@ -45,6 +45,8 @@ I really like Microsoft's SQL Server page on [range join optimization](https://l
 
 ANTI is not a join type, what gives? Imagine doing a left join: some rows will return a NULL from the joined table and some will be filled. If you were to filter the result set to keep only filled rows, you basically do an INNER join. But if you filter to only keep rows with NULL values, you end up with a table of rows that didn't have a matching row. In other words, the reverse of the INNER JOIN allows you to remove rows from one table based on matching rows in another.
 
+![How anti join works](../images/anti-join.gif)
+
 This is an important implication because your other options are either the IN operator or the WHERE EXISTS clause. The problem with the IN operator is that it's not efficient and the latter is more verbose. The alternating are laid out in the [filtering](03-recipes/filtering.qmd) chapter. 
 
 ## LEFT JOIN
