@@ -1,0 +1,326 @@
+---
+title: "[Medium] Consecutive Login Streak"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Find the longest consecutive-day login streak for each user. This is a classic "gaps and islands" problem in SQL.
+
+**Skills tested:** Window functions, Date arithmetic, Gaps-and-islands pattern, GROUP BY aggregation
+
+## Schema
+
+For this exercise, we'll simulate login data from order activity:
+
+### orders (used as proxy for logins)
+```
+order_id       INTEGER
+customer_id    INTEGER
+order_date     DATE
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- Create sample login data from orders
+CREATE TEMP TABLE user_logins AS
+SELECT DISTINCT
+    customer_id AS user_id,
+    order_date AS login_date
+FROM orders
+WHERE customer_id IN (1, 2, 3, 4, 5)
+ORDER BY customer_id, order_date;
+
+SELECT * FROM user_logins LIMIT 20;
+```
+
+## Expected Output
+
+| user_id | longest_streak | streak_start | streak_end  | days_in_streak |
+|---------|----------------|--------------|-------------|----------------|
+| 1       | 5              | 2023-01-15   | 2023-01-19  | 5              |
+| 2       | 3              | 2023-02-10   | 2023-02-12  | 3              |
+| 3       | 7              | 2023-03-05   | 2023-03-11  | 7              |
+| ...     | ...            | ...          | ...         | ...            |
+
+## Requirements
+
+1. Identify consecutive login days for each user
+2. Calculate the length of each streak
+3. Find the longest streak per user
+4. Include start and end dates of the longest streak
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1 - Understanding gaps and islands</summary>
+
+The key insight: If you subtract the row number from the login date, consecutive dates will produce the same value!
+
+Example:
+- Day 1: 2023-01-15 - 1 = 2023-01-14
+- Day 2: 2023-01-16 - 2 = 2023-01-14 (same!)
+- Day 3: 2023-01-17 - 3 = 2023-01-14 (same!)
+- Day 5: 2023-01-19 - 4 = 2023-01-15 (different! new streak)
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+Use `ROW_NUMBER()` to assign sequential numbers:
+```sql
+ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY login_date) AS rn
+```
+
+Then calculate:
+```sql
+login_date - INTERVAL (rn) DAY AS streak_group
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+Group by user_id and streak_group, then count days in each streak:
+```sql
+GROUP BY user_id, streak_group
+HAVING COUNT(*) -- This is the streak length
+```
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+WITH numbered_logins AS (
+    SELECT 
+        user_id,
+        login_date,
+        -- Add ROW_NUMBER
+    FROM user_logins
+),
+streak_groups AS (
+    SELECT 
+        user_id,
+        login_date,
+        -- Calculate streak group by subtracting row number from date
+    FROM numbered_logins
+),
+streak_lengths AS (
+    SELECT 
+        user_id,
+        streak_group,
+        MIN(login_date) AS streak_start,
+        MAX(login_date) AS streak_end,
+        COUNT(*) AS days_in_streak
+    FROM streak_groups
+    GROUP BY user_id, streak_group
+)
+SELECT 
+    user_id,
+    -- Find the maximum streak length
+FROM streak_lengths
+-- Find longest streak per user
+ORDER BY longest_streak DESC;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal solution</summary>
+
+```{.sql .interactive .cookbook}
+WITH numbered_logins AS (
+    SELECT 
+        user_id,
+        login_date,
+        ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY login_date) AS rn
+    FROM user_logins
+),
+streak_groups AS (
+    SELECT 
+        user_id,
+        login_date,
+        DATE_TRUNC('day', login_date)::DATE - INTERVAL (rn) DAY AS streak_group
+    FROM numbered_logins
+),
+streak_lengths AS (
+    SELECT 
+        user_id,
+        streak_group,
+        MIN(login_date) AS streak_start,
+        MAX(login_date) AS streak_end,
+        COUNT(*) AS days_in_streak
+    FROM streak_groups
+    GROUP BY user_id, streak_group
+)
+SELECT 
+    user_id,
+    MAX(days_in_streak) AS longest_streak,
+    -- Get the start/end dates of the longest streak
+    FIRST_VALUE(streak_start) OVER (
+        PARTITION BY user_id 
+        ORDER BY days_in_streak DESC, streak_start
+    ) AS streak_start,
+    FIRST_VALUE(streak_end) OVER (
+        PARTITION BY user_id 
+        ORDER BY days_in_streak DESC, streak_start
+    ) AS streak_end
+FROM streak_lengths
+GROUP BY user_id, streak_start, streak_end, days_in_streak
+QUALIFY ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY days_in_streak DESC) = 1
+ORDER BY longest_streak DESC;
+```
+
+</details>
+
+## All Streaks Per User
+
+<details>
+<summary>Click to reveal solution showing all streaks</summary>
+
+```{.sql .interactive .cookbook}
+WITH numbered_logins AS (
+    SELECT 
+        user_id,
+        login_date,
+        ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY login_date) AS rn
+    FROM user_logins
+),
+streak_groups AS (
+    SELECT 
+        user_id,
+        login_date,
+        DATE_TRUNC('day', login_date)::DATE - INTERVAL (rn) DAY AS streak_group
+    FROM numbered_logins
+),
+all_streaks AS (
+    SELECT 
+        user_id,
+        MIN(login_date) AS streak_start,
+        MAX(login_date) AS streak_end,
+        COUNT(*) AS days_in_streak
+    FROM streak_groups
+    GROUP BY user_id, streak_group
+)
+SELECT 
+    user_id,
+    streak_start,
+    streak_end,
+    days_in_streak,
+    RANK() OVER (PARTITION BY user_id ORDER BY days_in_streak DESC) AS streak_rank
+FROM all_streaks
+WHERE days_in_streak >= 2  -- Only show streaks of 2+ days
+ORDER BY user_id, days_in_streak DESC;
+```
+
+</details>
+
+## Current Streak
+
+<details>
+<summary>Click to reveal solution for current active streak</summary>
+
+Find users' current active streak (if they logged in recently):
+
+```{.sql .interactive .cookbook}
+WITH numbered_logins AS (
+    SELECT 
+        user_id,
+        login_date,
+        ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY login_date) AS rn
+    FROM user_logins
+),
+streak_groups AS (
+    SELECT 
+        user_id,
+        login_date,
+        DATE_TRUNC('day', login_date)::DATE - INTERVAL (rn) DAY AS streak_group
+    FROM numbered_logins
+),
+all_streaks AS (
+    SELECT 
+        user_id,
+        MIN(login_date) AS streak_start,
+        MAX(login_date) AS streak_end,
+        COUNT(*) AS days_in_streak
+    FROM streak_groups
+    GROUP BY user_id, streak_group
+)
+SELECT 
+    user_id,
+    streak_start,
+    streak_end,
+    days_in_streak AS current_streak,
+    CURRENT_DATE - streak_end AS days_since_last_login
+FROM all_streaks
+WHERE streak_end >= CURRENT_DATE - INTERVAL '1 day'  -- Active within last day
+ORDER BY days_in_streak DESC;
+```
+
+</details>
+
+## Alternative: Using LAG
+
+<details>
+<summary>Click to reveal LAG-based approach</summary>
+
+```{.sql .interactive .cookbook}
+WITH login_gaps AS (
+    SELECT 
+        user_id,
+        login_date,
+        LAG(login_date) OVER (PARTITION BY user_id ORDER BY login_date) AS prev_login,
+        login_date - LAG(login_date) OVER (PARTITION BY user_id ORDER BY login_date) AS days_gap
+    FROM user_logins
+),
+streak_markers AS (
+    SELECT 
+        user_id,
+        login_date,
+        CASE WHEN days_gap = 1 OR days_gap IS NULL THEN 0 ELSE 1 END AS new_streak
+    FROM login_gaps
+),
+streak_ids AS (
+    SELECT 
+        user_id,
+        login_date,
+        SUM(new_streak) OVER (PARTITION BY user_id ORDER BY login_date) AS streak_id
+    FROM streak_markers
+),
+streak_lengths AS (
+    SELECT 
+        user_id,
+        streak_id,
+        MIN(login_date) AS streak_start,
+        MAX(login_date) AS streak_end,
+        COUNT(*) AS days_in_streak
+    FROM streak_ids
+    GROUP BY user_id, streak_id
+)
+SELECT 
+    user_id,
+    MAX(days_in_streak) AS longest_streak
+FROM streak_lengths
+GROUP BY user_id
+ORDER BY longest_streak DESC;
+```
+
+</details>
+
+## Extensions
+
+1. **Current vs best:** Compare current streak to all-time best
+2. **Streak distribution:** Histogram of streak lengths
+3. **Broken streaks:** Identify when users broke long streaks
+4. **Reward thresholds:** Flag users who hit milestone streaks (7, 30, 100 days)
+5. **Team streaks:** Calculate streaks for groups/organizations
+6. **Weekly patterns:** Identify if streaks are weekday-only or include weekends

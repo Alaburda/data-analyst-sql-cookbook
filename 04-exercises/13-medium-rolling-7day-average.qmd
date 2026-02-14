@@ -1,0 +1,286 @@
+---
+title: "[Medium] Rolling 7-Day Average of Sales"
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
+---
+
+# Problem Statement
+
+Calculate a 7-day moving average of daily sales revenue. Rolling averages smooth out daily fluctuations and reveal trends.
+
+**Skills tested:** Window functions, ROWS BETWEEN, Date series, Aggregation
+
+## Schema
+
+### orders
+```
+order_id       INTEGER
+customer_id    INTEGER
+order_date     DATE
+status         VARCHAR
+```
+
+### order_items
+```
+order_item_id  INTEGER
+order_id       INTEGER
+line_total     DECIMAL
+```
+
+## Sample Data
+
+```{.sql .interactive .cookbook}
+-- View daily sales for last 30 days
+SELECT 
+    order_date,
+    COUNT(*) AS order_count,
+    ROUND(SUM(oi.line_total), 2) AS daily_revenue
+FROM orders o
+JOIN order_items oi ON o.order_id = oi.order_id
+WHERE o.status = 'completed'
+  AND o.order_date >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY order_date
+ORDER BY order_date DESC;
+```
+
+## Expected Output
+
+| date       | daily_revenue | rolling_7day_avg | rolling_7day_total |
+|------------|---------------|------------------|-------------------|
+| 2024-01-20 | 12,345.67     | 11,234.56        | 78,642.00         |
+| 2024-01-19 | 13,456.78     | 10,987.65        | 76,913.55         |
+| 2024-01-18 | 11,234.56     | 11,456.78        | 80,197.46         |
+| ...        | ...           | ...              | ...               |
+
+## Requirements
+
+1. Calculate daily revenue from completed orders
+2. Compute 7-day moving average (current day + previous 6 days)
+3. Include days with zero sales (zero-fill)
+4. Show both the average and the total for the 7-day window
+5. Order by date descending
+
+## Hints
+
+<details>
+<summary>Click to reveal hint 1</summary>
+
+Use window function with ROWS BETWEEN:
+```sql
+AVG(daily_revenue) OVER (
+    ORDER BY date 
+    ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+) AS rolling_7day_avg
+```
+
+This includes current row + 6 preceding rows = 7 days total.
+
+</details>
+
+<details>
+<summary>Click to reveal hint 2</summary>
+
+Start with a calendar table to ensure all dates are present:
+```sql
+FROM calendar c
+LEFT JOIN daily_sales ds ON c.date = ds.order_date
+```
+
+</details>
+
+<details>
+<summary>Click to reveal hint 3</summary>
+
+For days with no sales, use `COALESCE(daily_revenue, 0)` to convert NULL to 0.
+
+</details>
+
+## Solution Template
+
+```{.sql .interactive .cookbook}
+WITH daily_sales AS (
+    SELECT 
+        o.order_date AS date,
+        -- Calculate daily revenue
+    FROM orders o
+    JOIN order_items oi ON o.order_id = oi.order_id
+    WHERE o.status = 'completed'
+    GROUP BY o.order_date
+)
+SELECT 
+    c.date,
+    COALESCE(ds.daily_revenue, 0) AS daily_revenue,
+    -- Calculate 7-day rolling average
+    -- Calculate 7-day rolling total
+FROM calendar c
+LEFT JOIN daily_sales ds ON c.date = ds.date
+WHERE c.date >= CURRENT_DATE - INTERVAL '30 days'
+  AND c.date <= CURRENT_DATE
+ORDER BY c.date DESC;
+```
+
+## Solution
+
+<details>
+<summary>Click to reveal solution</summary>
+
+```{.sql .interactive .cookbook}
+WITH daily_sales AS (
+    SELECT 
+        o.order_date AS date,
+        ROUND(SUM(oi.line_total), 2) AS daily_revenue
+    FROM orders o
+    JOIN order_items oi ON o.order_id = oi.order_id
+    WHERE o.status = 'completed'
+    GROUP BY o.order_date
+)
+SELECT 
+    c.date,
+    COALESCE(ds.daily_revenue, 0) AS daily_revenue,
+    ROUND(AVG(COALESCE(ds.daily_revenue, 0)) OVER (
+        ORDER BY c.date 
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ), 2) AS rolling_7day_avg,
+    ROUND(SUM(COALESCE(ds.daily_revenue, 0)) OVER (
+        ORDER BY c.date 
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ), 2) AS rolling_7day_total,
+    COUNT(ds.date) OVER (
+        ORDER BY c.date 
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ) AS days_with_sales
+FROM calendar c
+LEFT JOIN daily_sales ds ON c.date = ds.date
+WHERE c.date >= CURRENT_DATE - INTERVAL '30 days'
+  AND c.date <= CURRENT_DATE
+ORDER BY c.date DESC;
+```
+
+</details>
+
+## Product-Level Rolling Average
+
+<details>
+<summary>Click to reveal solution by product</summary>
+
+```{.sql .interactive .cookbook}
+WITH product_daily_sales AS (
+    SELECT 
+        o.order_date AS date,
+        oi.product_id,
+        p.product_name,
+        SUM(oi.quantity) AS daily_quantity,
+        ROUND(SUM(oi.line_total), 2) AS daily_revenue
+    FROM orders o
+    JOIN order_items oi ON o.order_id = oi.order_id
+    JOIN products p ON oi.product_id = p.product_id
+    WHERE o.status = 'completed'
+    GROUP BY o.order_date, oi.product_id, p.product_name
+)
+SELECT 
+    date,
+    product_name,
+    daily_quantity,
+    daily_revenue,
+    ROUND(AVG(daily_revenue) OVER (
+        PARTITION BY product_id
+        ORDER BY date 
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ), 2) AS rolling_7day_avg_revenue,
+    ROUND(AVG(daily_quantity) OVER (
+        PARTITION BY product_id
+        ORDER BY date 
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ), 1) AS rolling_7day_avg_quantity
+FROM product_daily_sales
+WHERE date >= CURRENT_DATE - INTERVAL '30 days'
+ORDER BY product_name, date DESC;
+```
+
+</details>
+
+## Multiple Window Sizes
+
+<details>
+<summary>Click to reveal solution with multiple rolling averages</summary>
+
+```{.sql .interactive .cookbook}
+WITH daily_sales AS (
+    SELECT 
+        o.order_date AS date,
+        ROUND(SUM(oi.line_total), 2) AS daily_revenue
+    FROM orders o
+    JOIN order_items oi ON o.order_id = oi.order_id
+    WHERE o.status = 'completed'
+    GROUP BY o.order_date
+)
+SELECT 
+    c.date,
+    COALESCE(ds.daily_revenue, 0) AS daily_revenue,
+    ROUND(AVG(COALESCE(ds.daily_revenue, 0)) OVER (
+        ORDER BY c.date ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+    ), 2) AS ma_3day,
+    ROUND(AVG(COALESCE(ds.daily_revenue, 0)) OVER (
+        ORDER BY c.date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ), 2) AS ma_7day,
+    ROUND(AVG(COALESCE(ds.daily_revenue, 0)) OVER (
+        ORDER BY c.date ROWS BETWEEN 29 PRECEDING AND CURRENT ROW
+    ), 2) AS ma_30day
+FROM calendar c
+LEFT JOIN daily_sales ds ON c.date = ds.date
+WHERE c.date >= CURRENT_DATE - INTERVAL '60 days'
+  AND c.date <= CURRENT_DATE
+ORDER BY c.date DESC;
+```
+
+</details>
+
+## Centered Moving Average
+
+<details>
+<summary>Click to reveal centered moving average</summary>
+
+A centered moving average uses data from before AND after each point, which better captures the underlying trend but can't be calculated for the most recent days:
+
+```{.sql .interactive .cookbook}
+WITH daily_sales AS (
+    SELECT 
+        o.order_date AS date,
+        ROUND(SUM(oi.line_total), 2) AS daily_revenue
+    FROM orders o
+    JOIN order_items oi ON o.order_id = oi.order_id
+    WHERE o.status = 'completed'
+    GROUP BY o.order_date
+)
+SELECT 
+    c.date,
+    COALESCE(ds.daily_revenue, 0) AS daily_revenue,
+    ROUND(AVG(COALESCE(ds.daily_revenue, 0)) OVER (
+        ORDER BY c.date 
+        ROWS BETWEEN 3 PRECEDING AND 3 FOLLOWING  -- Centered on current day
+    ), 2) AS centered_7day_avg,
+    ROUND(AVG(COALESCE(ds.daily_revenue, 0)) OVER (
+        ORDER BY c.date 
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW  -- Trailing
+    ), 2) AS trailing_7day_avg
+FROM calendar c
+LEFT JOIN daily_sales ds ON c.date = ds.date
+WHERE c.date >= CURRENT_DATE - INTERVAL '30 days'
+  AND c.date <= CURRENT_DATE - INTERVAL '3 days'  -- Exclude last 3 days for centered avg
+ORDER BY c.date DESC;
+```
+
+</details>
+
+## Extensions
+
+1. **Exponential moving average:** Weight recent days more heavily
+2. **Trend detection:** Flag when rolling average is increasing/decreasing
+3. **Seasonality adjustment:** Compare to same weekday last week
+4. **Anomaly detection:** Alert when daily revenue deviates significantly from rolling average
+5. **Forecast:** Use rolling average as a simple forecasting baseline
+6. **Customer cohorts:** Rolling averages by customer acquisition cohort
