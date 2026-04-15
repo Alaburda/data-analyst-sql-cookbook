@@ -8,26 +8,32 @@ databases:
     path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbookdb.sqlite"
 ---
 
-# Factless Fact Tables
-
-If I wanted to show the number of subscriptions that were active for each month in my favourite BI tool, I would be in trouble. In Power BI, I would have to resort to [a multi-line DAX formula](https://community.fabric.microsoft.com/t5/Power-BI-Community-Blog/HR-Analytics-Active-Employee-Hire-and-Termination-trend/ba-p/882970). In Tableau, [the options have 8 steps in them](https://help.salesforce.com/s/articleView?id=001458045&type=1). I couldn't even find a tutorial for Looker. Luckily, Factless Fact Tables sidestep these solutions altogether so that your BI tool only has to do a simple count.
-
-Kimball defines Factless Fact Tables as a [table of dimensional entities coming together at a moment in time](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/factless-fact-table/). Now that's one eldritch definition! In human terms, the **raison d'être** of these tables comes from the need to count whether a thing existed at a point in time. It's best to show the technique using an example.
-
-Let's say I have a table of subscriptions that looks like this:
-
 ```{r}
+
+#| echo: false
 
 library(duckdb)
 
-con <- dbConnect(duckdb::duckdb(), ":memory:")
-
-dbExecute(con, "CREATE TABLE subscriptions (id INTEGER, start_date DATE, end_date DATE);")
+con <- dbConnect(duckdb(), "../db/cookbook.duckdb", read_only = TRUE)
 
 
 ```
 
-Whenever we want to count something, it's best to count it using a fact table. However, subscriptions are a SCD2 type dimension and you want to count whether they existed between the `start_date` and `end_date`. Counting becomes trivial if the date range is expanded into their dedicated rows. For example, if I were building a monthly fact table, the first id would be 6 rows and my second id would be 4 rows because they were active subscriptions during those months. In order to build it, it's best to have a calendar table so that we could perform a cross join using a `BETWEEN` statement.
+# Factless Fact Tables
+
+If I wanted to show the number of subscriptions that were active for each month in my favourite BI tool, I would be in trouble. In Power BI, I would have to resort to [a multi-line DAX formula](https://community.fabric.microsoft.com/t5/Power-BI-Community-Blog/HR-Analytics-Active-Employee-Hire-and-Termination-trend/ba-p/882970). In Tableau, [the options have 8 steps in them](https://help.salesforce.com/s/articleView?id=001458045&type=1). I couldn't even find a tutorial for Looker. Luckily, Factless Fact Tables sidestep these solutions altogether so that your BI tool only has to do a simple count.
+
+Kimball defines Factless Fact Tables as a [table of dimensional entities coming together at a moment in time](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/factless-fact-table/). Now that's one eldritch definition! In human terms, a factless fact table is a table structure that facilities counting whether a thing existed at a point in time. It's best to show the technique using an example.
+
+Let's say I have a table of subscriptions that looks like this:
+
+```{sql, connection = con}
+
+select * from subscriptions limit 10
+
+```
+
+Whenever we want to count something, it's best to count it using a fact table. However, subscriptions are a SCD2 type dimension and you want to count whether they existed between the `valid_from` and `valid_to`. Counting becomes trivial if the date range is expanded into their dedicated rows. For example, if I were building a monthly fact table, the first id would be 6 rows and my second id would be 4 rows because they were active subscriptions during those months. In order to build it, it's best to have a calendar table so that we could perform a cross join using a `BETWEEN` statement.
 
 ## SQL code
 
@@ -62,6 +68,22 @@ Hey Paulius, can you quickly create this table that shows our subscriber count o
 
 If you're working with SCD Type 2 data (e.g. subscriptions, marketing campaigns), it's straightforward to count the number of rows at a single point in time:
 
+
+```{sql, connection = con}
+
+with months as (
+  select distinct start_of_month
+  from calendar
+)
+select 
+  subscription_id,
+  start_of_month
+from subscriptions
+inner join months 
+  on start_of_month between valid_from and ifnull(valid_to,'2099-01-01')
+order by subscription_id, start_of_month
+
+```
 
 ```{.sql .interactive .db}
 

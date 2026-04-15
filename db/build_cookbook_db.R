@@ -60,6 +60,7 @@ calendar <- tibble(
   day_of_week     = wday(date_range, label = TRUE, abbr = FALSE),
   day_of_month    = mday(date_range),
   day_of_year     = yday(date_range),
+  start_of_month  = floor_date(date, "month"),
   is_weekend      = wday(date_range) %in% c(1, 7),
   fiscal_year     = ifelse(month(date_range) >= 4, year(date_range), year(date_range) - 1),
   fiscal_quarter  = ((quarter(date_range) + 2) %% 4) + 1
@@ -424,7 +425,7 @@ CREATE TABLE support_tickets (
 cat("✓ Tables created with constraints\n")
 
 # --- Insert data in dependency order ---
-dbAppendTable(con, "calendar",      calendar)
+dbWriteTable(con, "calendar", calendar, overwrite = TRUE)
 dbAppendTable(con, "departments",   departments)
 dbAppendTable(con, "products",      products)
 dbAppendTable(con, "customers",     customers)

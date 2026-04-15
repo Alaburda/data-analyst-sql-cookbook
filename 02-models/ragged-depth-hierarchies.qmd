@@ -2,6 +2,17 @@
 engine: knitr
 ---
 
+```{r}
+
+#| echo: false
+
+library(duckdb)
+
+con <- dbConnect(duckdb(), "../db/cookbook.duckdb", read_only = TRUE)
+
+```
+
+
 # Ragged Depth Hierarchies
 
 Companies have layers. A team is likely to belong to a department which belongs to a business line which belongs to some larger org unit. And so it goes. From a modelling perspective, everything is peachy as long as the depth of layers is uniform. That is, it's great if a team is always the third hierarchical org structure and a team always reports to a department which always reports to a business line. In such cases, you can simply model this as three columns in a dimension table and move on. However, reality resists simplicity
