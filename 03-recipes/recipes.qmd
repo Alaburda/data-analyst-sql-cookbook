@@ -1,0 +1,21 @@
+---
+engine: knitr
+---
+
+# SQL Recipes
+
+In SQL, some code patterns act as functions. For example, combining a `left join` and a `where is null` clause results in an anti join. We are taking two ingredients of the language to create a useful technique. Even though the anti join pattern is part of the select statement, it works as a function to remove some rows. These sort of patterns can support writing different queries and building data models.
+
+Some languages implement these recipes as functions. For example, DuckDB supports anti joins:
+
+```{sql}
+#| eval: false
+SELECT *
+FROM city_airport
+ANTI JOIN airport_names
+    USING (iata);
+
+```
+
+Maybe you'll be lucky and work with a modern database. But that won't be the case for every data professional – that's why having a resource "fall back" on is useful. This part of the book outlines the patterns I have found over the years.    
+

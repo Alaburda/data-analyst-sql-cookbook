@@ -1,0 +1,22 @@
+# Where to write SQL? {.unnumbered}
+
+The tools that leverage SQL are incredible these days. Below are some tools that I personally use on a regular basis.
+
+## Tools
+
+* [DBeaver](https://dbeaver.io/) - just a great SQL client that supports a lot of databases. DBeaver pretty much supports any database that's out there - DBeaver simply downloads drivers on demand. If your database has proper metadata, DBeaver is extremely convenient for navigating entity relationship diagrams, dependencies, indices and descriptions.
+* [DB Fiddle](https://www.db-fiddle.com/) - an online sandbox to run your SQL queries. You can think of this as GitHub gists but you can run the code and share it with others. I use this when running SQL interviews.
+* [SQLime](https://sqlime.org/) - another online sandbox to write queries
+* [DuckDB Local UI](https://duckdb.org/2025/03/12/duckdb-ui) - haven't tested it yet but looks neat so far
+* {DuckDB Shell}(https://shell.duckdb.org/)
+* [SQLGlot](https://github.com/tobymao/sqlglot) and [Polyglot](https://github.com/tobilg/polyglot) - transpile any SQL flavor to any other flavor. This is great for porting codebases, taking examples from this book into your own database or just learning different SQL flavors. 
+
+## Learning Resources
+
+* [Advanced SQL Puzzles](https://github.com/smpetersgithub/AdvancedSQLPuzzles)
+* [Use the Index, Luke](https://use-the-index-luke.com/)
+* [Arena Games - Data Analysis](https://docs.google.com/document/d/1H4Jo215InMGDVxU7Zuk31cJeh8vy_knF1xJ-jtzXST0/edit?fbclid=IwAR1lmuH5GM3yqOpbXnavnBe_v26tD_ZG3cjqtqWeImwfXeBRR2vOI3LcEWA&tab=t.0)
+
+## Reading material
+
+https://www.scattered-thoughts.net/writing/against-sql/

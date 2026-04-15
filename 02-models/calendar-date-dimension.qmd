@@ -1,3 +1,137 @@
-# Creating a Date Dimension
+# Creating a Calendar Date Dimension
 
+```{r}
+
+#| echo: false
+
+library(duckdb)
+
+con <- dbConnect(duckdb(), "../db/cookbook.duckdb")
+
+```
+
+A date dimension is a fancy synonym for the word "calendar". I think having a calendar table is essential for any data warehouse. If you don't have one yet, drop everything what you're doing and go create one. Just trust me, you can thank me later.
+
+## Building it with DuckDB
+
+There's no one right way to build a calendar table. If you want to maintain an Excel file that gets regularly ingested, that's fine. If you want to use a Python or R, that's great too because they both have expressive ways to manipulate dates[^1]. If you want to use SQL, that's also fine. In DuckDB, it's extremely easy because `generate_series` returns a list of dates that you can manipulate. Here's some code that creates the calendar:
+
+[^1]: Full disclosure, I used R to generate the date dimension for this book.
+
+```{sql, connection = con}
+#| eval: false
+
+create or replace table dim_date as 
+SELECT
+    CAST(strftime(dates, '%Y%m%d') AS INTEGER) AS date_key,
+    dates AS date,
+    YEAR(dates) AS year,
+    QUARTER(dates) AS quarter,
+    MONTH(dates) AS month,
+    monthname(dates) AS month_name,
+    WEEK(dates) AS week,
+    DAY(dates) AS day_of_month,
+    DAYOFWEEK(dates) AS day_of_week,
+    dayname(dates) AS day_name,
+    DAYOFYEAR(dates) AS day_of_year,
+    CASE WHEN DAYOFWEEK(dates) IN (0, 6) THEN true ELSE false END AS is_weekend,
+    false AS is_holiday,  -- Can be updated with actual holidays
+    CASE 
+        WHEN MONTH(dates) >= 7 THEN YEAR(dates) + 1 
+        ELSE YEAR(dates) 
+    END AS fiscal_year,  -- Assuming fiscal year starts July 1
+    CASE 
+        WHEN MONTH(dates) >= 7 THEN QUARTER(dates) - 2
+        ELSE QUARTER(dates) + 2
+    END AS fiscal_quarter
+FROM generate_series(
+    DATE '2020-01-01',
+    DATE '2025-12-31',
+    INTERVAL '1 day'
+) AS t(dates);
+
+```
+
+## Adding Holidays
+
+A good calendar table also needs a column whether a date is a holiday. Generally, there is no way to create a holiday field without some sort of dependency, so there is no best way of creating it. The simplest way is to create an Excel file with some years in advance that you would ingest on a yearly basis. In that case your dependency is someone on the team remembering to expand the table and updating the holidays. 
+
+A different way of handling holidays is to automate the creation of the holiday field. Basically, it would be a `case when` statement that checks whether the date is December 24th, December 25th, January 1st etc. The first wrinkle is that someone will still have to keep up with adding or removing holidays. In fact, in 2019, Lithuania declared November 2nd, All Souls' day, a holiday. Holidays do change over time!
+
+The second wrinkle is that calculating your own holidays can be tricky. For example, Easter Sunday is a holiday in many countries but it doesn't have a fixed date. It falls on the first Sunday after the first full moon following the vernal equinox. In other words, it's a moving target and there's a whole Wikipedia article about the [it](https://en.wikipedia.org/wiki/Determination_of_the_day_of_the_week#Meeus/Jones/Butcher_Gregorian_algorithm). In SQL, you could create a macro or a function. Based on [this great 2020 blog post](https://www.sqlservercentral.com/scripts/calculating-easter-in-sql), here's an implementation of an algorithm published in New Scientist in 1961:
+
+```{sql, connection = con}
+
+CREATE OR REPLACE MACRO easter_sunday(y) AS TABLE
+SELECT easter_sunday_date
+FROM (VALUES (y % 19, (y / 100)::int, y % 100))              AS e1(a, b, c)
+CROSS JOIN LATERAL (VALUES (b / 4, b % 4))                            AS e2(d, e)
+CROSS JOIN LATERAL (VALUES (FLOOR((8 * b + 13) / 25)))                 AS e3(g)
+CROSS JOIN LATERAL (VALUES ((19*a + b - d - g + 15) % 30, FLOOR(c/4), c%4)) AS e4(h, i, k)
+CROSS JOIN LATERAL (VALUES (FLOOR((32 + 2*e + 2*i - h - k) % 7)))           AS e5(l)
+CROSS JOIN LATERAL (VALUES (FLOOR((a + 11*h + 19*l) / 433)))                 AS e6(m)
+CROSS JOIN LATERAL (VALUES (FLOOR((h + l - 7*m + 90) / 25)))                 AS e7(n)
+CROSS JOIN LATERAL (VALUES (FLOOR((h + l - 7*m + 33*n + 19) % 32)))         AS e8(p)
+CROSS JOIN LATERAL (VALUES (make_date(y, n::int, p::int)))        AS e9(easter_sunday_date);
+
+```
+
+To join the dates to our date dimension, we generate a series of years to pass into our macro and then join the resulting table to the date dimension:
+
+```{sql, connection = con}
+
+create or replace table dim_date_with_easter as 
+with easter_sundays as (
+SELECT 
+  e.*
+FROM generate_series(2020, 2025) AS t(y),
+LATERAL easter_sunday(t.y) AS e
+)
+select 
+  dim_date.*,
+  case when easter_sunday_date is not null then 1 else 0 end as is_easter_sunday
+from dim_date
+left join easter_sundays
+  on easter_sunday_date = date
+
+
+```
+
+```{sql, connection = con}
+
+select *
+from dim_date_with_easter
+where is_easter_sunday = 1
+
+```
+
+The final way to handle holidays is to use a service provider. There are paid providers but [Nager.Date](https://date.nager.at/) has a free API that you can use to get holidays for a given country and year. Here's an R function that wraps it:
+
+```{r}
+
+library(dplyr)
+library(tidyr)
+library(httr)
+
+get_holidays <- function(country_code = "lt", year = "2023") {
+
+  rs <- GET(glue::glue("https://date.nager.at/api/v3/publicholidays/{year}/{country_code}"))
+
+  out <- content(rs) %>%
+    tibble::enframe() %>%
+    select(value) %>%
+    unnest_wider(value) %>%
+    transmute(date = as.Date(date),
+           holiday_name_local = localName,
+           holiday_name = name)
+
+  return(out)
+
+}
+
+get_holidays(country_code = "lt", year = "2026")
+
+```
+
+Of course, now you are dependent on an external provider but an external provider might make more sense if you are handling holidays across different countries. In all of the ways provided, you need someone or something to handle holiday changes.
 

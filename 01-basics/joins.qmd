@@ -22,6 +22,16 @@ If I could write a blog post, I would probably just dump interesting cases of us
 
 This basics chapter delves into 
 
+## Natural Keys, Surrogate Keys
+
+When joining tables together, you need columns by which to join on! If you're working with data from a system – whether it's data from an API or a backend database – it's very likely the data carries some sort of unique identifier. These identifiers are called *surrogate keys* or *primary keys*. You can expect each object in the system's database to have a primary key because that's how a system can relate different objects (usually, tables) together. The keys will usually be either integers or UUIDs. The keys by themselves are not derived from application data and carry no meaning outside of the system. 
+
+A table will usually have a primary key but it may also contain one or more *foreign keys*. Foreign keys are columns that contain values of primary keys from other tables. For example, a table of orders might have a foreign key _order_user_id_ that contains values of the primary key _user_id_ from the users table. The system can lookup who made the order. We, as analysts, can join those tables together.
+
+It's common to join data from different systems that do not share any surrogate keys between them. However, primary keys only have meaning within the boundaries of the system. For example, if I have a list of leads from a web form, my only option to join data is using the emails. This is an example of *natural keys*. Natural keys are identifiers as well but they carry some sort of meaning outside of the system. Examples of natural keys include emails, telephone numbers, personal numbers, SSNs, contract numbers, addresses. Depending on the context, natural keys may or may not be unique in a table but they usually help us uniquely identify an object in the real world. If I tell you my home address, you would be able to find me on a map. Because of this, I like to call them *semantic keys* because they carry some sort of meaning.
+
+Joining using natural keys requires more scrutiny because the data you're using might not be unique based on the natural key. For example, maybe two different users can input the same telephone number in your registration form. Or perhaps an employee had a new account created so now the same employee occurs twice in your database. Luckily, software these days is built to handle these cases but it's up to the analyst to understand the structure of the data and what process is applied to handling natural keys.    
+
 ## Non-equi joins / range joins
 
 Range joins are great for calculating working time (as opposed to total time), creating factless fact tables, creating 
@@ -45,6 +55,8 @@ I really like Microsoft's SQL Server page on [range join optimization](https://l
 
 ANTI is not a join type, what gives? Imagine doing a left join: some rows will return a NULL from the joined table and some will be filled. If you were to filter the result set to keep only filled rows, you basically do an INNER join. But if you filter to only keep rows with NULL values, you end up with a table of rows that didn't have a matching row. In other words, the reverse of the INNER JOIN allows you to remove rows from one table based on matching rows in another.
 
+![How anti join works](../images/anti-join.gif)
+
 This is an important implication because your other options are either the IN operator or the WHERE EXISTS clause. The problem with the IN operator is that it's not efficient and the latter is more verbose. The alternating are laid out in the [filtering](03-recipes/filtering.qmd) chapter. 
 
 ## LEFT JOIN
@@ -60,3 +72,35 @@ You can't put the condition in the WHERE clause because filtering happens after 
 
 
 Anti joins are one way of filtering out rows. For more, see the section on filtering.
+
+
+## Counting number of subscribers
+
+If you're working with subscription data, one frequent question is "how many subscribtions we had each month?". This is a surprisingly difficult question to answer because you need to count the number of subscribers at the end of each month. This is a great example of a problem that is easy to solve in SQL but cumbersome on the BI end[^1].
+
+The query is a two step process:
+
+* We join a list of months to the subscriptions table in order to "explore" the table at the level of months. Instead of having one row be a subscription, one row is a subscription in a given month. For example, a subscription that was active for three months would show up as three rows.
+* Aggregation - now that the data is at the level of months, we can count the number of subscriptions in each month.
+
+```{.sql .interactive .joins}
+
+with months as (
+            select distinct DATE(date, 'start of month') date
+            from calendar
+           )
+           select date, count(*)
+           from months
+           inner join subscriptions
+            on date between date_from and date_to
+           group by date
+
+```
+
+[^1]: [In Power BI, it's a four step process.](https://community.fabric.microsoft.com/t5/Desktop/Dynamic-Function-To-Count-Values-in-a-Date-Range/td-p/2424354)
+
+## Rolling "As of" Joins
+
+Rolling joins are essentially non-equi joins that only return the "closest" row. R users may be familliar with this technique as Rolling Joins, DuckDB and Snowflake refers to these as "ASOF" joins: https://duckdb.org/docs/stable/guides/sql_features/asof_join.html
+
+These operations are incredibly useful when working with attribution. For example, two customer representatives performed a sale and marked it in the CRM but you need to attribute the sale to the sale that was performed first.  

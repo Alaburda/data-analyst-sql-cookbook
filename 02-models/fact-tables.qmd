@@ -1,0 +1,9 @@
+# Fact tables
+
+## Transactional fact tables
+
+## Periodic snapshot fact tables
+
+## Accumulating fact tables
+
+https://brazenly.blogspot.com/2015/02/datawarehouse-dimensional-modeling_12.html

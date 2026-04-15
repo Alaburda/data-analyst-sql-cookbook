@@ -1,0 +1,6 @@
+---
+title: "facts-vs-dimensions"
+format: html
+---
+
+When I first learned about dimensional modelling, it was fairly clear what's a fact table. But a dimension table less so?

@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>5&nbsp; Window Functions – The Data Analyst SQL Cookbook</title>
+<title>4&nbsp; Window Functions – The Data Analyst SQL Cookbook</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -64,7 +64,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../01-basics/goodies.html" rel="next">
+<link href="../01-basics/filtering.html" rel="next">
 <link href="../01-basics/joins.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -255,6 +255,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </script>
 
 
+<meta property="og:title" content="4&nbsp; Window Functions – The Data Analyst SQL Cookbook">
+<meta property="og:description" content="">
+<meta property="og:site_name" content="The Data Analyst SQL Cookbook">
 </head>
 
 <body class="nav-sidebar floating">
@@ -266,7 +269,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../01-basics/using-sql-in-r.html">The Basics</a></li><li class="breadcrumb-item"><a href="../01-basics/window-functions.html"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Window Functions</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../01-basics/basics.html">The Basics</a></li><li class="breadcrumb-item"><a href="../01-basics/window-functions.html"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Window Functions</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -282,6 +285,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div class="pt-lg-2 mt-2 text-left sidebar-header">
     <div class="sidebar-title mb-0 py-0">
       <a href="../">The Data Analyst SQL Cookbook</a> 
+        <div class="sidebar-tools-main">
+    <a href="https://github.com/Alaburda/data-analyst-sql-cookbook" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
+</div>
     </div>
       </div>
         <div class="mt-2 flex-shrink-0 align-items-center">
@@ -299,19 +305,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../erd.html" class="sidebar-item-text sidebar-link">
+  <a href="../00-intro/the-data-model.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">The Data Model</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../01-basics.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">The Basics</span></span></a>
+  <a href="../00-intro/sql-tools.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Where to write SQL?</span></a>
   </div>
 </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+            <a href="../01-basics/basics.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">The Basics</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -321,44 +327,50 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-r.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-dbt.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/joins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/window-functions.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../01-basics/goodies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
+  <a href="../01-basics/filtering.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Filtering</span></span></a>
   </div>
 </li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
- <span class="menu-text">Data Modelling Techniques</span></a>
+            <a href="../02-models/models.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">models</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
       <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../02-models/calendar-date-dimension.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Creating a Calendar Date Dimension</span></span></a>
+  </div>
+</li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/factless-fact-tables.html" class="sidebar-item-text sidebar-link">
@@ -375,8 +387,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
- <span class="menu-text">Data Recipes</span></a>
+            <a href="../03-recipes/recipes.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">SQL Recipes</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -384,40 +396,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../03-recipes/joins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Joins</span></span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
   <a href="../03-recipes/queries_with_dates.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../03-recipes/filtering.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Filtering</span></span></a>
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/customer-analytics.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Customer Analytics Recipes</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Customer Analytics Recipes</span></span></a>
   </div>
 </li>
       </ul>
   </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../goodies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Useful Resources</span></span></a>
+  <a href="../misc/goodies.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -436,22 +436,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#window-functions" id="toc-window-functions" class="nav-link active" data-scroll-target="#window-functions"><span class="header-section-number">6</span> Window Functions</a>
+  <li><a href="#window-functions" id="toc-window-functions" class="nav-link active" data-scroll-target="#window-functions"><span class="header-section-number">5</span> Window Functions</a>
   <ul class="collapse">
-  <li><a href="#row_number" id="toc-row_number" class="nav-link" data-scroll-target="#row_number"><span class="header-section-number">6.1</span> ROW_NUMBER()</a></li>
-  <li><a href="#rank-and-dense_rank" id="toc-rank-and-dense_rank" class="nav-link" data-scroll-target="#rank-and-dense_rank"><span class="header-section-number">6.2</span> RANK() and DENSE_RANK()</a></li>
-  <li><a href="#lag-and-lead" id="toc-lag-and-lead" class="nav-link" data-scroll-target="#lag-and-lead"><span class="header-section-number">6.3</span> LAG() and LEAD()</a></li>
-  <li><a href="#running-totals-with-sum-over" id="toc-running-totals-with-sum-over" class="nav-link" data-scroll-target="#running-totals-with-sum-over"><span class="header-section-number">6.4</span> Running Totals with SUM() OVER</a></li>
+  <li><a href="#row_number" id="toc-row_number" class="nav-link" data-scroll-target="#row_number"><span class="header-section-number">5.1</span> ROW_NUMBER()</a></li>
+  <li><a href="#rank-and-dense_rank" id="toc-rank-and-dense_rank" class="nav-link" data-scroll-target="#rank-and-dense_rank"><span class="header-section-number">5.2</span> RANK() and DENSE_RANK()</a></li>
+  <li><a href="#lag-and-lead" id="toc-lag-and-lead" class="nav-link" data-scroll-target="#lag-and-lead"><span class="header-section-number">5.3</span> LAG() and LEAD()</a></li>
+  <li><a href="#running-totals-with-sum-over" id="toc-running-totals-with-sum-over" class="nav-link" data-scroll-target="#running-totals-with-sum-over"><span class="header-section-number">5.4</span> Running Totals with SUM() OVER</a></li>
   </ul></li>
   </ul>
-</nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../01-basics/using-sql-in-r.html">The Basics</a></li><li class="breadcrumb-item"><a href="../01-basics/window-functions.html"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Window Functions</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../01-basics/basics.html">The Basics</a></li><li class="breadcrumb-item"><a href="../01-basics/window-functions.html"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Window Functions</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Window Functions</span></h1>
+<h1 class="title"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Window Functions</span></h1>
 </div>
 
 
@@ -468,8 +468,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="window-functions" class="level1" data-number="6">
-<h1 data-number="6"><span class="header-section-number">6</span> Window Functions</h1>
+<section id="window-functions" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Window Functions</h1>
 <p>Window functions let you perform calculations across a set of rows that are related to the current row — without collapsing the result into a single summary row the way <code>GROUP BY</code> does. They are one of the most powerful features of SQL.</p>
 <p>Every window function has the same anatomy:</p>
 <pre><code>function_name(...) OVER (
@@ -480,8 +480,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><strong>PARTITION BY</strong> divides the rows into groups (like <code>GROUP BY</code>, but the rows stay).</li>
 <li><strong>ORDER BY</strong> defines the ordering within each partition.</li>
 </ul>
-<section id="row_number" class="level2" data-number="6.1">
-<h2 data-number="6.1" class="anchored" data-anchor-id="row_number"><span class="header-section-number">6.1</span> ROW_NUMBER()</h2>
+<section id="row_number" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="row_number"><span class="header-section-number">5.1</span> ROW_NUMBER()</h2>
 <p><code>ROW_NUMBER()</code> assigns a sequential integer to every row within its partition. The most common real-world use case is <strong>keeping only the first (or last) row per group</strong> — for instance, the most recent order per customer, the highest-scoring student per class, or the latest status change per subscription.</p>
 <p>The pattern is always the same:</p>
 <ol type="1">
@@ -557,8 +557,8 @@ ROW_NUMBER vs RANK vs DENSE_RANK
 </div>
 </div>
 </section>
-<section id="rank-and-dense_rank" class="level2" data-number="6.2">
-<h2 data-number="6.2" class="anchored" data-anchor-id="rank-and-dense_rank"><span class="header-section-number">6.2</span> RANK() and DENSE_RANK()</h2>
+<section id="rank-and-dense_rank" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="rank-and-dense_rank"><span class="header-section-number">5.2</span> RANK() and DENSE_RANK()</h2>
 <p><code>RANK()</code> is useful when you want to find the <strong>top N</strong> items and treat ties fairly. Let’s rank products by total revenue:</p>
 <div class="interactive-duckdb">
 <div class="sourceCode" id="cb4"><pre class="sourceCode sql interactive cookbook code-with-copy"><code class="sourceCode sql"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span></span>
@@ -575,9 +575,15 @@ ROW_NUMBER vs RANK vs DENSE_RANK
 <span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="kw">ORDER</span> <span class="kw">BY</span> revenue_rank;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="lag-and-lead" class="level2" data-number="6.3">
-<h2 data-number="6.3" class="anchored" data-anchor-id="lag-and-lead"><span class="header-section-number">6.3</span> LAG() and LEAD()</h2>
+<section id="lag-and-lead" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="lag-and-lead"><span class="header-section-number">5.3</span> LAG() and LEAD()</h2>
 <p><code>LAG()</code> looks at a previous row; <code>LEAD()</code> looks at the next one. Perfect for calculating period-over-period changes:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="../images/lead-lag.gif" class="img-fluid figure-img"></p>
+<figcaption>How LAG() and LEAD() work</figcaption>
+</figure>
+</div>
 <div class="interactive-duckdb">
 <div class="sourceCode" id="cb5"><pre class="sourceCode sql interactive cookbook code-with-copy"><code class="sourceCode sql"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">WITH</span> monthly <span class="kw">AS</span> (</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">SELECT</span></span>
@@ -604,8 +610,8 @@ ROW_NUMBER vs RANK vs DENSE_RANK
 <span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a><span class="kw">ORDER</span> <span class="kw">BY</span> <span class="dt">year</span>, <span class="dt">month</span>;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="running-totals-with-sum-over" class="level2" data-number="6.4">
-<h2 data-number="6.4" class="anchored" data-anchor-id="running-totals-with-sum-over"><span class="header-section-number">6.4</span> Running Totals with SUM() OVER</h2>
+<section id="running-totals-with-sum-over" class="level2" data-number="5.4">
+<h2 data-number="5.4" class="anchored" data-anchor-id="running-totals-with-sum-over"><span class="header-section-number">5.4</span> Running Totals with SUM() OVER</h2>
 <p>A window <code>SUM()</code> with an <code>ORDER BY</code> gives you a cumulative (running) total:</p>
 <div class="interactive-duckdb">
 <div class="sourceCode" id="cb6"><pre class="sourceCode sql interactive cookbook code-with-copy"><code class="sourceCode sql"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span></span>
@@ -787,7 +793,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   }
     var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
     var mailtoRegex = new RegExp(/^mailto:/);
-      var filterRegex = new RegExp('/' + window.location.host + '/');
+      var filterRegex = new RegExp("https:\/\/alaburda\.github\.io\/data-analyst-sql-cookbook\/");
     var isInternal = (href) => {
         return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
     }
@@ -1118,12 +1124,12 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
       <a href="../01-basics/joins.html" class="pagination-link" aria-label="Factless Fact Table">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span>
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../01-basics/goodies.html" class="pagination-link" aria-label="LIKE for fixed length wildcards">
-        <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../01-basics/filtering.html" class="pagination-link" aria-label="Filtering">
+        <span class="nav-page-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Filtering</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1132,5 +1138,5 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 
 
 
-<script src="../site_libs/quarto-contrib/interactive-duckdb-1.0.0/interactive-duckdb.js"></script>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer><script src="../site_libs/quarto-contrib/interactive-duckdb-1.0.0/interactive-duckdb.js"></script>
 </body></html>

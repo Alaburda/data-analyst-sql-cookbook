@@ -1,0 +1,7 @@
+## LIKE for fixed length wildcards
+
+When using the LIKE statement in a WHERE clause, `*` defines any number of characters. `_` defines a single character. For example, `WHERE name LIKE '_ake'` would capture *Jake* but not *Drake*.
+
+## UNION
+
+UNION and UNION ALL are different - UNION does an implicit DISTINCT after appending the tables, UNION ALL does not.

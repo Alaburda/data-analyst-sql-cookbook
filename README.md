@@ -1,4 +1,9 @@
 # The Data Analyst SQL Cookbook
 
-This is the repository for the book "The Data Analyst SQL Cookbook". The book is hosted on [GitHub Pages](https://alaburda.github.io/data-analyst-sql-cookbook/). 
+This repository contains the files for [The Data Analyst SQL Cookbook](https://alaburda.github.io/data-analyst-sql-cookbook/).
 
+
+## What's missing?
+
+* gifs, more gifs, lots more gifs!
+* I think SQL proficiency is related to having a mental model of how SQL data models can behave. Some sort of troubleshooting problems could be cool?

@@ -5,38 +5,39 @@ project:
 book:
   title: "The Data Analyst SQL Cookbook"
   author: "Paulius Alaburda"
-  date: "2023-10-18"
+  date: now
+  search: true
+  open-graph: true
+  site-url: https://alaburda.github.io/data-analyst-sql-cookbook/
+  repo-url: https://github.com/Alaburda/data-analyst-sql-cookbook
+  repo-actions: issue
   chapters:
     - index.qmd
-    - erd.qmd
-    - 01-basics.qmd
-    - part: The Basics
+    - 00-intro/the-data-model.qmd
+    - 00-intro/sql-tools.qmd
+    - part: 01-basics/basics.qmd
       chapters:
-
         - 01-basics/using-sql-in-r.qmd
         - 01-basics/using-sql-in-dbt.qmd
         - 01-basics/joins.qmd
         - 01-basics/window-functions.qmd
-        - 01-basics/goodies.qmd
-    - part: Data Modelling Techniques
+        - 01-basics/filtering.qmd
+    - part: 02-models/models.qmd
       chapters:
+        - 02-models/calendar-date-dimension.qmd
         - 02-models/factless-fact-tables.qmd
         - 02-models/ragged-depth-hierarchies.qmd
-    - part: Data Recipes
+    - part: 03-recipes/recipes.qmd
       chapters:
-        - 03-recipes/joins.qmd
         - 03-recipes/queries_with_dates.qmd
         - 03-recipes/pivoting-and-unpivoting.qmd
-        - 03-recipes/filtering.qmd
         - 03-recipes/customer-analytics.qmd
-    - goodies.qmd
+    - misc/goodies.qmd
     - references.qmd
 
-bibliography: references.bib
 
 format:
   html:
     theme: cosmo
 
-
-
+engine: knitr
