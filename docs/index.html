@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Paulius Alaburda">
-<meta name="dcterms.date" content="2026-04-15">
+<meta name="dcterms.date" content="2026-05-04">
 
 <title>The Data Analyst SQL Cookbook</title>
 <style>
@@ -155,7 +155,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./01-basics/joins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Joins</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -278,7 +278,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">April 15, 2026</p>
+      <p class="date">May 4, 2026</p>
     </div>
   </div>
   
@@ -316,6 +316,7 @@ ul.task-list li input[type="checkbox"] {
 <p>My favourite example is how Power BI has an <a href="https://community.fabric.microsoft.com/t5/Desktop/How-to-do-DAX-logic-on-date-level-from-a-SCD2-table/td-p/3156308">unwieldy query</a> for calculating the number of subscriptions for each month, i.e.&nbsp;showing the change of active SCD2 type rows. In a data model, this is solved by building a <a href="https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/factless-fact-table/">factless fact table</a>. And you really really need to know this as a data analyst - I strongly believe that only the analyst can build the semantic layer because the semantic layer is driven by the metrics and questions that need answering. If your tables in the Data Warehouse are not built in a way that helps you answer questions and build your main KPIs, your data analysts are going to build out their logic in the BI tool or somewhere else entirely. This chapter is recipes targeted towards building tables inside of a Data Warehouse.</p>
 <p>To make this book really useful, the book uses the <a href="https://github.com/shafayetShafee/interactive-sql">interactive SQL extension</a> for Quarto. All the code chunks you find in the book are executable. Have fun!</p>
 <p>I like data modeling because it introduces clarity and a common language between data analysts. If all reports follow some sane dimension and fact structure, you can probably onboard a new data analyst faster than to reports that do not. However, I understand why people despise Kimball’s techniques and embrace stuff like one-big-table (OBTs). Have you seen the list of techniques listed on <a href="https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/">KImball’s website</a>? Half of these names don’t make sense to me. If I have a calendar table that is used as a filter on two fact tables, suddenly it’s called a “conformed” dimension? If I define multiple relationships between my dimension and fact tables, it’s called a “role playing” dimension now? That’s too much lingo for my tastes. The data modeling chapter contains techniques that I have found useful with sample SQL code to show how they could be applied.</p>
+<p>This book does not cover SQL aspects more closely related to software development. So things like indexes or parameter sniffing are not covered. While you could find value, they are unlikely to be useful in your daily practice. If you are already thinking about indexes, congratulations - you’re probably a software developer! Go ask for a promotion, you deserve it.</p>
 
 
 </section>

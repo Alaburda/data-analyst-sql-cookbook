@@ -1,5 +1,6 @@
 ---
 title: "Window Functions"
+engine: knitr
 filters:
   - interactive-duckdb
 databases:

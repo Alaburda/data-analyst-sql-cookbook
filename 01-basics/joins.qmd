@@ -1,10 +1,12 @@
 ---
-title: "Factless Fact Table"
+title: "Joins"
+engine: knitr
 filters:
-  - interactive-sql
+  - interactive-duckdb
 databases:
-  - name: db
-    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook-database/main/cookbookdb.sqlite"
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
 ---
 
 # Joins

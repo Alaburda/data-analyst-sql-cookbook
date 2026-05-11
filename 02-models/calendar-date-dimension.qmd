@@ -3,10 +3,12 @@
 ```{r}
 
 #| echo: false
+#| message: false
+#| warning: false
 
 library(duckdb)
 
-con <- dbConnect(duckdb(), "../db/cookbook.duckdb")
+con <- dbConnect(duckdb(), "../databases/cookbook.duckdb")
 
 ```
 

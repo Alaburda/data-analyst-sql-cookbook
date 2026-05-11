@@ -33,6 +33,10 @@ To make this book really useful, the book uses the [interactive SQL extension](h
 I like data modeling because it introduces clarity and a common language between data analysts. If all reports follow some sane dimension and fact structure, you can probably onboard a new data analyst faster than to reports that do not. However, I understand why people despise Kimball's techniques and embrace stuff like one-big-table (OBTs). Have you seen the list of techniques listed on [KImball's website](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/)? Half of these names don't make sense to me. If I have a calendar table that is used as a filter on two fact tables, suddenly it's called a "conformed" dimension? If I define multiple relationships between my dimension and fact tables, it's called a "role playing" dimension now? That's too much lingo for my tastes. The data modeling chapter contains techniques that I have found useful with sample SQL code to show how they could be applied. 
 
 
+This book does not cover SQL aspects more closely related to software development. So things like indexes or parameter sniffing are not covered. While you could find value, they are unlikely to be useful in your daily practice. If you are already thinking about indexes, congratulations - you're probably a software developer! Go ask for a promotion, you deserve it.
+
+What's funny is that when writing this book I had to repeatedly look up my older blog posts for recipes - and this is exactly the reason I am writing this book!
+
 
 
 

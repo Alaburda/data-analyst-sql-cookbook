@@ -1,0 +1,15 @@
+---
+title: "calculating-streaks"
+format: html
+---
+
+# Calculating streaks
+
+With these intervals, it is straightforward to calculate the streaks of consecutive days. We can use the `rle()` function, which stands for "run length encoding". This function takes a logical vector and returns the lengths of consecutive runs of `TRUE` values.  
+
+
+
+
+
+
+https://stackoverflow.com/questions/71402651/run-length-encoding-within-sql-query

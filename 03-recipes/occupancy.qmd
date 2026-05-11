@@ -1,7 +1,12 @@
 ---
 title: "Occupancy"
+engine: knitr
 filters:
   - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
 ---
 
 If you're in the business of working with objects that can be occupied or available, a metric that you'll likely need to calculate is occupancy. This is a measure of how much time an object is occupied over a given time period. For example, if you have a hotel, you might want to know how many rooms are occupied on a given day. If you have a parking lot, you might want to know how many parking spots are occupied not only on a given day but a given hour.

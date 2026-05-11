@@ -2,11 +2,78 @@
 title: "Pivoting and Unpivoting"
 engine: knitr
 filters:
-  - interactive-sql
+  - interactive-duckdb
 databases:
-  - name: pivot
-    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/pivot.db"
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    format: duckdb
 ---
+
+If you've never done a pivot, strap in! A table is a kind of coordinate system: the columns are the X axis and the rows are the Y axis. FOr example, a calendar is a table where the column are the days of the week and the rows are the weeks. But when we're working with data, usually we just have a column called "week" and a column called "week day" and, of course, a column called "date". The calendar is actually a pivot table. The week day column is turned horizontally and now represents the column names. The dates are then spread out across the table based on the week and week day. If you've imagined this process in your head, congratulations - you've just reached the pivot station.
+
+A pivot table will always have more columns and fewer rows than the original table. That is why pivoting is the act of turning a table from a long format to a wide format. Pivoting a table of dates is very straightforward because each day of the month has exactly one week day and one week. In other words, only a single day can be a Monday on the first week of the year. This is easy. 
+
+Usually, however, you will have multiple values for each row and column combination in your pivot table. For example, let's say you want to present the temperature in your calendar table but the temperature varies throughout the day. It's very normal to *aggregate* values, for example, you might want to show the average temperature, maybe the highest and lowest temperature of the day.
+
+While SQL does support pivots, I prefer pivoting using GROUP BY. First, that's one fewer SQL command to remember - to be honest, I haven't warmed up to the PIVOT command. Second, when using SQL, my primary job is to create reusable data models for downstream use. That means that the data models need to have a fairly consistant schema, i.e. the columns shouldn't change frequently. I really don't want to find that the column I pivot on doesn't contain a value anymore or, in fact, contains a new value. So I pivot on columns that are unlikely to change in the future. A common example is showing monthly values for the past 12 months, one month in each column, 12 columns total. I don't see a 13th month happening in my lifetime.
+
+So, I primarily pivot on columns with few values. That means the syntax is going to take up a similar amount of space, for example:
+
+
+```{r}
+
+SELECT *
+FROM cities
+PIVOT (
+    sum(population)
+    FOR
+        year IN (2000, 2010, 2020)
+    GROUP BY country
+);
+
+
+select 
+  name,
+  sum(case when year = 2000 then population end) as 2000,
+  sum(case when year = 2010 then population end) as 2010,
+  sum(case when year = 2020 then population end) as 2020
+from cities
+group by country
+
+
+```
+
+The amount of code is similar but using GROUP BY results in code that is easier to "scan" - when reading the code, I don't need to parse the pivot in my head and "guess" what happens.
+
+Secondly, GROUP BY for pivoting provides something other languages don't - conditional pivoting. That means I can add a condition inside of my aggregation. For example:
+
+```{r}
+
+select 
+  name,
+  sum(case when country in ('NL','LT') then population end) as population_europe,
+  sum(case when country in ('CA','US') then population end) as population_na
+from cities
+group by year
+
+
+```
+
+
+
+
+
+
+So you know how tables have column names? Pivoting is the act of representing the data so that one of the columns gets transformed into column names. 
+
+
+A table, in a sense, has axes. The X axis is columns, the Y axis is rows. Pivoting is the act of taking a column and 
+
+
+Pivoting is the act of representing data in a wider format by using one column 
+
+Pivoting is the act of transforming a table from a long format to a wide format.  
+
 
 At this point it's likely you're using a database that supports pivoting and unpivoting but it's good to know how to do it yourself.
 

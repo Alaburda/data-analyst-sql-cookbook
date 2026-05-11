@@ -1,0 +1,6 @@
+---
+title: "finding-gaps-in-ordered-data"
+format: html
+---
+
+The reverse side of finding consecutive in ordered
