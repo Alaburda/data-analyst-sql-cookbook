@@ -2,11 +2,11 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/index.html</loc>
-    <lastmod>2026-04-15T19:51:44.959Z</lastmod>
+    <lastmod>2026-05-10T06:01:36.483Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/00-intro/the-data-model.html</loc>
-    <lastmod>2026-04-15T19:52:18.987Z</lastmod>
+    <lastmod>2026-05-31T11:10:39.035Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/00-intro/sql-tools.html</loc>
@@ -22,39 +22,39 @@
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/joins.html</loc>
-    <lastmod>2026-04-15T20:47:09.854Z</lastmod>
+    <lastmod>2026-05-31T11:32:03.977Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/window-functions.html</loc>
-    <lastmod>2026-02-15T22:05:19.130Z</lastmod>
+    <lastmod>2026-05-31T11:32:05.705Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/filtering.html</loc>
-    <lastmod>2025-07-03T21:11:48.655Z</lastmod>
+    <lastmod>2026-05-31T11:32:07.990Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/02-models/calendar-date-dimension.html</loc>
-    <lastmod>2026-04-15T17:27:04.983Z</lastmod>
+    <lastmod>2026-06-09T19:28:52.931Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/02-models/factless-fact-tables.html</loc>
-    <lastmod>2026-02-15T21:02:55.355Z</lastmod>
+    <lastmod>2026-05-31T11:12:35.281Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/02-models/ragged-depth-hierarchies.html</loc>
-    <lastmod>2026-02-15T21:29:43.763Z</lastmod>
+    <lastmod>2026-05-31T11:32:13.961Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/03-recipes/queries_with_dates.html</loc>
-    <lastmod>2025-01-29T18:24:17.884Z</lastmod>
+    <lastmod>2026-05-31T11:32:16.000Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/03-recipes/pivoting-and-unpivoting.html</loc>
-    <lastmod>2026-02-15T12:34:29.638Z</lastmod>
+    <lastmod>2026-06-09T18:59:44.677Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/03-recipes/customer-analytics.html</loc>
-    <lastmod>2026-02-07T19:39:13.694Z</lastmod>
+    <lastmod>2026-05-31T11:32:15.010Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/misc/goodies.html</loc>
@@ -66,7 +66,7 @@
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/02-models/models.html</loc>
-    <lastmod>2026-04-15T18:29:31.458Z</lastmod>
+    <lastmod>2026-05-31T11:11:12.884Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/basics.html</loc>

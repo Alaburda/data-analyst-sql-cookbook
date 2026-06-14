@@ -18,7 +18,7 @@ library(dm)
 library(DBI)
 library(duckdb)
 
-con <- dbConnect(duckdb::duckdb(), dbdir = "../db/cookbook.duckdb", read_only = TRUE)
+con <- dbConnect(duckdb::duckdb(), dbdir = "../databases/cookbook.duckdb", read_only = TRUE)
 
 # Build dm from individual tables (learn_keys = FALSE avoids DuckDB compat issues)
 cookbook_dm <- dm_from_con(con, learn_keys = FALSE) |>

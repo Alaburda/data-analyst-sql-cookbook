@@ -1,0 +1,10 @@
+---
+title: "structuring-queries"
+format: html
+---
+
+# Subqueries
+
+# Common table expressions 
+
+# Recursive CTEs

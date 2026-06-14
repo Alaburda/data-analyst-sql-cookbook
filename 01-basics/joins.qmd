@@ -5,9 +5,20 @@ filters:
   - interactive-duckdb
 databases:
   - name: cookbook
-    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/cookbook.duckdb"
     format: duckdb
 ---
+
+```{r setup}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(duckdb)
+
+con <- dbConnect(duckdb(), "../databases/cookbook.duckdb", read_only = TRUE)
+
+```
 
 # Joins
 

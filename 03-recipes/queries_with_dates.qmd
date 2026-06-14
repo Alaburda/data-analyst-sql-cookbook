@@ -1,12 +1,25 @@
 ---
 title: "Queries with Dates"
+engine: knitr
 filters:
-  - interactive-sql
+  - interactive-duckdb
 databases:
-  - name: subscribers
-    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/subscribers.db"
+  - name: subscriptions
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/subscriptions.duckdb"
+    format: duckdb
 
 ---
+
+```{r setup}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(duckdb)
+
+con <- dbConnect(duckdb(), "../databases/subscriptions.duckdb", read_only = TRUE)
+
+```
 
 # Intersecting Dates
 
@@ -14,7 +27,7 @@ Let's say you have a table of subscriptions that all different start and end dat
 
 For example, here are all subscribers that had active subscriptions in 2023:
 
-```{.sql .interactive .subscribers}
+```{.sql .interactive .subscriptions}
 
 select *
 from subscribers
@@ -29,7 +42,7 @@ This query works when thinking in terms of sets. A subscription whose start date
 
 If you have a SCD2 type dimension like subscriptions, a common question might be to provide the number of active subscriptions for each day, week, month or year. It's best to use a calendar table like this:
 
-```{.sql .interactive .subscribers}
+```{.sql .interactive .subscriptions}
 
 select
   date,
@@ -45,7 +58,7 @@ group by date
 
 You can also build a query without using a calendar table:
 
-```{.sql .interactive .subscribers}
+```{.sql .interactive .subscriptions}
 
 with d as (
       select validfrom as dte, 1 as inc

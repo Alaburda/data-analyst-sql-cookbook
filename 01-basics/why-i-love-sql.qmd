@@ -1,0 +1,12 @@
+---
+title: "Why I love SQL - the case for SQL"
+format: html
+---
+
+Generally, SQL is extremely versatile:
+
+* SQL can act as a data asset management tool - in dbt, you declare your SQL statements and they are built in your data warehouse. If Kubernetes, you declare what assets you want and it builds them for you. In SQL, you declare data models and they get built.
+
+* SQL is also a set operation tool - 
+
+* SQL has become extremely versatile

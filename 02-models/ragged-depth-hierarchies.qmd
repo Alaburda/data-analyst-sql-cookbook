@@ -1,5 +1,12 @@
 ---
+title: "Ragged Depth Hierarchies"
 engine: knitr
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/cookbook.duckdb"
+    format: duckdb
 ---
 
 ```{r}
@@ -8,7 +15,7 @@ engine: knitr
 
 library(duckdb)
 
-con <- dbConnect(duckdb(), "../db/cookbook.duckdb", read_only = TRUE)
+con <- dbConnect(duckdb(), "../databases/cookbook.duckdb", read_only = TRUE)
 
 ```
 

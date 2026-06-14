@@ -1,12 +1,24 @@
 ---
 title: "Customer Analytics Recipes"
+engine: knitr
 filters:
   - interactive-duckdb
 databases:
   - name: cookbook
-    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/cookbook.duckdb"
     format: duckdb
 ---
+
+```{r setup}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(duckdb)
+
+con <- dbConnect(duckdb(), "../databases/cookbook.duckdb", read_only = TRUE)
+
+```
 
 This chapter contains analytics recipes that data analysts encounter regularly when working with customer, order, and subscription data. Every query runs against the cookbook database — click **▶ Run** or press `Ctrl+Enter` to execute them. Feel free to edit the SQL and experiment!
 

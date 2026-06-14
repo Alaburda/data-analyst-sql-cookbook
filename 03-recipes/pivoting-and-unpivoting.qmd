@@ -4,10 +4,21 @@ engine: knitr
 filters:
   - interactive-duckdb
 databases:
-  - name: cookbook
-    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+  - name: stocks
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/stocks.duckdb"
     format: duckdb
 ---
+
+```{r setup}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(duckdb)
+
+con <- dbConnect(duckdb(), "../databases/stocks.duckdb", read_only = TRUE)
+
+```
 
 If you've never done a pivot, strap in! A table is a kind of coordinate system: the columns are the X axis and the rows are the Y axis. FOr example, a calendar is a table where the column are the days of the week and the rows are the weeks. But when we're working with data, usually we just have a column called "week" and a column called "week day" and, of course, a column called "date". The calendar is actually a pivot table. The week day column is turned horizontally and now represents the column names. The dates are then spread out across the table based on the week and week day. If you've imagined this process in your head, congratulations - you've just reached the pivot station.
 
@@ -20,48 +31,49 @@ While SQL does support pivots, I prefer pivoting using GROUP BY. First, that's o
 So, I primarily pivot on columns with few values. That means the syntax is going to take up a similar amount of space, for example:
 
 
-```{r}
+```{sql, connection = con}
 
 SELECT *
-FROM cities
+FROM stocks
 PIVOT (
-    sum(population)
-    FOR
-        year IN (2000, 2010, 2020)
-    GROUP BY country
-);
-
-
-select 
-  name,
-  sum(case when year = 2000 then population end) as 2000,
-  sum(case when year = 2010 then population end) as 2010,
-  sum(case when year = 2020 then population end) as 2020
-from cities
-group by country
+    sum(close)
+    FOR ticker IN ('AAPL','^VIX')
+    GROUP BY date
+)
+limit 5
 
 
 ```
+
+```{sql, connection = con}
+
+select 
+  date,
+  sum(case when ticker = 'AAPL' then close end) as AAPL,
+  sum(case when ticker = '^VIX' then close end) as VIX
+from stocks
+group by date
+limit 5
+
+```
+
+
 
 The amount of code is similar but using GROUP BY results in code that is easier to "scan" - when reading the code, I don't need to parse the pivot in my head and "guess" what happens.
 
-Secondly, GROUP BY for pivoting provides something other languages don't - conditional pivoting. That means I can add a condition inside of my aggregation. For example:
+Secondly, GROUP BY for pivoting provides something other languages don't - conditional pivoting. That means I can add a condition inside of my aggregation or use a different aggregation altogether:
 
-```{r}
+```{sql, connection = con}
 
 select 
-  name,
-  sum(case when country in ('NL','LT') then population end) as population_europe,
-  sum(case when country in ('CA','US') then population end) as population_na
-from cities
-group by year
-
+  date,
+  sum(case when ticker = 'AAPL' then close end) as AAPL,
+  sum(case when ticker = '^VIX' then close end) as VIX
+from stocks
+group by date
+limit 5
 
 ```
-
-
-
-
 
 
 So you know how tables have column names? Pivoting is the act of representing the data so that one of the columns gets transformed into column names. 
@@ -83,52 +95,13 @@ The most basic way to pivot is to use a CASE statement for each column you want 
 
 ![How GROUP BY achieves pivoting](../images/group-by-pivot.gif)
 
-```{.sql .interactive .pivot}
-
-select 
-  ts_id,
-  sum(case when ts_year = 2020 then ts_value end) as ts_2020,
-  sum(case when ts_year = 2021 then ts_value end) as ts_2021
-from yearly_values_long
-group by ts_id
-
-```
-
 # Advanced Pivoting
 
 Why I like pivoting in SQL is that I can create arbitrary case when statements to control how my data is pivoted:
 
-```{.sql .interactive .pivot}
-
-select 
-  ts_id,
-  sum(case when ts_year = 2020 and ts_value > 0.5 then ts_value end) as ts_2020,
-  sum(case when ts_year = 2021 and ts_value > 0.5 then ts_value end) as ts_2021
-from yearly_values_long
-group by ts_id
-
-```
-
 # Unpivoting
 
 I wish you don't ever need to unpivot manually in SQL. A universal way to unpivot in SQL is to take each column of interest and do a UNION ALL.
-
-```{.sql .interactive .pivot}
-
-select 
-  ts_id, 
-  '2020' as ts_year, 
-  [2020] as ts_value
-from yearly_values_wide
-union all
-select 
-  ts_id, 
-  '2021' as ts_year, 
-  [2021] as ts_value
-from yearly_values_wide
-
-
-```
 
 # References
 
@@ -140,78 +113,9 @@ Pivoting refers to a transformation where you take two columns: one containing v
 
 Chances are that your tooling allows you to perform these operations. Unless, of course, you are an unlucky fellow or you prefer to roll your own code.
 
-## The Data
-
-The data we're using looks like this:
-
-
-```{r}
-#| echo: false
-#| message: false
-#| warning: false
-
-library(duckdb)
-library(dplyr)
-
-con <- dbConnect(duckdb::duckdb())
-
-# Set seed for reproducibility
-set.seed(123)
-
-# Create vectors for each column
-names <- c("Alice", "Bob", "Charlie", "David", "Emma", "Frank", "Grace", "Henry", "Isabel", "Jack")
-activities <- c("Running", "Swimming", "Cycling", "Yoga", "Tennis", "Basketball", "Hiking", "Dancing", "Weightlifting", "Pilates")
-
-# Generate the data frame
-df <- data.frame(
-  Name = sample(names, 50, replace = TRUE),
-  Activity = sample(activities, 50, replace = TRUE),
-  Number = round(runif(50, min = 1, max = 100), 2)
-)
-
-dbWriteTable(con, "sport_interests", df)
-
-```
-
-```{sql}
-#| connection: con
-
-select *
-from sport_interests 
-limit 5
-
-```
-
 ## Pivoting
 
 Pivoting in SQL looks like this:
-
-```{sql}
-#| connection: con
-
-select 
-  name,
-  sum(case when Activity = 'Running' then Number end) as running,
-  sum(case when Activity = 'Tennis' then Number end) as tennis
-from sport_interests
-group by name
-
-
-```
-
-```{sql}
-#| connection: con
-#| echo: false
-
-create table sport_interests_pivot as 
-(select 
-  name,
-  sum(case when Activity = 'Running' then Number end) as running,
-  sum(case when Activity = 'Tennis' then Number end) as tennis
-from sport_interests
-group by name)
-
-```
 
 If you need to pivot into a lot of columns, you are going to have a bad time. First, you need to specify each column that is *not* being pivoted into the select statement as well as the group by clause. Second, you need to manually type out each column that appears in the pivot. 
 
@@ -220,25 +124,6 @@ Nonetheless, I love pivoting in SQL because you can individually define how each
 ## Unpivoting
 
 Unpivoting is a little tricky in SQL. Essentially, we'll be creating multiple select statements for each column we would like to unpivot, with each select statement containing a different column:
-
-```{sql}
-#| connection: con
-
-select 
-  name,
-  'Running' as Activity,
-  running as Number
-from sport_interests_pivot
-
-UNION ALL
-
-select 
-  name,
-  'Tennis' as Activity,
-  tennis as Number
-from sport_interests_pivot
-
-```
 
 I don't love unpivoting in SQL. When pivoting, a single line of code translates into a column, whereas a single column translates into a whole separate SQL statement. Please use some framework or an engine that supports unpivoting through a function (e.g. Snowflake's `UNPIVOT` or dbt's `unpivot` macro).
 

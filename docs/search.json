@@ -4,7 +4,7 @@
     "href": "index.html",
     "title": "The Data Analyst SQL Cookbook",
     "section": "",
-    "text": "Preface\nI have a terrible memory for things that I use rarely. When it comes to SQL, there are certain code patterns that are extremely useful when doing data modelling. But there’s only so many data models you need to build before actually using them. I wrote this so that I have all of my useful patterns in one place with the benefit of sharing this with you.\nThis book was born out of a need to collect SQL queries that were too infrequently used to be memorized but too frequently used to be looked up. The queries are organized by topic and are meant to be used as a reference. The book is also meant to be a living document that will be updated as new queries are discovered and old queries are improved.\nFurthermore, these SQL patterns are not universally known! I have found that many developers are not aware of these patterns and are reinventing the wheel when they encounter these problems. I hope that this book will help to spread these patterns and make them more widely known. My team has been victim to the same problem - we found a solution on StackOverflow only to find a better solution a year down the line.\nThe impetus to writing this book was that I couldn’t find a book that I could throw at a fresh data analyst and say “here, this will get you up to speed on SQL”. The book initially was supposed to be a collection of SQL queries that my team used frequently or infrequently. Think of it as a SQL cookbook of sorts - it contains recipes that are useful but not so common that you’d learn them by heart. However, I also realised that having a single resource for SQL is better than two so I added an introduction to SQL as well.\nPart one of the book is exactly that - basics presented in a concise manner to get you up to speed on running queries as an analyst. Part two is the cookbook - the queries are loosely grouped around the types of problems they solve. For example, queries for working with time series will be in the same chapter. Loosely is a load-bearing word here - I would like to find a more natural way of organising the material but the recipes are going to be useful depending on your area. You might not even find a use for some of the queries in this book!\nThere’s also another, secret, part - building Data Models. A lot of Data Analysts forgo building a star schema and just whack the raw data with whatever tool they’re most comfortable with. It’s not necessarily a bad practice or anything but I prefer building out my data model so that it meets two criteria:\n\nIt’s expressive - relatively simple SQL queries are required to get different calculations, i.e. I don’t need to use exotic SQL when all I want is a count or a sum\nIt’s\n\nIf the model is expressive and X, then there’s a few neat things that get solved:\n\nYou no longer need to write complicated Calculated Fields or DAX queries - that means the calculations are simpler and more portable.\nThis means you have less lock-in - if for some reason you need to switch BI vendors, your data model drives most of the logic.\nAn expressive data model also lets you double check if the result in your Data Warehouse and your BI tool matches\n\nWhenever I build a data model (or semantic layer whatever you wanna call it), I try to build it in a way that my main metrics can be calculated using simple SQL queries like counting rows or SUM’ing a column. Achieving this nets you a few neat things:\n\nYou can check your metric definition inside your Data Warehouse and your BI tool\nYou have less vendor lock-in and can switch BI tools if need be\n\nMy favourite example is how Power BI has an unwieldy query for calculating the number of subscriptions for each month, i.e. showing the change of active SCD2 type rows. In a data model, this is solved by building a factless fact table. And you really really need to know this as a data analyst - I strongly believe that only the analyst can build the semantic layer because the semantic layer is driven by the metrics and questions that need answering. If your tables in the Data Warehouse are not built in a way that helps you answer questions and build your main KPIs, your data analysts are going to build out their logic in the BI tool or somewhere else entirely. This chapter is recipes targeted towards building tables inside of a Data Warehouse.\nTo make this book really useful, the book uses the interactive SQL extension for Quarto. All the code chunks you find in the book are executable. Have fun!\nI like data modeling because it introduces clarity and a common language between data analysts. If all reports follow some sane dimension and fact structure, you can probably onboard a new data analyst faster than to reports that do not. However, I understand why people despise Kimball’s techniques and embrace stuff like one-big-table (OBTs). Have you seen the list of techniques listed on KImball’s website? Half of these names don’t make sense to me. If I have a calendar table that is used as a filter on two fact tables, suddenly it’s called a “conformed” dimension? If I define multiple relationships between my dimension and fact tables, it’s called a “role playing” dimension now? That’s too much lingo for my tastes. The data modeling chapter contains techniques that I have found useful with sample SQL code to show how they could be applied.",
+    "text": "Preface\nI have a terrible memory for things that I use rarely. When it comes to SQL, there are certain code patterns that are extremely useful when doing data modelling. But there’s only so many data models you need to build before actually using them. I wrote this so that I have all of my useful patterns in one place with the benefit of sharing this with you.\nThis book was born out of a need to collect SQL queries that were too infrequently used to be memorized but too frequently used to be looked up. The queries are organized by topic and are meant to be used as a reference. The book is also meant to be a living document that will be updated as new queries are discovered and old queries are improved.\nFurthermore, these SQL patterns are not universally known! I have found that many developers are not aware of these patterns and are reinventing the wheel when they encounter these problems. I hope that this book will help to spread these patterns and make them more widely known. My team has been victim to the same problem - we found a solution on StackOverflow only to find a better solution a year down the line.\nThe impetus to writing this book was that I couldn’t find a book that I could throw at a fresh data analyst and say “here, this will get you up to speed on SQL”. The book initially was supposed to be a collection of SQL queries that my team used frequently or infrequently. Think of it as a SQL cookbook of sorts - it contains recipes that are useful but not so common that you’d learn them by heart. However, I also realised that having a single resource for SQL is better than two so I added an introduction to SQL as well.\nPart one of the book is exactly that - basics presented in a concise manner to get you up to speed on running queries as an analyst. Part two is the cookbook - the queries are loosely grouped around the types of problems they solve. For example, queries for working with time series will be in the same chapter. Loosely is a load-bearing word here - I would like to find a more natural way of organising the material but the recipes are going to be useful depending on your area. You might not even find a use for some of the queries in this book!\nThere’s also another, secret, part - building Data Models. A lot of Data Analysts forgo building a star schema and just whack the raw data with whatever tool they’re most comfortable with. It’s not necessarily a bad practice or anything but I prefer building out my data model so that it meets two criteria:\n\nIt’s expressive - relatively simple SQL queries are required to get different calculations, i.e. I don’t need to use exotic SQL when all I want is a count or a sum\nIt’s\n\nIf the model is expressive and X, then there’s a few neat things that get solved:\n\nYou no longer need to write complicated Calculated Fields or DAX queries - that means the calculations are simpler and more portable.\nThis means you have less lock-in - if for some reason you need to switch BI vendors, your data model drives most of the logic.\nAn expressive data model also lets you double check if the result in your Data Warehouse and your BI tool matches\n\nWhenever I build a data model (or semantic layer whatever you wanna call it), I try to build it in a way that my main metrics can be calculated using simple SQL queries like counting rows or SUM’ing a column. Achieving this nets you a few neat things:\n\nYou can check your metric definition inside your Data Warehouse and your BI tool\nYou have less vendor lock-in and can switch BI tools if need be\n\nMy favourite example is how Power BI has an unwieldy query for calculating the number of subscriptions for each month, i.e. showing the change of active SCD2 type rows. In a data model, this is solved by building a factless fact table. And you really really need to know this as a data analyst - I strongly believe that only the analyst can build the semantic layer because the semantic layer is driven by the metrics and questions that need answering. If your tables in the Data Warehouse are not built in a way that helps you answer questions and build your main KPIs, your data analysts are going to build out their logic in the BI tool or somewhere else entirely. This chapter is recipes targeted towards building tables inside of a Data Warehouse.\nTo make this book really useful, the book uses the interactive SQL extension for Quarto. All the code chunks you find in the book are executable. Have fun!\nI like data modeling because it introduces clarity and a common language between data analysts. If all reports follow some sane dimension and fact structure, you can probably onboard a new data analyst faster than to reports that do not. However, I understand why people despise Kimball’s techniques and embrace stuff like one-big-table (OBTs). Have you seen the list of techniques listed on KImball’s website? Half of these names don’t make sense to me. If I have a calendar table that is used as a filter on two fact tables, suddenly it’s called a “conformed” dimension? If I define multiple relationships between my dimension and fact tables, it’s called a “role playing” dimension now? That’s too much lingo for my tastes. The data modeling chapter contains techniques that I have found useful with sample SQL code to show how they could be applied.\nThis book does not cover SQL aspects more closely related to software development. So things like indexes or parameter sniffing are not covered. While you could find value, they are unlikely to be useful in your daily practice. If you are already thinking about indexes, congratulations - you’re probably a software developer! Go ask for a promotion, you deserve it.\nWhat’s funny is that when writing this book I had to repeatedly look up my older blog posts for recipes - and this is exactly the reason I am writing this book!",
     "crumbs": [
       "Preface"
     ]
@@ -105,100 +105,100 @@
   {
     "objectID": "01-basics/joins.html",
     "href": "01-basics/joins.html",
-    "title": "3  Factless Fact Table",
+    "title": "3  Joins",
     "section": "",
     "text": "4 Joins\nIf you’re here, there’s a high chance you know of the simple suite of joins.\nWhen it comes to joins, my head is usually in either of two spaces: it’s either just a series of inner and left joins or it’s something else to achieve a certain table. For example, I use a full outer join pretty much in cases where I need a full combination from two tables and nowhere else.\nIf I could write a blog post, I would probably just dump interesting cases of using joins in ways that are not entirely obvious on first glance. What comes to mind:\nThis basics chapter delves into",
     "crumbs": [
       "The Basics",
-      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Joins</span>"
     ]
   },
   {
     "objectID": "01-basics/joins.html#natural-keys-surrogate-keys",
     "href": "01-basics/joins.html#natural-keys-surrogate-keys",
-    "title": "3  Factless Fact Table",
+    "title": "3  Joins",
     "section": "4.1 Natural Keys, Surrogate Keys",
     "text": "4.1 Natural Keys, Surrogate Keys\nWhen joining tables together, you need columns by which to join on! If you’re working with data from a system – whether it’s data from an API or a backend database – it’s very likely the data carries some sort of unique identifier. These identifiers are called surrogate keys or primary keys. You can expect each object in the system’s database to have a primary key because that’s how a system can relate different objects (usually, tables) together. The keys will usually be either integers or UUIDs. The keys by themselves are not derived from application data and carry no meaning outside of the system.\nA table will usually have a primary key but it may also contain one or more foreign keys. Foreign keys are columns that contain values of primary keys from other tables. For example, a table of orders might have a foreign key order_user_id that contains values of the primary key user_id from the users table. The system can lookup who made the order. We, as analysts, can join those tables together.\nIt’s common to join data from different systems that do not share any surrogate keys between them. However, primary keys only have meaning within the boundaries of the system. For example, if I have a list of leads from a web form, my only option to join data is using the emails. This is an example of natural keys. Natural keys are identifiers as well but they carry some sort of meaning outside of the system. Examples of natural keys include emails, telephone numbers, personal numbers, SSNs, contract numbers, addresses. Depending on the context, natural keys may or may not be unique in a table but they usually help us uniquely identify an object in the real world. If I tell you my home address, you would be able to find me on a map. Because of this, I like to call them semantic keys because they carry some sort of meaning.\nJoining using natural keys requires more scrutiny because the data you’re using might not be unique based on the natural key. For example, maybe two different users can input the same telephone number in your registration form. Or perhaps an employee had a new account created so now the same employee occurs twice in your database. Luckily, software these days is built to handle these cases but it’s up to the analyst to understand the structure of the data and what process is applied to handling natural keys.",
     "crumbs": [
       "The Basics",
-      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Joins</span>"
     ]
   },
   {
     "objectID": "01-basics/joins.html#non-equi-joins-range-joins",
     "href": "01-basics/joins.html#non-equi-joins-range-joins",
-    "title": "3  Factless Fact Table",
+    "title": "3  Joins",
     "section": "4.2 Non-equi joins / range joins",
     "text": "4.2 Non-equi joins / range joins\nRange joins are great for calculating working time (as opposed to total time), creating factless fact tables, creating\nRange joins can be expensive - the more you constrain them, the cheaper and faster the query.",
     "crumbs": [
       "The Basics",
-      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Joins</span>"
     ]
   },
   {
     "objectID": "01-basics/joins.html#range-joins-non-equi-joins",
     "href": "01-basics/joins.html#range-joins-non-equi-joins",
-    "title": "3  Factless Fact Table",
+    "title": "3  Joins",
     "section": "4.3 Range joins (non-equi joins)",
     "text": "4.3 Range joins (non-equi joins)\nRange joins, also known as non-equi joins, are amazing when done right. Range joins are essentially a multiplication operation - you’re creating a combination of rows based on constraints. In this way, range joins are a kind of cartesian join with a filter condition on top - to be fair, that’s how I think of them myself. For example, this code:\nEssentially says “give me a combination of rows from these two tables”.\nThey’re not a means to an end by themselves as they are needed when exploding tables, creating factless fact tables, doing row attributions etc. Normal joins won’t usually produce joins but range joins can.\nI really like Microsoft’s SQL Server page on range join optimization.",
     "crumbs": [
       "The Basics",
-      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Joins</span>"
     ]
   },
   {
     "objectID": "01-basics/joins.html#anti-joins",
     "href": "01-basics/joins.html#anti-joins",
-    "title": "3  Factless Fact Table",
+    "title": "3  Joins",
     "section": "4.4 Anti joins",
     "text": "4.4 Anti joins\nANTI is not a join type, what gives? Imagine doing a left join: some rows will return a NULL from the joined table and some will be filled. If you were to filter the result set to keep only filled rows, you basically do an INNER join. But if you filter to only keep rows with NULL values, you end up with a table of rows that didn’t have a matching row. In other words, the reverse of the INNER JOIN allows you to remove rows from one table based on matching rows in another.\n\n\n\nHow anti join works\n\n\nThis is an important implication because your other options are either the IN operator or the WHERE EXISTS clause. The problem with the IN operator is that it’s not efficient and the latter is more verbose. The alternating are laid out in the filtering chapter.",
     "crumbs": [
       "The Basics",
-      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Joins</span>"
     ]
   },
   {
     "objectID": "01-basics/joins.html#left-join",
     "href": "01-basics/joins.html#left-join",
-    "title": "3  Factless Fact Table",
+    "title": "3  Joins",
     "section": "4.5 LEFT JOIN",
     "text": "4.5 LEFT JOIN\nWhen doing left joins, there’s a few tricks that are not obvious but are incredibly useful. First, is the anti join where after you had joined the rows you only keep the ones that didn’t have a matching row. For example:\nThe second trick relates to the fact that you can put any condition in the join clause. If you put a filtering condition in the join then you can join rows on some condition but also only rows that meet some criteria overall. For example:\nYou can’t put the condition in the WHERE clause because filtering happens after the join - essentially that would transform the join into an INNER JOIN.\nAnti joins are one way of filtering out rows. For more, see the section on filtering.",
     "crumbs": [
       "The Basics",
-      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Joins</span>"
     ]
   },
   {
     "objectID": "01-basics/joins.html#counting-number-of-subscribers",
     "href": "01-basics/joins.html#counting-number-of-subscribers",
-    "title": "3  Factless Fact Table",
+    "title": "3  Joins",
     "section": "4.6 Counting number of subscribers",
     "text": "4.6 Counting number of subscribers\nIf you’re working with subscription data, one frequent question is “how many subscribtions we had each month?”. This is a surprisingly difficult question to answer because you need to count the number of subscribers at the end of each month. This is a great example of a problem that is easy to solve in SQL but cumbersome on the BI end1.\nThe query is a two step process:\n\nWe join a list of months to the subscriptions table in order to “explore” the table at the level of months. Instead of having one row be a subscription, one row is a subscription in a given month. For example, a subscription that was active for three months would show up as three rows.\nAggregation - now that the data is at the level of months, we can count the number of subscriptions in each month.\n\n\n\nwith months as (\n            select distinct DATE(date, 'start of month') date\n            from calendar\n           )\n           select date, count(*)\n           from months\n           inner join subscriptions\n            on date between date_from and date_to\n           group by date",
     "crumbs": [
       "The Basics",
-      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Joins</span>"
     ]
   },
   {
     "objectID": "01-basics/joins.html#rolling-as-of-joins",
     "href": "01-basics/joins.html#rolling-as-of-joins",
-    "title": "3  Factless Fact Table",
+    "title": "3  Joins",
     "section": "4.7 Rolling “As of” Joins",
     "text": "4.7 Rolling “As of” Joins\nRolling joins are essentially non-equi joins that only return the “closest” row. R users may be familliar with this technique as Rolling Joins, DuckDB and Snowflake refers to these as “ASOF” joins: https://duckdb.org/docs/stable/guides/sql_features/asof_join.html\nThese operations are incredibly useful when working with attribution. For example, two customer representatives performed a sale and marked it in the CRM but you need to attribute the sale to the sale that was performed first.",
     "crumbs": [
       "The Basics",
-      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Joins</span>"
     ]
   },
   {
     "objectID": "01-basics/joins.html#footnotes",
     "href": "01-basics/joins.html#footnotes",
-    "title": "3  Factless Fact Table",
+    "title": "3  Joins",
     "section": "",
     "text": "In Power BI, it’s a four step process.↩︎",
     "crumbs": [
       "The Basics",
-      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Factless Fact Table</span>"
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>Joins</span>"
     ]
   },
   {
@@ -294,7 +294,7 @@
     "href": "01-basics/filtering.html#anti-joins-1",
     "title": "5  Filtering",
     "section": "7.3 Anti joins",
-    "text": "7.3 Anti joins\nI love anti joins because they’re extremely useful for a wide range of scenarios but SQL practitioners don’t always learn about them early on (I certainly didn’t!).\nAdd anti-join from here: https://github.com/gadenbuie/tidyexplain",
+    "text": "7.3 Anti joins\nI love anti joins because they’re extremely useful for a wide range of scenarios but SQL practitioners don’t always learn about them early on (I certainly didn’t!).\n\n\n\nHow anti join works",
     "crumbs": [
       "The Basics",
       "<span class='chapter-number'>5</span>  <span class='chapter-title'>Filtering</span>"
@@ -316,9 +316,20 @@
     "href": "02-models/calendar-date-dimension.html",
     "title": "6  Creating a Calendar Date Dimension",
     "section": "",
-    "text": "6.1 Building it with DuckDB\nThere’s no one right way to build a calendar table. If you want to maintain an Excel file that gets regularly ingested, that’s fine. If you want to use a Python or R, that’s great too because they both have expressive ways to manipulate dates1. If you want to use SQL, that’s also fine. In DuckDB, it’s extremely easy because generate_series returns a list of dates that you can manipulate. Here’s some code that creates the calendar:\ncreate or replace table dim_date as \nSELECT\n    CAST(strftime(dates, '%Y%m%d') AS INTEGER) AS date_key,\n    dates AS date,\n    YEAR(dates) AS year,\n    QUARTER(dates) AS quarter,\n    MONTH(dates) AS month,\n    monthname(dates) AS month_name,\n    WEEK(dates) AS week,\n    DAY(dates) AS day_of_month,\n    DAYOFWEEK(dates) AS day_of_week,\n    dayname(dates) AS day_name,\n    DAYOFYEAR(dates) AS day_of_year,\n    CASE WHEN DAYOFWEEK(dates) IN (0, 6) THEN true ELSE false END AS is_weekend,\n    false AS is_holiday,  -- Can be updated with actual holidays\n    CASE \n        WHEN MONTH(dates) &gt;= 7 THEN YEAR(dates) + 1 \n        ELSE YEAR(dates) \n    END AS fiscal_year,  -- Assuming fiscal year starts July 1\n    CASE \n        WHEN MONTH(dates) &gt;= 7 THEN QUARTER(dates) - 2\n        ELSE QUARTER(dates) + 2\n    END AS fiscal_quarter\nFROM generate_series(\n    DATE '2020-01-01',\n    DATE '2025-12-31',\n    INTERVAL '1 day'\n) AS t(dates);",
+    "text": "6.1 Building it with DuckDB\nThere’s no one right way to build a calendar table. If you want to maintain an Excel file that gets regularly ingested, that’s fine. If you want to use a Python or R, that’s great too because they both have expressive ways to manipulate dates1. If you want to use SQL, that’s also fine. In DuckDB, it’s extremely easy because generate_series returns a list of dates that you can manipulate. Here’s some code that creates the calendar:\nSELECT\n    CAST(strftime(dates, '%Y%m%d') AS INTEGER) AS date_key,\n    dates AS date,\n    YEAR(dates) AS year,\n    QUARTER(dates) AS quarter,\n    MONTH(dates) AS month,\n    monthname(dates) AS month_name,\n    WEEK(dates) AS week,\n    DAY(dates) AS day_of_month,\n    DAYOFWEEK(dates) AS day_of_week,\n    dayname(dates) AS day_name,\n    DAYOFYEAR(dates) AS day_of_year,\n    CASE WHEN DAYOFWEEK(dates) IN (0, 6) THEN true ELSE false END AS is_weekend,\n    false AS is_holiday,  -- Can be updated with actual holidays\n    CASE \n        WHEN MONTH(dates) &gt;= 7 THEN YEAR(dates) + 1 \n        ELSE YEAR(dates) \n    END AS fiscal_year,  -- Assuming fiscal year starts July 1\n    CASE \n        WHEN MONTH(dates) &gt;= 7 THEN QUARTER(dates) - 2\n        ELSE QUARTER(dates) + 2\n    END AS fiscal_quarter\nFROM generate_series(\n    DATE '2020-01-01',\n    DATE '2025-12-31',\n    INTERVAL '1 day'\n) AS t(dates);",
     "crumbs": [
-      "models",
+      "Models",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Creating a Calendar Date Dimension</span>"
+    ]
+  },
+  {
+    "objectID": "02-models/calendar-date-dimension.html#building-it-with-duckdb",
+    "href": "02-models/calendar-date-dimension.html#building-it-with-duckdb",
+    "title": "6  Creating a Calendar Date Dimension",
+    "section": "7.1 Building it with DuckDB",
+    "text": "7.1 Building it with DuckDB\nThere’s no one right way to build a calendar table. If you want to maintain an Excel file that gets regularly ingested, that’s fine. If you want to use a Python or R, that’s great too because they both have expressive ways to manipulate dates1. If you want to use SQL, that’s also fine. In DuckDB, it’s extremely easy because generate_series returns a list of dates that you can manipulate. Here’s some code that creates the calendar:\n\nSELECT\n    CAST(strftime(dates, '%Y%m%d') AS INTEGER) AS date_key,\n    dates AS date,\n    YEAR(dates) AS year,\n    QUARTER(dates) AS quarter,\n    MONTH(dates) AS month,\n    monthname(dates) AS month_name,\n    WEEK(dates) AS week,\n    DAY(dates) AS day_of_month,\n    DAYOFWEEK(dates) AS day_of_week,\n    dayname(dates) AS day_name,\n    DAYOFYEAR(dates) AS day_of_year,\n    CASE WHEN DAYOFWEEK(dates) IN (0, 6) THEN true ELSE false END AS is_weekend,\n    false AS is_holiday,  -- Can be updated with actual holidays\n    CASE \n        WHEN MONTH(dates) &gt;= 7 THEN YEAR(dates) + 1 \n        ELSE YEAR(dates) \n    END AS fiscal_year,  -- Assuming fiscal year starts July 1\n    CASE \n        WHEN MONTH(dates) &gt;= 7 THEN QUARTER(dates) - 2\n        ELSE QUARTER(dates) + 2\n    END AS fiscal_quarter\nFROM generate_series(\n    DATE '2020-01-01',\n    DATE '2025-12-31',\n    INTERVAL '1 day'\n) AS t(dates);",
+    "crumbs": [
+      "Models",
       "<span class='chapter-number'>6</span>  <span class='chapter-title'>Creating a Calendar Date Dimension</span>"
     ]
   },
@@ -327,9 +338,9 @@
     "href": "02-models/calendar-date-dimension.html#adding-holidays",
     "title": "6  Creating a Calendar Date Dimension",
     "section": "6.2 Adding Holidays",
-    "text": "6.2 Adding Holidays\nA good calendar table also needs a column whether a date is a holiday. Generally, there is no way to create a holiday field without some sort of dependency, so there is no best way of creating it. The simplest way is to create an Excel file with some years in advance that you would ingest on a yearly basis. In that case your dependency is someone on the team remembering to expand the table and updating the holidays.\nA different way of handling holidays is to automate the creation of the holiday field. Basically, it would be a case when statement that checks whether the date is December 24th, December 25th, January 1st etc. The first wrinkle is that someone will still have to keep up with adding or removing holidays. In fact, in 2019, Lithuania declared November 2nd, All Souls’ day, a holiday. Holidays do change over time!\nThe second wrinkle is that calculating your own holidays can be tricky. For example, Easter Sunday is a holiday in many countries but it doesn’t have a fixed date. It falls on the first Sunday after the first full moon following the vernal equinox. In other words, it’s a moving target and there’s a whole Wikipedia article about the it. In SQL, you could create a macro or a function. Based on this great 2020 blog post, here’s an implementation of an algorithm published in New Scientist in 1961:\n\n\nCREATE OR REPLACE MACRO easter_sunday(y) AS TABLE\nSELECT easter_sunday_date\nFROM (VALUES (y % 19, (y / 100)::int, y % 100))              AS e1(a, b, c)\nCROSS JOIN LATERAL (VALUES (b / 4, b % 4))                            AS e2(d, e)\nCROSS JOIN LATERAL (VALUES (FLOOR((8 * b + 13) / 25)))                 AS e3(g)\nCROSS JOIN LATERAL (VALUES ((19*a + b - d - g + 15) % 30, FLOOR(c/4), c%4)) AS e4(h, i, k)\nCROSS JOIN LATERAL (VALUES (FLOOR((32 + 2*e + 2*i - h - k) % 7)))           AS e5(l)\nCROSS JOIN LATERAL (VALUES (FLOOR((a + 11*h + 19*l) / 433)))                 AS e6(m)\nCROSS JOIN LATERAL (VALUES (FLOOR((h + l - 7*m + 90) / 25)))                 AS e7(n)\nCROSS JOIN LATERAL (VALUES (FLOOR((h + l - 7*m + 33*n + 19) % 32)))         AS e8(p)\nCROSS JOIN LATERAL (VALUES (make_date(y, n::int, p::int)))        AS e9(easter_sunday_date);\n\nTo join the dates to our date dimension, we generate a series of years to pass into our macro and then join the resulting table to the date dimension:\n\n\ncreate or replace table dim_date_with_easter as \nwith easter_sundays as (\nSELECT \n  e.*\nFROM generate_series(2020, 2025) AS t(y),\nLATERAL easter_sunday(t.y) AS e\n)\nselect \n  dim_date.*,\n  case when easter_sunday_date is not null then 1 else 0 end as is_easter_sunday\nfrom dim_date\nleft join easter_sundays\n  on easter_sunday_date = date\n\n\n\nselect *\nfrom dim_date_with_easter\nwhere is_easter_sunday = 1\n\n\n6 records\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ndate_key\ndate\nyear\nquarter\nmonth\nmonth_name\nweek\nday_of_month\nday_of_week\nday_name\nday_of_year\nis_weekend\nis_holiday\nfiscal_year\nfiscal_quarter\nis_easter_sunday\nis_easter_sunday_1\n\n\n\n\n20200412\n2020-04-12\n2020\n2\n4\nApril\n15\n12\n0\nSunday\n103\nTRUE\nFALSE\n2020\n4\n1\n1\n\n\n20210404\n2021-04-04\n2021\n2\n4\nApril\n13\n4\n0\nSunday\n94\nTRUE\nFALSE\n2021\n4\n1\n1\n\n\n20220417\n2022-04-17\n2022\n2\n4\nApril\n15\n17\n0\nSunday\n107\nTRUE\nFALSE\n2022\n4\n1\n1\n\n\n20230409\n2023-04-09\n2023\n2\n4\nApril\n14\n9\n0\nSunday\n99\nTRUE\nFALSE\n2023\n4\n1\n1\n\n\n20240331\n2024-03-31\n2024\n1\n3\nMarch\n13\n31\n0\nSunday\n91\nTRUE\nFALSE\n2024\n3\n1\n1\n\n\n20250420\n2025-04-20\n2025\n2\n4\nApril\n16\n20\n0\nSunday\n110\nTRUE\nFALSE\n2025\n4\n1\n1\n\n\n\n\n\nThe final way to handle holidays is to use a service provider. There are paid providers but Nager.Date has a free API that you can use to get holidays for a given country and year. Here’s an R function that wraps it:\n\nlibrary(dplyr)\n\n\nAttaching package: 'dplyr'\n\n\nThe following objects are masked from 'package:stats':\n\n    filter, lag\n\n\nThe following objects are masked from 'package:base':\n\n    intersect, setdiff, setequal, union\n\nlibrary(tidyr)\nlibrary(httr)\n\nget_holidays &lt;- function(country_code = \"lt\", year = \"2023\") {\n\n  rs &lt;- GET(glue::glue(\"https://date.nager.at/api/v3/publicholidays/{year}/{country_code}\"))\n\n  out &lt;- content(rs) %&gt;%\n    tibble::enframe() %&gt;%\n    select(value) %&gt;%\n    unnest_wider(value) %&gt;%\n    transmute(date = as.Date(date),\n           holiday_name_local = localName,\n           holiday_name = name)\n\n  return(out)\n\n}\n\nget_holidays(country_code = \"lt\", year = \"2026\")\n\n# A tibble: 14 × 3\n   date       holiday_name_local                       holiday_name             \n   &lt;date&gt;     &lt;chr&gt;                                    &lt;chr&gt;                    \n 1 2026-01-01 Naujieji metai                           New Year's Day           \n 2 2026-02-16 Lietuvos valstybės atkūrimo diena        The Day of Restoration o…\n 3 2026-03-11 Lietuvos nepriklausomybės atkūrimo diena Day of Restoration of In…\n 4 2026-04-05 Velykos                                  Easter Sunday            \n 5 2026-04-06 Antroji Velykų diena                     Easter Monday            \n 6 2026-05-01 Tarptautinė darbo diena                  International Working Day\n 7 2026-06-24 Joninės, Rasos                           St. John's Day           \n 8 2026-07-06 Valstybės diena                          Statehood Day            \n 9 2026-08-15 Žolinė                                   Assumption Day           \n10 2026-11-01 Visų šventųjų diena                      All Saints' Day          \n11 2026-11-02 Vėlinės                                  All Souls' Day           \n12 2026-12-24 Šv. Kūčios                               Christmas Eve            \n13 2026-12-25 Šv. Kalėdos                              Christmas Day            \n14 2026-12-26 Šv. Kalėdos                              St. Stephen's Day        \n\n\nOf course, now you are dependent on an external provider but an external provider might make more sense if you are handling holidays across different countries. In all of the ways provided, you need someone or something to handle holiday changes.",
+    "text": "6.2 Adding Holidays\nA good calendar table also needs a column whether a date is a holiday. Generally, there is no way to create a holiday field without some sort of dependency, so there is no best way of creating it. The simplest way is to create an Excel file with some years in advance that you would ingest on a yearly basis. In that case your dependency is someone on the team remembering to expand the table and updating the holidays.\nA different way of handling holidays is to automate the creation of the holiday field. Basically, it would be a case when statement that checks whether the date is December 24th, December 25th, January 1st etc. The first wrinkle is that someone will still have to keep up with adding or removing holidays. In fact, in 2019, Lithuania declared November 2nd, All Souls’ day, a holiday. Holidays do change over time!\nThe second wrinkle is that calculating your own holidays can be tricky. For example, Easter Sunday is a holiday in many countries but it doesn’t have a fixed date. It falls on the first Sunday after the first full moon following the vernal equinox. In other words, it’s a moving target and there’s a whole Wikipedia article about the it. In SQL, you could create a macro or a function. Based on this great 2020 blog post, here’s an implementation of an algorithm published in New Scientist in 1961:\n\nCREATE OR REPLACE MACRO easter_sunday(y) AS TABLE\nSELECT easter_sunday_date\nFROM (VALUES (y % 19, (y / 100)::int, y % 100))              AS e1(a, b, c)\nCROSS JOIN LATERAL (VALUES (b / 4, b % 4))                            AS e2(d, e)\nCROSS JOIN LATERAL (VALUES (FLOOR((8 * b + 13) / 25)))                 AS e3(g)\nCROSS JOIN LATERAL (VALUES ((19*a + b - d - g + 15) % 30, FLOOR(c/4), c%4)) AS e4(h, i, k)\nCROSS JOIN LATERAL (VALUES (FLOOR((32 + 2*e + 2*i - h - k) % 7)))           AS e5(l)\nCROSS JOIN LATERAL (VALUES (FLOOR((a + 11*h + 19*l) / 433)))                 AS e6(m)\nCROSS JOIN LATERAL (VALUES (FLOOR((h + l - 7*m + 90) / 25)))                 AS e7(n)\nCROSS JOIN LATERAL (VALUES (FLOOR((h + l - 7*m + 33*n + 19) % 32)))         AS e8(p)\nCROSS JOIN LATERAL (VALUES (make_date(y, n::int, p::int)))        AS e9(easter_sunday_date);\n\nTo join the dates to our date dimension, we generate a series of years to pass into our macro and then join the resulting table to the date dimension:\n\ncreate or replace table dim_date_with_easter as \nwith easter_sundays as (\nSELECT \n  e.*\nFROM generate_series(2020, 2025) AS t(y),\nLATERAL easter_sunday(t.y) AS e\n)\nselect \n  dim_date.*,\n  case when easter_sunday_date is not null then 1 else 0 end as is_easter_sunday\nfrom dim_date\nleft join easter_sundays\n  on easter_sunday_date = date\n\n\n\nselect *\nfrom dim_date_with_easter\nwhere is_easter_sunday = 1\n\n\n6 records\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ndate_key\ndate\nyear\nquarter\nmonth\nmonth_name\nweek\nday_of_month\nday_of_week\nday_name\nday_of_year\nis_weekend\nis_holiday\nfiscal_year\nfiscal_quarter\nis_easter_sunday\nis_easter_sunday_1\n\n\n\n\n20200412\n2020-04-12\n2020\n2\n4\nApril\n15\n12\n0\nSunday\n103\nTRUE\nFALSE\n2020\n4\n1\n1\n\n\n20210404\n2021-04-04\n2021\n2\n4\nApril\n13\n4\n0\nSunday\n94\nTRUE\nFALSE\n2021\n4\n1\n1\n\n\n20220417\n2022-04-17\n2022\n2\n4\nApril\n15\n17\n0\nSunday\n107\nTRUE\nFALSE\n2022\n4\n1\n1\n\n\n20230409\n2023-04-09\n2023\n2\n4\nApril\n14\n9\n0\nSunday\n99\nTRUE\nFALSE\n2023\n4\n1\n1\n\n\n20240331\n2024-03-31\n2024\n1\n3\nMarch\n13\n31\n0\nSunday\n91\nTRUE\nFALSE\n2024\n3\n1\n1\n\n\n20250420\n2025-04-20\n2025\n2\n4\nApril\n16\n20\n0\nSunday\n110\nTRUE\nFALSE\n2025\n4\n1\n1\n\n\n\n\n\nThe final way to handle holidays is to use a service provider. There are paid providers but Nager.Date has a free API that you can use to get holidays for a given country and year. Here’s an R function that wraps it:\n\nlibrary(dplyr)\nlibrary(tidyr)\nlibrary(httr)\n\nget_holidays &lt;- function(country_code = \"lt\", year = \"2023\") {\n\n  rs &lt;- GET(glue::glue(\"https://date.nager.at/api/v3/publicholidays/{year}/{country_code}\"))\n\n  out &lt;- content(rs) %&gt;%\n    tibble::enframe() %&gt;%\n    select(value) %&gt;%\n    unnest_wider(value) %&gt;%\n    transmute(date = as.Date(date),\n           holiday_name_local = localName,\n           holiday_name = name)\n\n  return(out)\n\n}\n\nget_holidays(country_code = \"lt\", year = \"2026\")\n\n# A tibble: 14 × 3\n   date       holiday_name_local                       holiday_name             \n   &lt;date&gt;     &lt;chr&gt;                                    &lt;chr&gt;                    \n 1 2026-01-01 Naujieji metai                           New Year's Day           \n 2 2026-02-16 Lietuvos valstybės atkūrimo diena        The Day of Restoration o…\n 3 2026-03-11 Lietuvos nepriklausomybės atkūrimo diena Day of Restoration of In…\n 4 2026-04-05 Velykos                                  Easter Sunday            \n 5 2026-04-06 Antroji Velykų diena                     Easter Monday            \n 6 2026-05-01 Tarptautinė darbo diena                  International Working Day\n 7 2026-06-24 Joninės, Rasos                           St. John's Day           \n 8 2026-07-06 Valstybės diena                          Statehood Day            \n 9 2026-08-15 Žolinė                                   Assumption Day           \n10 2026-11-01 Visų šventųjų diena                      All Saints' Day          \n11 2026-11-02 Vėlinės                                  All Souls' Day           \n12 2026-12-24 Šv. Kūčios                               Christmas Eve            \n13 2026-12-25 Šv. Kalėdos                              Christmas Day            \n14 2026-12-26 Šv. Kalėdos                              St. Stephen's Day        \n\n\nOf course, now you are dependent on an external provider but an external provider might make more sense if you are handling holidays across different countries. In all of the ways provided, you need someone or something to handle holiday changes.",
     "crumbs": [
-      "models",
+      "Models",
       "<span class='chapter-number'>6</span>  <span class='chapter-title'>Creating a Calendar Date Dimension</span>"
     ]
   },
@@ -340,7 +351,7 @@
     "section": "",
     "text": "Full disclosure, I used R to generate the date dimension for this book.↩︎",
     "crumbs": [
-      "models",
+      "Models",
       "<span class='chapter-number'>6</span>  <span class='chapter-title'>Creating a Calendar Date Dimension</span>"
     ]
   },
@@ -351,7 +362,7 @@
     "section": "",
     "text": "8 Factless Fact Tables\nIf I wanted to show the number of subscriptions that were active for each month in my favourite BI tool, I would be in trouble. In Power BI, I would have to resort to a multi-line DAX formula. In Tableau, the options have 8 steps in them. I couldn’t even find a tutorial for Looker. Luckily, Factless Fact Tables sidestep these solutions altogether so that your BI tool only has to do a simple count.\nKimball defines Factless Fact Tables as a table of dimensional entities coming together at a moment in time. Now that’s one eldritch definition! In human terms, a factless fact table is a table structure that facilities counting whether a thing existed at a point in time. It’s best to show the technique using an example.\nLet’s say I have a table of subscriptions that looks like this:\nselect * from subscriptions limit 10\n\n\nDisplaying records 1 - 10\n\n\n\n\n\n\n\n\n\n\n\nsubscription_id\ncustomer_id\nproduct_id\nstatus\nvalid_from\nvalid_to\nmonthly_amount\n\n\n\n\n1\n199\n3\ncancelled\n2025-01-23\n2025-12-11\n199\n\n\n2\n116\n1\nactive\n2024-05-07\nNA\n29\n\n\n3\n93\n2\ncancelled\n2023-08-12\n2023-09-29\n79\n\n\n4\n181\n1\nexpired\n2022-11-21\n2023-07-11\n29\n\n\n5\n162\n9\nactive\n2023-09-11\nNA\n150\n\n\n6\n8\n9\nactive\n2023-10-04\nNA\n150\n\n\n7\n128\n9\nactive\n2023-12-10\nNA\n150\n\n\n8\n188\n3\nactive\n2023-04-08\nNA\n199\n\n\n9\n183\n2\nactive\n2024-10-15\nNA\n79\n\n\n10\n13\n4\nexpired\n2024-03-24\n2024-10-27\n15\nWhenever we want to count something, it’s best to count it using a fact table. However, subscriptions are a SCD2 type dimension and you want to count whether they existed between the valid_from and valid_to. Counting becomes trivial if the date range is expanded into their dedicated rows. For example, if I were building a monthly fact table, the first id would be 6 rows and my second id would be 4 rows because they were active subscriptions during those months. In order to build it, it’s best to have a calendar table so that we could perform a cross join using a BETWEEN statement.",
     "crumbs": [
-      "models",
+      "Models",
       "<span class='chapter-number'>7</span>  <span class='chapter-title'>Factless Fact Table</span>"
     ]
   },
@@ -362,7 +373,7 @@
     "section": "8.1 SQL code",
     "text": "8.1 SQL code",
     "crumbs": [
-      "models",
+      "Models",
       "<span class='chapter-number'>7</span>  <span class='chapter-title'>Factless Fact Table</span>"
     ]
   },
@@ -373,7 +384,7 @@
     "section": "8.2 How is this different from snapshot fact tables?",
     "text": "8.2 How is this different from snapshot fact tables?\nYou may have heard about snapshot fact tables - they are VERY similar to factless fact tables. In fact, if you saved snapshots of active subscriptions for each month, you’d end up with the same table! The different comes down to implementation: snapshots are run on a regular basis to create the final dataset, a factless fact table can be recreated from scratch.\nKimball defines Factless Fact Tables as a table of dimensional entities coming together at a moment in time. Now that’s one eldtrich definition! In human terms, the raison d’être of these tables comes from the need to count whether a thing existed at a point in time. And if that definition is too vague, here’s an exercise - try showing how many subscribers you had on a monthly basis. For example, let’s say I had 10 subscriptions that were each active between January and December of last year, how would you show those 10 subscriptions for each month of the year? In Power BI, you need to resort to a multi-line DAX formula. In Tableau, the options have 8 steps in them. Factless fact tables sidestep these solution altogether so that all you need is a simple count.\nFactless fact tables can be built by combining your SCD2 type table (i.e. data that has an end date and a start date) with a calendar table (a date dimension). Here’s how to do it in SQL:\nin your favourite BI tool\nFactless fact tables solve this problem by showing whether a thing existed for a given time point. For example, if we were to build a factless table on a monthly granularity, a Netflix subscriber whose subscription starts at 2025-01-01 and ends at 2025-12-31 would show up as 12 rows, one for each of the months in a year. As a result, if you were to put your months on an x-axis, you could just do a count of rows from this table along the y axis. And it’s not just subscribers - it works on any table that has a start date and an end date1. Factless fact tables allow you to keep the modeling and KPI layer relatively simple - learning to build and use them is extremely helpful.",
     "crumbs": [
-      "models",
+      "Models",
       "<span class='chapter-number'>7</span>  <span class='chapter-title'>Factless Fact Table</span>"
     ]
   },
@@ -384,7 +395,7 @@
     "section": "8.3 Sample SQL",
     "text": "8.3 Sample SQL",
     "crumbs": [
-      "models",
+      "Models",
       "<span class='chapter-number'>7</span>  <span class='chapter-title'>Factless Fact Table</span>"
     ]
   },
@@ -395,7 +406,7 @@
     "section": "9.1 Without using a calendar table",
     "text": "9.1 Without using a calendar table\n\nwith d as (\n      select validfrom as dte, 1 as inc\n      from t\n      union all\n      select validto, -1\n      from t\n     )\nselect dte, sum(sum(inc)) over (order by dte)\nfrom d\ngroup by dte\norder by dte;",
     "crumbs": [
-      "models",
+      "Models",
       "<span class='chapter-number'>7</span>  <span class='chapter-title'>Factless Fact Table</span>"
     ]
   },
@@ -406,7 +417,7 @@
     "section": "9.2 Using a calendar table",
     "text": "9.2 Using a calendar table",
     "crumbs": [
-      "models",
+      "Models",
       "<span class='chapter-number'>7</span>  <span class='chapter-title'>Factless Fact Table</span>"
     ]
   },
@@ -417,7 +428,7 @@
     "section": "",
     "text": "Essentially, if it’s a SCD2 type dimension.↩︎",
     "crumbs": [
-      "models",
+      "Models",
       "<span class='chapter-number'>7</span>  <span class='chapter-title'>Factless Fact Table</span>"
     ]
   },
@@ -426,9 +437,9 @@
     "href": "02-models/ragged-depth-hierarchies.html",
     "title": "8  Ragged Depth Hierarchies",
     "section": "",
-    "text": "#| echo: false\n\nlibrary(duckdb)\n\nWarning: package 'duckdb' was built under R version 4.4.3\n\n\nLoading required package: DBI\n\ncon &lt;- dbConnect(duckdb(), \"../db/cookbook.duckdb\", read_only = TRUE)\n\nCompanies have layers. A team is likely to belong to a department which belongs to a business line which belongs to some larger org unit. And so it goes. From a modelling perspective, everything is peachy as long as the depth of layers is uniform. That is, it’s great if a team is always the third hierarchical org structure and a team always reports to a department which always reports to a business line. In such cases, you can simply model this as three columns in a dimension table and move on. However, reality resists simplicity\nSome employees might not have a team and report directly to the director of a business line. Other times there might be teams and there might not. The number of layers can be absolutely different. Hierarchies come in all shapes and sizes and we should expect them to be like this. How do we model this from a data modelling perspective?\nModelling this data is important. A good example is counting team expenses. You have expenses for individual employees but your stakeholders wants to rollup those expenses at any level. How would you do it?\nThis situation is called a ragged variable depth hierarchy and Kimball offers a great idea on how to solve it - but no SQL code!\nThe idea is to create a bridge table - a table that shows not only to whom to you report but also every skip level manager in the chain. The idea being that if you have a fact row associated with you, every manager in the chain inherits that fact row as well.\n\nWITH RECURSIVE org_hierarchy AS (\n    -- Anchor member: select all employees with their immediate manager\n    SELECT\n        employee_id,\n        manager_id,\n        employee_name,\n        1 AS level,\n        CAST(employee_id AS VARCHAR(100)) AS path\n    FROM employees\n    WHERE manager_id IS NULL -- Top-level managers\n\n    UNION ALL\n\n    -- Recursive member: join employees to their managers\n    SELECT\n        e.employee_id,\n        e.manager_id,\n        e.employee_name,\n        oh.level + 1 AS level,\n        CONCAT(oh.path, ' &gt; ', e.employee_id) AS path\n    FROM employees e\n    INNER JOIN org_hierarchy oh ON e.manager_id = oh.employee_id\n)\nSELECT * FROM org_hierarchy\nORDER BY path;",
+    "text": "#| echo: false\n\nlibrary(duckdb)\n\nWarning: package 'duckdb' was built under R version 4.4.3\n\n\nLoading required package: DBI\n\ncon &lt;- dbConnect(duckdb(), \"../databases/cookbook.duckdb\", read_only = TRUE)\n\n\n9 Ragged Depth Hierarchies\nCompanies have layers. A team is likely to belong to a department which belongs to a business line which belongs to some larger org unit. And so it goes. From a modelling perspective, everything is peachy as long as the depth of layers is uniform. That is, it’s great if a team is always the third hierarchical org structure and a team always reports to a department which always reports to a business line. In such cases, you can simply model this as three columns in a dimension table and move on. However, reality resists simplicity\nSome employees might not have a team and report directly to the director of a business line. Other times there might be teams and there might not. The number of layers can be absolutely different. Hierarchies come in all shapes and sizes and we should expect them to be like this. How do we model this from a data modelling perspective?\nModelling this data is important. A good example is counting team expenses. You have expenses for individual employees but your stakeholders wants to rollup those expenses at any level. How would you do it?\nThis situation is called a ragged variable depth hierarchy and Kimball offers a great idea on how to solve it - but no SQL code!\nThe idea is to create a bridge table - a table that shows not only to whom to you report but also every skip level manager in the chain. The idea being that if you have a fact row associated with you, every manager in the chain inherits that fact row as well.\n\nWITH RECURSIVE org_hierarchy AS (\n    -- Anchor member: select all employees with their immediate manager\n    SELECT\n        employee_id,\n        manager_id,\n        employee_name,\n        1 AS level,\n        CAST(employee_id AS VARCHAR(100)) AS path\n    FROM employees\n    WHERE manager_id IS NULL -- Top-level managers\n\n    UNION ALL\n\n    -- Recursive member: join employees to their managers\n    SELECT\n        e.employee_id,\n        e.manager_id,\n        e.employee_name,\n        oh.level + 1 AS level,\n        CONCAT(oh.path, ' &gt; ', e.employee_id) AS path\n    FROM employees e\n    INNER JOIN org_hierarchy oh ON e.manager_id = oh.employee_id\n)\nSELECT * FROM org_hierarchy\nORDER BY path;",
     "crumbs": [
-      "models",
+      "Models",
       "<span class='chapter-number'>8</span>  <span class='chapter-title'>Ragged Depth Hierarchies</span>"
     ]
   },
@@ -455,22 +466,11 @@
     ]
   },
   {
-    "objectID": "03-recipes/pivoting-and-unpivoting.html#the-data",
-    "href": "03-recipes/pivoting-and-unpivoting.html#the-data",
-    "title": "10  Pivoting and Unpivoting",
-    "section": "15.1 The Data",
-    "text": "15.1 The Data\nThe data we’re using looks like this:\n\nselect *\nfrom sport_interests \nlimit 5\n\n\n5 records\n\n\nName\nActivity\nNumber\n\n\n\n\nCharlie\nDancing\n65.35\n\n\nCharlie\nBasketball\n38.10\n\n\nJack\nBasketball\n36.19\n\n\nBob\nHiking\n53.84\n\n\nFrank\nRunning\n74.29",
-    "crumbs": [
-      "SQL Recipes",
-      "<span class='chapter-number'>10</span>  <span class='chapter-title'>Pivoting and Unpivoting</span>"
-    ]
-  },
-  {
     "objectID": "03-recipes/pivoting-and-unpivoting.html#pivoting-1",
     "href": "03-recipes/pivoting-and-unpivoting.html#pivoting-1",
     "title": "10  Pivoting and Unpivoting",
-    "section": "15.2 Pivoting",
-    "text": "15.2 Pivoting\nPivoting in SQL looks like this:\n\nselect \n  name,\n  sum(case when Activity = 'Running' then Number end) as running,\n  sum(case when Activity = 'Tennis' then Number end) as tennis\nfrom sport_interests\ngroup by name\n\n\nDisplaying records 1 - 10\n\n\nName\nrunning\ntennis\n\n\n\n\nJack\nNA\nNA\n\n\nCharlie\nNA\nNA\n\n\nHenry\n96.27\nNA\n\n\nGrace\nNA\nNA\n\n\nDavid\nNA\nNA\n\n\nFrank\n101.59\nNA\n\n\nIsabel\nNA\n60.97\n\n\nAlice\nNA\nNA\n\n\nBob\nNA\nNA\n\n\nEmma\n29.54\n86.50\n\n\n\n\n\nIf you need to pivot into a lot of columns, you are going to have a bad time. First, you need to specify each column that is not being pivoted into the select statement as well as the group by clause. Second, you need to manually type out each column that appears in the pivot.\nNonetheless, I love pivoting in SQL because you can individually define how each column is pivoted. Maybe you need to average one column, but sum another? Maybe you want to add two conditional statements when you are pivoting Activity = 'Running'? I’ve done my fair share of intricate SQL pivots that would have taken me much more time in other languages.",
+    "section": "15.1 Pivoting",
+    "text": "15.1 Pivoting\nPivoting in SQL looks like this:\nIf you need to pivot into a lot of columns, you are going to have a bad time. First, you need to specify each column that is not being pivoted into the select statement as well as the group by clause. Second, you need to manually type out each column that appears in the pivot.\nNonetheless, I love pivoting in SQL because you can individually define how each column is pivoted. Maybe you need to average one column, but sum another? Maybe you want to add two conditional statements when you are pivoting Activity = 'Running'? I’ve done my fair share of intricate SQL pivots that would have taken me much more time in other languages.",
     "crumbs": [
       "SQL Recipes",
       "<span class='chapter-number'>10</span>  <span class='chapter-title'>Pivoting and Unpivoting</span>"
@@ -480,8 +480,8 @@
     "objectID": "03-recipes/pivoting-and-unpivoting.html#unpivoting-1",
     "href": "03-recipes/pivoting-and-unpivoting.html#unpivoting-1",
     "title": "10  Pivoting and Unpivoting",
-    "section": "15.3 Unpivoting",
-    "text": "15.3 Unpivoting\nUnpivoting is a little tricky in SQL. Essentially, we’ll be creating multiple select statements for each column we would like to unpivot, with each select statement containing a different column:\n\nselect \n  name,\n  'Running' as Activity,\n  running as Number\nfrom sport_interests_pivot\n\nUNION ALL\n\nselect \n  name,\n  'Tennis' as Activity,\n  tennis as Number\nfrom sport_interests_pivot\n\n\nDisplaying records 1 - 10\n\n\nName\nActivity\nNumber\n\n\n\n\nDavid\nRunning\nNA\n\n\nCharlie\nRunning\nNA\n\n\nFrank\nRunning\n101.59\n\n\nHenry\nRunning\n96.27\n\n\nIsabel\nRunning\nNA\n\n\nAlice\nRunning\nNA\n\n\nGrace\nRunning\nNA\n\n\nJack\nRunning\nNA\n\n\nBob\nRunning\nNA\n\n\nEmma\nRunning\n29.54\n\n\n\n\n\nI don’t love unpivoting in SQL. When pivoting, a single line of code translates into a column, whereas a single column translates into a whole separate SQL statement. Please use some framework or an engine that supports unpivoting through a function (e.g. Snowflake’s UNPIVOT or dbt’s unpivot macro).",
+    "section": "15.2 Unpivoting",
+    "text": "15.2 Unpivoting\nUnpivoting is a little tricky in SQL. Essentially, we’ll be creating multiple select statements for each column we would like to unpivot, with each select statement containing a different column:\nI don’t love unpivoting in SQL. When pivoting, a single line of code translates into a column, whereas a single column translates into a whole separate SQL statement. Please use some framework or an engine that supports unpivoting through a function (e.g. Snowflake’s UNPIVOT or dbt’s unpivot macro).",
     "crumbs": [
       "SQL Recipes",
       "<span class='chapter-number'>10</span>  <span class='chapter-title'>Pivoting and Unpivoting</span>"
@@ -565,11 +565,11 @@
   {
     "objectID": "02-models/models.html",
     "href": "02-models/models.html",
-    "title": "models",
+    "title": "Models",
     "section": "",
     "text": "Models",
     "crumbs": [
-      "models"
+      "Models"
     ]
   },
   {

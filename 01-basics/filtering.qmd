@@ -1,11 +1,24 @@
 ---
 title: "Filtering"
+engine: knitr
 filters:
-  - interactive-sql
+  - interactive-duckdb
 databases:
-  - name: subscribers
-    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook-database/main/cookbookdb.sqlite"
+  - name: subscriptions
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/subscriptions.duckdb"
+    format: duckdb
 ---
+
+```{r setup}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(duckdb)
+
+con <- dbConnect(duckdb(), "../databases/subscriptions.duckdb", read_only = TRUE)
+
+```
 
 Everyone starts out with filtering using the WHERE clause but there's more to it than just specifying columns and their conditions.   
 
@@ -13,7 +26,7 @@ Everyone starts out with filtering using the WHERE clause but there's more to it
 
 Anti joins are a type of join where you return only rows that do not match any row in a given table. For example, let's say you have users who have done one time purchases but who have no subscription service. You want to send a marketing email to users who don't have a subscription service yet but have done a one time purchase.
 
-```{.sql .interactive .subscribers}
+```{.sql .interactive .subscriptions}
 
 
 ```
@@ -26,7 +39,7 @@ You can use the ON clause in joins to do neat things, such as:
 
 The left join clause `and created_channel = 2` ensures that the join only happens 
 
-```{.sql .interactive .subscribers}
+```{.sql .interactive .subscriptions}
 
 select 
   users.*,
@@ -42,7 +55,7 @@ limit 10
 
 ## Joining only certain rows from another table
 
-```{.sql .interactive .subscribers}
+```{.sql .interactive .subscriptions}
 
 select 
   users.*,
@@ -62,7 +75,7 @@ If you're reading this book, you know about the `WHERE` clause. But there are mu
 
 I love anti joins because they're extremely useful for a wide range of scenarios but SQL practitioners don't always learn about them early on (I certainly didn't!).
 
-Add anti-join from here: https://github.com/gadenbuie/tidyexplain
+![How anti join works](../images/anti-join.gif)
 
 ## WHERE EXISTS
 

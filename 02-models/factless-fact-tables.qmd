@@ -2,20 +2,22 @@
 title: "Factless Fact Table"
 engine: knitr
 filters:
-  - interactive-sql
+  - interactive-duckdb
 databases:
-  - name: db
-    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbookdb.sqlite"
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/cookbook.duckdb"
+    format: duckdb
 ---
 
-```{r}
+```{r setup}
 
 #| echo: false
+#| message: false
+#| warning: false
 
 library(duckdb)
 
-con <- dbConnect(duckdb(), "../db/cookbook.duckdb", read_only = TRUE)
-
+con <- dbConnect(duckdb(), "../databases/cookbook.duckdb", read_only = TRUE)
 
 ```
 
@@ -34,6 +36,8 @@ select * from subscriptions limit 10
 ```
 
 Whenever we want to count something, it's best to count it using a fact table. However, subscriptions are a SCD2 type dimension and you want to count whether they existed between the `valid_from` and `valid_to`. Counting becomes trivial if the date range is expanded into their dedicated rows. For example, if I were building a monthly fact table, the first id would be 6 rows and my second id would be 4 rows because they were active subscriptions during those months. In order to build it, it's best to have a calendar table so that we could perform a cross join using a `BETWEEN` statement.
+
+![How a factless fact table explodes intervals into months](../images/factless-fact-table.gif)
 
 ## SQL code
 

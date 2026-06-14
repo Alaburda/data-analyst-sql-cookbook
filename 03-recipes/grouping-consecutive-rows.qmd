@@ -36,7 +36,7 @@ A lot of data we work with can be ordered by time. Sometimes it's user interacti
 
 Every way of finding consecutive rows is based on calculating the difference between two ranks in your table. The second rank will be partitioned by all the columns you are interested in so that you have a row number for each partition. Then the **first** rank will have one column fewer - essentially created a more general rank. The theory is that if both of these ranks are increasing at the same rate, they must be consecutive and belonging to the same group. Once the second rank reaches the end of the partition - and the second rank will always be shorted than the first one since we're partitioning - the rank counter will reset but the first rank will continue counting up. Now the difference between the ranks is a larger number but if both ranks continue being consecutive, the difference will remain constant because they'll be increasing by one over every row. The chapter below illustrates this principle in practice.
 
-<insert gif of creating islands based on the aforementioned description>
+![How consecutive rows form islands](../images/consecutive-rows.gif)
 
 
 ## Grouping consecutive intervals

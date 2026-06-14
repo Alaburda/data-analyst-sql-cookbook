@@ -1,18 +1,26 @@
-# Creating a Calendar Date Dimension
+---
+title: "Creating a Calendar Date Dimension"
+engine: knitr
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/cookbook.duckdb"
+    format: duckdb
+---
 
-```{r}
-
+```{r setup}
 #| echo: false
 #| message: false
 #| warning: false
 
 library(duckdb)
 
-con <- dbConnect(duckdb(), "../databases/cookbook.duckdb")
+con <- dbConnect(duckdb(), "../databases/cookbook.duckdb", read_only = TRUE)
 
 ```
 
-A date dimension is a fancy synonym for the word "calendar". I think having a calendar table is essential for any data warehouse. If you don't have one yet, drop everything what you're doing and go create one. Just trust me, you can thank me later.
+A date dimension is a fancy synonym for "calendar". I think having a calendar table is essential for any data warehouse. If you don't have one yet, drop everything that you're doing and go create one. Just trust me, you can thank me later.
 
 ## Building it with DuckDB
 
@@ -23,7 +31,6 @@ There's no one right way to build a calendar table. If you want to maintain an E
 ```{sql, connection = con}
 #| eval: false
 
-create or replace table dim_date as 
 SELECT
     CAST(strftime(dates, '%Y%m%d') AS INTEGER) AS date_key,
     dates AS date,
@@ -62,7 +69,8 @@ A different way of handling holidays is to automate the creation of the holiday 
 
 The second wrinkle is that calculating your own holidays can be tricky. For example, Easter Sunday is a holiday in many countries but it doesn't have a fixed date. It falls on the first Sunday after the first full moon following the vernal equinox. In other words, it's a moving target and there's a whole Wikipedia article about the [it](https://en.wikipedia.org/wiki/Determination_of_the_day_of_the_week#Meeus/Jones/Butcher_Gregorian_algorithm). In SQL, you could create a macro or a function. Based on [this great 2020 blog post](https://www.sqlservercentral.com/scripts/calculating-easter-in-sql), here's an implementation of an algorithm published in New Scientist in 1961:
 
-```{sql, connection = con}
+```{sql}
+#| eval: false
 
 CREATE OR REPLACE MACRO easter_sunday(y) AS TABLE
 SELECT easter_sunday_date
@@ -80,7 +88,8 @@ CROSS JOIN LATERAL (VALUES (make_date(y, n::int, p::int)))        AS e9(easter_s
 
 To join the dates to our date dimension, we generate a series of years to pass into our macro and then join the resulting table to the date dimension:
 
-```{sql, connection = con}
+```{sql}
+#| eval: false
 
 create or replace table dim_date_with_easter as 
 with easter_sundays as (
@@ -110,6 +119,8 @@ where is_easter_sunday = 1
 The final way to handle holidays is to use a service provider. There are paid providers but [Nager.Date](https://date.nager.at/) has a free API that you can use to get holidays for a given country and year. Here's an R function that wraps it:
 
 ```{r}
+#| message: false
+#| warning: false
 
 library(dplyr)
 library(tidyr)
