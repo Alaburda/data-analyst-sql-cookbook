@@ -75,7 +75,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/quarto-contrib/interactive-sql-1.0.0/interactive-sql.css" rel="stylesheet">
+<link href="../site_libs/quarto-contrib/interactive-duckdb-1.0.0/interactive-duckdb.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -103,9 +103,156 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
-<script src="https://unpkg.com/@antonz/sqlite@3.40.0/dist/sqlite3.js"></script>
-<script src="https://unpkg.com/sqlime@0.1.3/dist/sqlime-db.js"></script>
-<script src="https://unpkg.com/sqlime@0.1.3/dist/sqlime-examples.js"></script>
+<script type="module">
+  import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm';
+  
+  // Global DuckDB instance management
+  window.duckdbModule = duckdb;
+  window.duckdbInstances = {};
+  window.duckdbReady = {};
+  window.duckdbInitializing = {};
+  
+  window.initDuckDB = async function(dbName, dataFiles) {
+    if (window.duckdbReady[dbName]) {
+      return window.duckdbInstances[dbName];
+    }
+    
+    // Prevent multiple simultaneous initializations
+    if (window.duckdbInitializing[dbName]) {
+      // Wait for existing initialization
+      while (window.duckdbInitializing[dbName]) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return window.duckdbInstances[dbName];
+    }
+    
+    window.duckdbInitializing[dbName] = true;
+    
+    try {
+      const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
+      const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
+      
+      const worker_url = URL.createObjectURL(
+        new Blob([`importScripts("${bundle.mainWorker}");`], {type: 'text/javascript'})
+      );
+      
+      const worker = new Worker(worker_url);
+      const logger = new duckdb.ConsoleLogger();
+      const db = new duckdb.AsyncDuckDB(logger, worker);
+      await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+      URL.revokeObjectURL(worker_url);
+      
+      const conn = await db.connect();
+      
+      // Load data files if provided
+      // dataFiles is an array of {url, format, tableName} objects
+      if (dataFiles && dataFiles.length > 0) {
+        for (const file of dataFiles) {
+          try {
+            const { url, format, tableName } = file;
+            if (!url || url.length === 0) continue;
+            
+            if (format === 'duckdb' || format === 'db') {
+              console.log('Loading DuckDB file:', url);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              console.log('DuckDB file size:', arrayBuffer.byteLength, 'bytes');
+              await db.registerFileBuffer('db.duckdb', new Uint8Array(arrayBuffer));
+              await conn.query(`ATTACH 'db.duckdb' AS filedb`);
+              await conn.query(`USE filedb`);
+            } else if (format === 'parquet') {
+              console.log('Loading parquet file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.parquet`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM parquet_scan('${fileName}')`);
+              console.log('Table', tableName, 'created successfully');
+            } else if (format === 'csv') {
+              console.log('Loading CSV file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.csv`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM read_csv_auto('${fileName}')`);
+            } else if (format === 'json') {
+              console.log('Loading JSON file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.json`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM read_json_auto('${fileName}')`);
+            } else if (format === 'sql') {
+              const response = await fetch(url);
+              const sqlScript = await response.text();
+              await conn.query(sqlScript);
+            }
+          } catch (e) {
+            console.error('Error loading file:', file, e);
+          }
+        }
+      }
+      
+      window.duckdbInstances[dbName] = { db, conn };
+      window.duckdbReady[dbName] = true;
+      
+      return { db, conn };
+    } finally {
+      window.duckdbInitializing[dbName] = false;
+    }
+  }
+  
+  window.runDuckDBQuery = async function(dbName, query, outputEl, queryEl) {
+    try {
+      const { conn } = window.duckdbInstances[dbName];
+      const actualQuery = queryEl ? queryEl.textContent : query;
+      
+      const result = await conn.query(actualQuery);
+      const rows = result.toArray();
+      
+      if (rows.length === 0) {
+        outputEl.innerHTML = '<div class="duckdb-message">Query executed successfully. No results to display.</div>';
+        return;
+      }
+      
+      // Get column names from the schema
+      const columns = result.schema.fields.map(f => f.name);
+      
+      // Build HTML table
+      let html = '<table class="duckdb-result-table"><thead><tr>';
+      columns.forEach(col => {
+        html += '<th>' + escapeHtml(col) + '</th>';
+      });
+      html += '</tr></thead><tbody>';
+      
+      rows.forEach(row => {
+        html += '<tr>';
+        columns.forEach(col => {
+          const value = row[col];
+          html += '<td>' + escapeHtml(value !== null && value !== undefined ? String(value) : 'NULL') + '</td>';
+        });
+        html += '</tr>';
+      });
+      
+      html += '</tbody></table>';
+      html += '<div class="duckdb-row-count">' + rows.length + ' row(s)</div>';
+      
+      outputEl.innerHTML = html;
+    } catch (e) {
+      outputEl.innerHTML = '<div class="duckdb-error">Error: ' + escapeHtml(e.message) + '</div>';
+    }
+  }
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+</script>
 
 
 <meta property="og:title" content="10&nbsp; Pivoting and Unpivoting – The Data Analyst SQL Cookbook">
@@ -192,7 +339,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/joins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Joins</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -212,7 +359,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a href="../02-models/models.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">models</span></a>
+ <span class="menu-text">Models</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -295,9 +442,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">14</span> References</a></li>
   <li><a href="#pivoting-and-unpivoting" id="toc-pivoting-and-unpivoting" class="nav-link" data-scroll-target="#pivoting-and-unpivoting"><span class="header-section-number">15</span> Pivoting and Unpivoting</a>
   <ul class="collapse">
-  <li><a href="#the-data" id="toc-the-data" class="nav-link" data-scroll-target="#the-data"><span class="header-section-number">15.1</span> The Data</a></li>
-  <li><a href="#pivoting-1" id="toc-pivoting-1" class="nav-link" data-scroll-target="#pivoting-1"><span class="header-section-number">15.2</span> Pivoting</a></li>
-  <li><a href="#unpivoting-1" id="toc-unpivoting-1" class="nav-link" data-scroll-target="#unpivoting-1"><span class="header-section-number">15.3</span> Unpivoting</a></li>
+  <li><a href="#pivoting-1" id="toc-pivoting-1" class="nav-link" data-scroll-target="#pivoting-1"><span class="header-section-number">15.1</span> Pivoting</a></li>
+  <li><a href="#unpivoting-1" id="toc-unpivoting-1" class="nav-link" data-scroll-target="#unpivoting-1"><span class="header-section-number">15.2</span> Unpivoting</a></li>
   </ul></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -324,6 +470,165 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
+<p>If you’ve never done a pivot, strap in! A table is a kind of coordinate system: the columns are the X axis and the rows are the Y axis. FOr example, a calendar is a table where the column are the days of the week and the rows are the weeks. But when we’re working with data, usually we just have a column called “week” and a column called “week day” and, of course, a column called “date”. The calendar is actually a pivot table. The week day column is turned horizontally and now represents the column names. The dates are then spread out across the table based on the week and week day. If you’ve imagined this process in your head, congratulations - you’ve just reached the pivot station.</p>
+<p>A pivot table will always have more columns and fewer rows than the original table. That is why pivoting is the act of turning a table from a long format to a wide format. Pivoting a table of dates is very straightforward because each day of the month has exactly one week day and one week. In other words, only a single day can be a Monday on the first week of the year. This is easy.</p>
+<p>Usually, however, you will have multiple values for each row and column combination in your pivot table. For example, let’s say you want to present the temperature in your calendar table but the temperature varies throughout the day. It’s very normal to <em>aggregate</em> values, for example, you might want to show the average temperature, maybe the highest and lowest temperature of the day.</p>
+<p>While SQL does support pivots, I prefer pivoting using GROUP BY. First, that’s one fewer SQL command to remember - to be honest, I haven’t warmed up to the PIVOT command. Second, when using SQL, my primary job is to create reusable data models for downstream use. That means that the data models need to have a fairly consistant schema, i.e.&nbsp;the columns shouldn’t change frequently. I really don’t want to find that the column I pivot on doesn’t contain a value anymore or, in fact, contains a new value. So I pivot on columns that are unlikely to change in the future. A common example is showing monthly values for the past 12 months, one month in each column, 12 columns total. I don’t see a 13th month happening in my lifetime.</p>
+<p>So, I primarily pivot on columns with few values. That means the syntax is going to take up a similar amount of space, for example:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="op">*</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> stocks</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>PIVOT (</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sum</span>(<span class="kw">close</span>)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">FOR</span> ticker <span class="kw">IN</span> (<span class="st">'AAPL'</span>,<span class="st">'^VIX'</span>)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">GROUP</span> <span class="kw">BY</span> <span class="dt">date</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="kw">limit</span> <span class="dv">5</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>5 records</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">date</th>
+<th style="text-align: right;">AAPL</th>
+<th style="text-align: right;">^VIX</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">2007-03-02</td>
+<td style="text-align: right;">3.050357</td>
+<td style="text-align: right;">18.61</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2007-03-08</td>
+<td style="text-align: right;">3.142857</td>
+<td style="text-align: right;">14.29</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2007-03-16</td>
+<td style="text-align: right;">3.199643</td>
+<td style="text-align: right;">16.79</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2007-04-23</td>
+<td style="text-align: right;">3.339643</td>
+<td style="text-align: right;">13.04</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2007-08-07</td>
+<td style="text-align: right;">4.822500</td>
+<td style="text-align: right;">21.56</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">date</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(<span class="cf">case</span> <span class="cf">when</span> ticker <span class="op">=</span> <span class="st">'AAPL'</span> <span class="cf">then</span> <span class="kw">close</span> <span class="cf">end</span>) <span class="kw">as</span> AAPL,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(<span class="cf">case</span> <span class="cf">when</span> ticker <span class="op">=</span> <span class="st">'^VIX'</span> <span class="cf">then</span> <span class="kw">close</span> <span class="cf">end</span>) <span class="kw">as</span> VIX</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> stocks</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="kw">group</span> <span class="kw">by</span> <span class="dt">date</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="kw">limit</span> <span class="dv">5</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>5 records</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">date</th>
+<th style="text-align: right;">AAPL</th>
+<th style="text-align: right;">VIX</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">2007-03-02</td>
+<td style="text-align: right;">3.050357</td>
+<td style="text-align: right;">18.61</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2007-03-08</td>
+<td style="text-align: right;">3.142857</td>
+<td style="text-align: right;">14.29</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2007-03-16</td>
+<td style="text-align: right;">3.199643</td>
+<td style="text-align: right;">16.79</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2007-04-23</td>
+<td style="text-align: right;">3.339643</td>
+<td style="text-align: right;">13.04</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2007-08-07</td>
+<td style="text-align: right;">4.822500</td>
+<td style="text-align: right;">21.56</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The amount of code is similar but using GROUP BY results in code that is easier to “scan” - when reading the code, I don’t need to parse the pivot in my head and “guess” what happens.</p>
+<p>Secondly, GROUP BY for pivoting provides something other languages don’t - conditional pivoting. That means I can add a condition inside of my aggregation or use a different aggregation altogether:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">date</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(<span class="cf">case</span> <span class="cf">when</span> ticker <span class="op">=</span> <span class="st">'AAPL'</span> <span class="cf">then</span> <span class="kw">close</span> <span class="cf">end</span>) <span class="kw">as</span> AAPL,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(<span class="cf">case</span> <span class="cf">when</span> ticker <span class="op">=</span> <span class="st">'^VIX'</span> <span class="cf">then</span> <span class="kw">close</span> <span class="cf">end</span>) <span class="kw">as</span> VIX</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> stocks</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="kw">group</span> <span class="kw">by</span> <span class="dt">date</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="kw">limit</span> <span class="dv">5</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>5 records</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">date</th>
+<th style="text-align: right;">AAPL</th>
+<th style="text-align: right;">VIX</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">2007-03-02</td>
+<td style="text-align: right;">3.050357</td>
+<td style="text-align: right;">18.61</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2007-03-08</td>
+<td style="text-align: right;">3.142857</td>
+<td style="text-align: right;">14.29</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2007-03-16</td>
+<td style="text-align: right;">3.199643</td>
+<td style="text-align: right;">16.79</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2007-04-23</td>
+<td style="text-align: right;">3.339643</td>
+<td style="text-align: right;">13.04</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2007-08-07</td>
+<td style="text-align: right;">4.822500</td>
+<td style="text-align: right;">21.56</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>So you know how tables have column names? Pivoting is the act of representing the data so that one of the columns gets transformed into column names.</p>
+<p>A table, in a sense, has axes. The X axis is columns, the Y axis is rows. Pivoting is the act of taking a column and</p>
+<p>Pivoting is the act of representing data in a wider format by using one column</p>
+<p>Pivoting is the act of transforming a table from a long format to a wide format.</p>
 <p>At this point it’s likely you’re using a database that supports pivoting and unpivoting but it’s good to know how to do it yourself.</p>
 <section id="pivoting" class="level1" data-number="11">
 <h1 data-number="11"><span class="header-section-number">11</span> Pivoting</h1>
@@ -334,47 +639,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <figcaption>How GROUP BY achieves pivoting</figcaption>
 </figure>
 </div>
-<div class="interactive-sql">
-<div class="sourceCode" id="cb1"><pre class="sourceCode sql interactive pivot code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  ts_id,</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(<span class="cf">case</span> <span class="cf">when</span> ts_year <span class="op">=</span> <span class="dv">2020</span> <span class="cf">then</span> ts_value <span class="cf">end</span>) <span class="kw">as</span> ts_2020,</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(<span class="cf">case</span> <span class="cf">when</span> ts_year <span class="op">=</span> <span class="dv">2021</span> <span class="cf">then</span> ts_value <span class="cf">end</span>) <span class="kw">as</span> ts_2021</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> yearly_values_long</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">group</span> <span class="kw">by</span> ts_id</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
 </section>
 <section id="advanced-pivoting" class="level1" data-number="12">
 <h1 data-number="12"><span class="header-section-number">12</span> Advanced Pivoting</h1>
 <p>Why I like pivoting in SQL is that I can create arbitrary case when statements to control how my data is pivoted:</p>
-<div class="interactive-sql">
-<div class="sourceCode" id="cb2"><pre class="sourceCode sql interactive pivot code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  ts_id,</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(<span class="cf">case</span> <span class="cf">when</span> ts_year <span class="op">=</span> <span class="dv">2020</span> <span class="kw">and</span> ts_value <span class="op">&gt;</span> <span class="fl">0.5</span> <span class="cf">then</span> ts_value <span class="cf">end</span>) <span class="kw">as</span> ts_2020,</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(<span class="cf">case</span> <span class="cf">when</span> ts_year <span class="op">=</span> <span class="dv">2021</span> <span class="kw">and</span> ts_value <span class="op">&gt;</span> <span class="fl">0.5</span> <span class="cf">then</span> ts_value <span class="cf">end</span>) <span class="kw">as</span> ts_2021</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> yearly_values_long</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="kw">group</span> <span class="kw">by</span> ts_id</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
 </section>
 <section id="unpivoting" class="level1" data-number="13">
 <h1 data-number="13"><span class="header-section-number">13</span> Unpivoting</h1>
 <p>I wish you don’t ever need to unpivot manually in SQL. A universal way to unpivot in SQL is to take each column of interest and do a UNION ALL.</p>
-<div class="interactive-sql">
-<div class="sourceCode" id="cb3"><pre class="sourceCode sql interactive pivot code-with-copy"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  ts_id, </span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">'2020'</span> <span class="kw">as</span> ts_year, </span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  [<span class="dv">2020</span>] <span class="kw">as</span> ts_value</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> yearly_values_wide</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="kw">union</span> <span class="kw">all</span></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  ts_id, </span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="st">'2021'</span> <span class="kw">as</span> ts_year, </span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  [<span class="dv">2021</span>] <span class="kw">as</span> ts_value</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> yearly_values_wide</span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
 </section>
 <section id="references" class="level1" data-number="14">
 <h1 data-number="14"><span class="header-section-number">14</span> References</h1>
@@ -384,219 +656,87 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h1 data-number="15"><span class="header-section-number">15</span> Pivoting and Unpivoting</h1>
 <p>Pivoting refers to a transformation where you take two columns: one containing values that will represent the names of your columns and another containing the values that you want those columns to contain. In a sense, we’re making our data wider (<code>dplyr</code>’s R refers to pivoting and unpivoting as <code>pivot_wider</code> and <code>pivot_longer</code>, respectively). Accordingly, unpivoting collects your column names into one column and the contents of those columns into another.</p>
 <p>Chances are that your tooling allows you to perform these operations. Unless, of course, you are an unlucky fellow or you prefer to roll your own code.</p>
-<section id="the-data" class="level2" data-number="15.1">
-<h2 data-number="15.1" class="anchored" data-anchor-id="the-data"><span class="header-section-number">15.1</span> The Data</h2>
-<p>The data we’re using looks like this:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> <span class="op">*</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> sport_interests </span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">limit</span> <span class="dv">5</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<table class="caption-top table table-sm table-striped small">
-<caption>5 records</caption>
-<thead>
-<tr class="header">
-<th style="text-align: left;">Name</th>
-<th style="text-align: left;">Activity</th>
-<th style="text-align: right;">Number</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">Charlie</td>
-<td style="text-align: left;">Dancing</td>
-<td style="text-align: right;">65.35</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Charlie</td>
-<td style="text-align: left;">Basketball</td>
-<td style="text-align: right;">38.10</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Jack</td>
-<td style="text-align: left;">Basketball</td>
-<td style="text-align: right;">36.19</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Bob</td>
-<td style="text-align: left;">Hiking</td>
-<td style="text-align: right;">53.84</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Frank</td>
-<td style="text-align: left;">Running</td>
-<td style="text-align: right;">74.29</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-</section>
-<section id="pivoting-1" class="level2" data-number="15.2">
-<h2 data-number="15.2" class="anchored" data-anchor-id="pivoting-1"><span class="header-section-number">15.2</span> Pivoting</h2>
+<section id="pivoting-1" class="level2" data-number="15.1">
+<h2 data-number="15.1" class="anchored" data-anchor-id="pivoting-1"><span class="header-section-number">15.1</span> Pivoting</h2>
 <p>Pivoting in SQL looks like this:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  name,</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(<span class="cf">case</span> <span class="cf">when</span> Activity <span class="op">=</span> <span class="st">'Running'</span> <span class="cf">then</span> <span class="dt">Number</span> <span class="cf">end</span>) <span class="kw">as</span> running,</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>(<span class="cf">case</span> <span class="cf">when</span> Activity <span class="op">=</span> <span class="st">'Tennis'</span> <span class="cf">then</span> <span class="dt">Number</span> <span class="cf">end</span>) <span class="kw">as</span> tennis</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> sport_interests</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="kw">group</span> <span class="kw">by</span> name</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<table class="caption-top table table-sm table-striped small">
-<caption>Displaying records 1 - 10</caption>
-<thead>
-<tr class="header">
-<th style="text-align: left;">Name</th>
-<th style="text-align: right;">running</th>
-<th style="text-align: right;">tennis</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">Jack</td>
-<td style="text-align: right;">NA</td>
-<td style="text-align: right;">NA</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Charlie</td>
-<td style="text-align: right;">NA</td>
-<td style="text-align: right;">NA</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Henry</td>
-<td style="text-align: right;">96.27</td>
-<td style="text-align: right;">NA</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Grace</td>
-<td style="text-align: right;">NA</td>
-<td style="text-align: right;">NA</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">David</td>
-<td style="text-align: right;">NA</td>
-<td style="text-align: right;">NA</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Frank</td>
-<td style="text-align: right;">101.59</td>
-<td style="text-align: right;">NA</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Isabel</td>
-<td style="text-align: right;">NA</td>
-<td style="text-align: right;">60.97</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Alice</td>
-<td style="text-align: right;">NA</td>
-<td style="text-align: right;">NA</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Bob</td>
-<td style="text-align: right;">NA</td>
-<td style="text-align: right;">NA</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Emma</td>
-<td style="text-align: right;">29.54</td>
-<td style="text-align: right;">86.50</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
 <p>If you need to pivot into a lot of columns, you are going to have a bad time. First, you need to specify each column that is <em>not</em> being pivoted into the select statement as well as the group by clause. Second, you need to manually type out each column that appears in the pivot.</p>
 <p>Nonetheless, I love pivoting in SQL because you can individually define how each column is pivoted. Maybe you need to average one column, but sum another? Maybe you want to add two conditional statements when you are pivoting <code>Activity = 'Running'</code>? I’ve done my fair share of intricate SQL pivots that would have taken me much more time in other languages.</p>
 </section>
-<section id="unpivoting-1" class="level2" data-number="15.3">
-<h2 data-number="15.3" class="anchored" data-anchor-id="unpivoting-1"><span class="header-section-number">15.3</span> Unpivoting</h2>
+<section id="unpivoting-1" class="level2" data-number="15.2">
+<h2 data-number="15.2" class="anchored" data-anchor-id="unpivoting-1"><span class="header-section-number">15.2</span> Unpivoting</h2>
 <p>Unpivoting is a little tricky in SQL. Essentially, we’ll be creating multiple select statements for each column we would like to unpivot, with each select statement containing a different column:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  name,</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">'Running'</span> <span class="kw">as</span> Activity,</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  running <span class="kw">as</span> <span class="dt">Number</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> sport_interests_pivot</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="kw">UNION</span> <span class="kw">ALL</span></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  name,</span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>  <span class="st">'Tennis'</span> <span class="kw">as</span> Activity,</span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>  tennis <span class="kw">as</span> <span class="dt">Number</span></span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> sport_interests_pivot</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<table class="caption-top table table-sm table-striped small">
-<caption>Displaying records 1 - 10</caption>
-<thead>
-<tr class="header">
-<th style="text-align: left;">Name</th>
-<th style="text-align: left;">Activity</th>
-<th style="text-align: right;">Number</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">David</td>
-<td style="text-align: left;">Running</td>
-<td style="text-align: right;">NA</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Charlie</td>
-<td style="text-align: left;">Running</td>
-<td style="text-align: right;">NA</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Frank</td>
-<td style="text-align: left;">Running</td>
-<td style="text-align: right;">101.59</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Henry</td>
-<td style="text-align: left;">Running</td>
-<td style="text-align: right;">96.27</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Isabel</td>
-<td style="text-align: left;">Running</td>
-<td style="text-align: right;">NA</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Alice</td>
-<td style="text-align: left;">Running</td>
-<td style="text-align: right;">NA</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Grace</td>
-<td style="text-align: left;">Running</td>
-<td style="text-align: right;">NA</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Jack</td>
-<td style="text-align: left;">Running</td>
-<td style="text-align: right;">NA</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Bob</td>
-<td style="text-align: left;">Running</td>
-<td style="text-align: right;">NA</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Emma</td>
-<td style="text-align: left;">Running</td>
-<td style="text-align: right;">29.54</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
 <p>I don’t love unpivoting in SQL. When pivoting, a single line of code translates into a column, whereas a single column translates into a whole separate SQL statement. Please use some framework or an engine that supports unpivoting through a function (e.g.&nbsp;Snowflake’s <code>UNPIVOT</code> or dbt’s <code>unpivot</code> macro).</p>
 
 
-<sqlime-db name="pivot" path="https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/pivot.db"></sqlime-db>
-<sqlime-examples db="pivot" selector="div.interactive-sql pre.pivot code" editable=""></sqlime-examples>
+<script>
+(function() {
+  const dbName = "stocks";
+  const dataFiles = [{url:"https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/stocks.duckdb",format:"duckdb",tableName:"stocks"}];
+  const editable = true;
+  const selector = 'div.interactive-duckdb pre.stocks code';
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks for this database
+    const codeBlocks = document.querySelectorAll(selector);
+    codeBlocks.forEach((codeEl, idx) => {
+      const container = codeEl.closest('.interactive-duckdb');
+      if (!container) return;
+      
+      // Make code editable if enabled
+      if (editable) {
+        codeEl.setAttribute('contenteditable', 'true');
+        codeEl.setAttribute('spellcheck', 'false');
+      }
+      
+      // Create output container
+      let outputEl = container.querySelector('.duckdb-output');
+      if (!outputEl) {
+        outputEl = document.createElement('div');
+        outputEl.className = 'duckdb-output';
+        container.appendChild(outputEl);
+      }
+      
+      // Create run button
+      let btnContainer = container.querySelector('.duckdb-btn-container');
+      if (!btnContainer) {
+        btnContainer = document.createElement('div');
+        btnContainer.className = 'duckdb-btn-container';
+        
+        const runBtn = document.createElement('button');
+        runBtn.className = 'duckdb-run-btn';
+        runBtn.textContent = '▶ Run';
+        runBtn.addEventListener('click', async function() {
+          outputEl.innerHTML = '<div class="duckdb-loading">Initializing DuckDB...</div>';
+          try {
+            await initDuckDB(dbName, dataFiles);
+            await runDuckDBQuery(dbName, '', outputEl, codeEl);
+          } catch (e) {
+            outputEl.innerHTML = '<div class="duckdb-error">Error: ' + e.message + '</div>';
+          }
+        });
+        
+        btnContainer.appendChild(runBtn);
+        container.insertBefore(btnContainer, outputEl);
+      }
+      
+      // Run query on Ctrl+Enter / Cmd+Enter
+      codeEl.addEventListener('keydown', async function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          outputEl.innerHTML = '<div class="duckdb-loading">Initializing DuckDB...</div>';
+          try {
+            await initDuckDB(dbName, dataFiles);
+            await runDuckDBQuery(dbName, '', outputEl, codeEl);
+          } catch (e) {
+            outputEl.innerHTML = '<div class="duckdb-error">Error: ' + e.message + '</div>';
+          }
+        }
+      });
+    });
+  });
+})();
+</script>
+
 </section>
 </section>
 
@@ -1038,5 +1178,5 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer><script src="../site_libs/quarto-contrib/interactive-sql-1.0.0/interactive-sql.js"></script>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer><script src="../site_libs/quarto-contrib/interactive-duckdb-1.0.0/interactive-duckdb.js"></script>
 </body></html>

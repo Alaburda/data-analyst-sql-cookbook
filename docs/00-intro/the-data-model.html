@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>The Data Model – The Data Analyst SQL Cookbook</title>
+<title>1&nbsp; Meet the Data – The Data Analyst SQL Cookbook</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -31,7 +31,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
 <link href="../00-intro/sql-tools.html" rel="next">
-<link href="../index.html" rel="prev">
+<link href="../00-intro/introduction.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -41,6 +41,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/quarto-contrib/interactive-duckdb-1.0.0/interactive-duckdb.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -68,19 +69,162 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Search"
   }
 }</script>
-<link href="../site_libs/htmltools-fill-0.5.8.1/fill.css" rel="stylesheet">
+<script src="../site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="../site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
+<script type="module">
+  import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm';
+  
+  // Global DuckDB instance management
+  window.duckdbModule = duckdb;
+  window.duckdbInstances = {};
+  window.duckdbReady = {};
+  window.duckdbInitializing = {};
+  
+  window.initDuckDB = async function(dbName, dataFiles) {
+    if (window.duckdbReady[dbName]) {
+      return window.duckdbInstances[dbName];
+    }
+    
+    // Prevent multiple simultaneous initializations
+    if (window.duckdbInitializing[dbName]) {
+      // Wait for existing initialization
+      while (window.duckdbInitializing[dbName]) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return window.duckdbInstances[dbName];
+    }
+    
+    window.duckdbInitializing[dbName] = true;
+    
+    try {
+      const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
+      const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
+      
+      const worker_url = URL.createObjectURL(
+        new Blob([`importScripts("${bundle.mainWorker}");`], {type: 'text/javascript'})
+      );
+      
+      const worker = new Worker(worker_url);
+      const logger = new duckdb.ConsoleLogger();
+      const db = new duckdb.AsyncDuckDB(logger, worker);
+      await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+      URL.revokeObjectURL(worker_url);
+      
+      const conn = await db.connect();
+      
+      // Load data files if provided
+      // dataFiles is an array of {url, format, tableName} objects
+      if (dataFiles && dataFiles.length > 0) {
+        for (const file of dataFiles) {
+          try {
+            const { url, format, tableName } = file;
+            if (!url || url.length === 0) continue;
+            
+            if (format === 'duckdb' || format === 'db') {
+              console.log('Loading DuckDB file:', url);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              console.log('DuckDB file size:', arrayBuffer.byteLength, 'bytes');
+              await db.registerFileBuffer('db.duckdb', new Uint8Array(arrayBuffer));
+              await conn.query(`ATTACH 'db.duckdb' AS filedb`);
+              await conn.query(`USE filedb`);
+            } else if (format === 'parquet') {
+              console.log('Loading parquet file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.parquet`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM parquet_scan('${fileName}')`);
+              console.log('Table', tableName, 'created successfully');
+            } else if (format === 'csv') {
+              console.log('Loading CSV file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.csv`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM read_csv_auto('${fileName}')`);
+            } else if (format === 'json') {
+              console.log('Loading JSON file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.json`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM read_json_auto('${fileName}')`);
+            } else if (format === 'sql') {
+              const response = await fetch(url);
+              const sqlScript = await response.text();
+              await conn.query(sqlScript);
+            }
+          } catch (e) {
+            console.error('Error loading file:', file, e);
+          }
+        }
+      }
+      
+      window.duckdbInstances[dbName] = { db, conn };
+      window.duckdbReady[dbName] = true;
+      
+      return { db, conn };
+    } finally {
+      window.duckdbInitializing[dbName] = false;
+    }
+  }
+  
+  window.runDuckDBQuery = async function(dbName, query, outputEl, queryEl) {
+    try {
+      const { conn } = window.duckdbInstances[dbName];
+      const actualQuery = queryEl ? queryEl.textContent : query;
+      
+      const result = await conn.query(actualQuery);
+      const rows = result.toArray();
+      
+      if (rows.length === 0) {
+        outputEl.innerHTML = '<div class="duckdb-message">Query executed successfully. No results to display.</div>';
+        return;
+      }
+      
+      // Get column names from the schema
+      const columns = result.schema.fields.map(f => f.name);
+      
+      // Build HTML table
+      let html = '<table class="duckdb-result-table"><thead><tr>';
+      columns.forEach(col => {
+        html += '<th>' + escapeHtml(col) + '</th>';
+      });
+      html += '</tr></thead><tbody>';
+      
+      rows.forEach(row => {
+        html += '<tr>';
+        columns.forEach(col => {
+          const value = row[col];
+          html += '<td>' + escapeHtml(value !== null && value !== undefined ? String(value) : 'NULL') + '</td>';
+        });
+        html += '</tr>';
+      });
+      
+      html += '</tbody></table>';
+      html += '<div class="duckdb-row-count">' + rows.length + ' row(s)</div>';
+      
+      outputEl.innerHTML = html;
+    } catch (e) {
+      outputEl.innerHTML = '<div class="duckdb-error">Error: ' + escapeHtml(e.message) + '</div>';
+    }
+  }
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+</script>
 
-<script src="../site_libs/htmlwidgets-1.6.4/htmlwidgets.js"></script>
 
-<script src="../site_libs/viz-1.8.2/viz.js"></script>
-
-<link href="../site_libs/DiagrammeR-styles-0.2/styles.css" rel="stylesheet">
-
-<script src="../site_libs/grViz-binding-1.0.11/grViz.js"></script>
-
-
-
-<meta property="og:title" content="The Data Model – The Data Analyst SQL Cookbook">
+<meta property="og:title" content="1&nbsp; Meet the Data – The Data Analyst SQL Cookbook">
 <meta property="og:description" content="">
 <meta property="og:site_name" content="The Data Analyst SQL Cookbook">
 </head>
@@ -94,7 +238,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../00-intro/the-data-model.html">The Data Model</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../00-intro/the-data-model.html"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Meet the Data</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -130,8 +274,14 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../00-intro/introduction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Introduction</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../00-intro/the-data-model.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">The Data Model</span></a>
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Meet the Data</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -151,40 +301,64 @@ ul.task-list li input[type="checkbox"] {
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../01-basics/oltp-vs-olap.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">OLTP vs.&nbsp;OLAP</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-r.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-dbt.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../01-basics/joins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
+  <a href="../01-basics/selecting-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Selecting Tables</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/joining-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Joining Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/window-functions.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../01-basics/filtering.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Filtering</span></span></a>
+  <a href="../01-basics/filtering-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Filtering Tables</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/structuring-queries.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Structuring Queries</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/anti-patterns.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></span></a>
   </div>
 </li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../02-models/models.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">models</span></a>
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">02-models/models.qmd</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -192,20 +366,26 @@ ul.task-list li input[type="checkbox"] {
       <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../02-models/types-of-models.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Types of Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../02-models/calendar-date-dimension.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Creating a Calendar Date Dimension</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Calendar Date Dimension</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/factless-fact-tables.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/ragged-depth-hierarchies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
   </div>
 </li>
       </ul>
@@ -221,20 +401,44 @@ ul.task-list li input[type="checkbox"] {
       <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../03-recipes/queries_with_dates.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
+  <a href="../03-recipes/splitting-time-intervals.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Splitting Time Intervals</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/querying-intersecting-dates.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Querying Intersecting Dates</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../03-recipes/customer-analytics.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Customer Analytics Recipes</span></span></a>
+  <a href="../03-recipes/grouping-consecutive-rows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Grouping consecutive rows</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/finding-gaps-in-ordered-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">finding-gaps-in-ordered-data</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/occupancy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">Occupancy</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/qualifying-events-in-time.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">21</span>&nbsp; <span class="chapter-title">Qualifying Events in Time</span></span></a>
   </div>
 </li>
       </ul>
@@ -242,7 +446,7 @@ ul.task-list li input[type="checkbox"] {
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../misc/goodies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
+ <span class="menu-text"><span class="chapter-number">22</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -261,8 +465,10 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#entity-relationship-diagram" id="toc-entity-relationship-diagram" class="nav-link active" data-scroll-target="#entity-relationship-diagram">Entity-Relationship Diagram</a></li>
-  <li><a href="#table-overview" id="toc-table-overview" class="nav-link" data-scroll-target="#table-overview">Table overview</a></li>
+  <li><a href="#carwash" id="toc-carwash" class="nav-link active" data-scroll-target="#carwash"><span class="header-section-number">1.1</span> Carwash</a></li>
+  <li><a href="#stocks" id="toc-stocks" class="nav-link" data-scroll-target="#stocks"><span class="header-section-number">1.2</span> Stocks</a></li>
+  <li><a href="#entity-relationship-diagram" id="toc-entity-relationship-diagram" class="nav-link" data-scroll-target="#entity-relationship-diagram"><span class="header-section-number">1.3</span> Entity-Relationship Diagram</a></li>
+  <li><a href="#table-overview" id="toc-table-overview" class="nav-link" data-scroll-target="#table-overview"><span class="header-section-number">1.4</span> Table overview</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -271,7 +477,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">The Data Model</h1>
+<h1 class="title"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Meet the Data</span></h1>
 </div>
 
 
@@ -288,18 +494,132 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>The cookbook uses a fictional SaaS company database. All chapters query the same set of tables so you can build on what you’ve learned across chapters.</p>
-<section id="entity-relationship-diagram" class="level2">
-<h2 class="anchored" data-anchor-id="entity-relationship-diagram">Entity-Relationship Diagram</h2>
-<div class="cell">
+<p>In order to demonstrate all the different ways to query data, multiple sample databases are used throughout the book. Let’s meet the data!</p>
+<section id="carwash" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="carwash"><span class="header-section-number">1.1</span> Carwash</h2>
+<p><code>carwash</code> is a fictional self-service carwash business. In this databases, <em>users</em> can either pay per washing <em>session</em> or purchase a <em>subscription</em> that allows a number of services for monthly fee. The carwashes themselves are located in the <em>locations</em> table. Users can also create service <em>tickets</em> which can be handled by <em>employees</em>.</p>
+<p>[[ insert ERD for the carwash database here ]]</p>
+<p>[[ Add interactive sql element here ]]</p>
+</section>
+<section id="stocks" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="stocks"><span class="header-section-number">1.2</span> Stocks</h2>
+<p>uses a fictional SaaS company database. All chapters query the same set of tables so you can build on what you’ve learned across chapters.</p>
+</section>
+<section id="entity-relationship-diagram" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="entity-relationship-diagram"><span class="header-section-number">1.3</span> Entity-Relationship Diagram</h2>
+<div class="cell" data-layout-align="default">
 <div class="cell-output-display">
-<div class="grViz html-widget html-fill-item" id="htmlwidget-e490ea9f1e13086513a5" style="width:100%;height:464px;"></div>
-<script type="application/json" data-for="htmlwidget-e490ea9f1e13086513a5">{"x":{"diagram":"#data_model\ndigraph {\ngraph [rankdir=LR tooltip=\"Data Model\" ]\n\nnode [margin=0 fontcolor = \"#444444\" ]\n\nedge [color = \"#555555\", arrowsize = 1, ]\n\npack=true\npackmode= \"node\"\n\n  \"calendar\" [id = \"calendar\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#75516BAA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#B07AA1FF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">calendar<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\" PORT=\"date_key\"><U>date_key<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">date<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">year<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">quarter<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">month<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">month_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">fct<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">week<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">day_of_week<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">fct<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">day_of_month<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">day_of_year<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">start_of_month<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">is_weekend<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">lgl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">fiscal_year<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">fiscal_quarter<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#EFE4ECFF\">dbl<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"customers\" [id = \"customers\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#34506FAA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#4E79A7FF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">customers<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\" PORT=\"customer_id\"><U>customer_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">first_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">last_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">email<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">city<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">country<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">signup_date<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">customer_segment<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">chr<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"departments\" [id = \"departments\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#3B6B34AA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#59A14FFF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">departments<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\" PORT=\"department_id\"><U>department_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">department_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">chr<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"dim_date\" [id = \"dim_date\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#555555\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#EFEBDD\" BORDER=\"0\"><FONT COLOR=\"#000000\">dim_date<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">date_key<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">date<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dttm<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">year<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">quarter<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">month<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">month_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">week<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">day_of_month<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">day_of_week<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">day_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">day_of_year<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">is_weekend<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">lgl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">is_holiday<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">lgl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">fiscal_year<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">fiscal_quarter<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">is_easter_sunday<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">int<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"dim_date_with_easter\" [id = \"dim_date_with_easter\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#555555\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#EFEBDD\" BORDER=\"0\"><FONT COLOR=\"#000000\">dim_date_with_easter<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">date_key<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">date<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dttm<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">year<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">quarter<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">month<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">month_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">week<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">day_of_month<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">day_of_week<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">day_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">day_of_year<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">is_weekend<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">lgl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">is_holiday<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">lgl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">fiscal_year<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">fiscal_quarter<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">is_easter_sunday<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">is_easter_sunday_1<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FFFFFF\">int<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"employees\" [id = \"employees\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#3B6B34AA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#59A14FFF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">employees<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\" PORT=\"employee_id\"><U>employee_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">first_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">last_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">email<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\" PORT=\"department_id\">department_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">hire_date<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">salary<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">city<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">is_active<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">lgl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\" PORT=\"manager_id\">manager_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DDECDBFF\">int<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"order_items\" [id = \"order_items\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#34506FAA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#4E79A7FF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">order_items<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\" PORT=\"order_item_id\"><U>order_item_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\" PORT=\"order_id\">order_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\" PORT=\"product_id\">product_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">quantity<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">unit_price<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">line_total<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">dbl<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"orders\" [id = \"orders\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#34506FAA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#4E79A7FF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">orders<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\" PORT=\"order_id\"><U>order_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\" PORT=\"customer_id\">customer_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">order_date<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">status<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#DBE4EDFF\">chr<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"products\" [id = \"products\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#A15E1CAA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#F28E2BFF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">products<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\" PORT=\"product_id\"><U>product_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">product_name<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">category<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">unit_price<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">dbl<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">is_recurring<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">lgl<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"subscriptions\" [id = \"subscriptions\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#A15E1CAA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#F28E2BFF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">subscriptions<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\" PORT=\"subscription_id\"><U>subscription_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\" PORT=\"customer_id\">customer_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\" PORT=\"product_id\">product_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">status<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">valid_from<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">valid_to<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">monthly_amount<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#FCE8D4FF\">dbl<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n  \"support_tickets\" [id = \"support_tickets\", label = <<TABLE ALIGN=\"LEFT\" BORDER=\"1\" CELLBORDER=\"0\" CELLSPACING=\"0\" COLOR=\"#963A3BAA\">\n    <TR>\n      <TD COLSPAN=\"2\" BGCOLOR=\"#E15759FF\" BORDER=\"0\"><FONT COLOR=\"#FFFFFF\">support_tickets<\/FONT>\n<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\" PORT=\"ticket_id\"><U>ticket_id<\/U><\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\" PORT=\"customer_id\">customer_id<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\" PORT=\"assigned_to\">assigned_to<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">int<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">category<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">priority<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">status<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">chr<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">created_date<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">resolved_date<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">date<\/TD>\n    <\/TR>\n    <TR>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">satisfaction_score<\/TD>\n      <TD ALIGN=\"LEFT\" BGCOLOR=\"#F9DDDDFF\">int<\/TD>\n    <\/TR>\n  <\/TABLE>>, shape = \"plaintext\"] \n\n\"subscriptions\":\"customer_id\"->\"customers\":\"customer_id\" [id=\"subscriptions_1\"]\n\"orders\":\"customer_id\"->\"customers\":\"customer_id\" [id=\"orders_1\"]\n\"support_tickets\":\"customer_id\"->\"customers\":\"customer_id\" [id=\"support_tickets_1\"]\n\"employees\":\"department_id\"->\"departments\":\"department_id\" [id=\"employees_1\"]\n\"employees\":\"manager_id\"->\"employees\":\"employee_id\" [id=\"employees_2\"]\n\"support_tickets\":\"assigned_to\"->\"employees\":\"employee_id\" [id=\"support_tickets_2\"]\n\"order_items\":\"order_id\"->\"orders\":\"order_id\" [id=\"order_items_1\"]\n\"subscriptions\":\"product_id\"->\"products\":\"product_id\" [id=\"subscriptions_2\"]\n\"order_items\":\"product_id\"->\"products\":\"product_id\" [id=\"order_items_2\"]\n}","config":{"engine":null,"options":null}},"evals":[],"jsHooks":[]}</script>
+<div id="fig-erd" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-erd-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-erd">erDiagram
+    customers ||--o{ orders          : places
+    customers ||--o{ subscriptions   : subscribes
+    customers ||--o{ support_tickets : opens
+    products  ||--o{ subscriptions   : "is for"
+    products  ||--o{ order_items     : "is for"
+    orders    ||--o{ order_items     : contains
+    departments ||--o{ employees     : employs
+    employees ||--o{ employees       : manages
+    employees ||--o{ support_tickets : "assigned to"
+
+    customers {
+        INTEGER customer_id PK
+        VARCHAR first_name
+        VARCHAR last_name
+        VARCHAR email
+        VARCHAR city
+        VARCHAR country
+        DATE    signup_date
+        VARCHAR customer_segment
+    }
+    orders {
+        INTEGER order_id PK
+        INTEGER customer_id FK
+        DATE    order_date
+        VARCHAR status
+    }
+    order_items {
+        INTEGER order_item_id PK
+        INTEGER order_id FK
+        INTEGER product_id FK
+        INTEGER quantity
+        DOUBLE  unit_price
+        DOUBLE  line_total
+    }
+    products {
+        INTEGER product_id PK
+        VARCHAR product_name
+        VARCHAR category
+        DOUBLE  unit_price
+        BOOLEAN is_recurring
+    }
+    subscriptions {
+        INTEGER subscription_id PK
+        INTEGER customer_id FK
+        INTEGER product_id FK
+        VARCHAR status
+        DATE    valid_from
+        DATE    valid_to
+        DOUBLE  monthly_amount
+    }
+    support_tickets {
+        INTEGER ticket_id PK
+        INTEGER customer_id FK
+        INTEGER assigned_to FK
+        VARCHAR category
+        VARCHAR priority
+        VARCHAR status
+        DATE    created_date
+        DATE    resolved_date
+        INTEGER satisfaction_score
+    }
+    employees {
+        INTEGER employee_id PK
+        VARCHAR first_name
+        VARCHAR last_name
+        VARCHAR email
+        INTEGER department_id FK
+        DATE    hire_date
+        DOUBLE  salary
+        VARCHAR city
+        BOOLEAN is_active
+        INTEGER manager_id FK
+    }
+    departments {
+        INTEGER department_id PK
+        VARCHAR department_name
+    }
+    calendar {
+        INTEGER date_key PK
+        DATE    date
+        DOUBLE  year
+        INTEGER quarter
+        DOUBLE  month
+        ENUM    month_name
+        DOUBLE  week
+        ENUM    day_of_week
+        INTEGER day_of_month
+        DOUBLE  day_of_year
+        DATE    start_of_month
+        BOOLEAN is_weekend
+        DOUBLE  fiscal_year
+        DOUBLE  fiscal_quarter
+    }
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-erd-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1.1: The cookbook database schema. <code>calendar</code> is a standalone date dimension, joined on date columns rather than by a foreign key.
+</figcaption>
+</figure>
+</div>
 </div>
 </div>
 </section>
-<section id="table-overview" class="level2">
-<h2 class="anchored" data-anchor-id="table-overview">Table overview</h2>
+<section id="table-overview" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="table-overview"><span class="header-section-number">1.4</span> Table overview</h2>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
@@ -362,6 +682,75 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 
+
+<script>
+(function() {
+  const dbName = "carwash";
+  const dataFiles = [{url:"https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/carwash.duckdb",format:"duckdb",tableName:"carwash"}];
+  const editable = true;
+  const selector = 'div.interactive-duckdb pre.carwash code';
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks for this database
+    const codeBlocks = document.querySelectorAll(selector);
+    codeBlocks.forEach((codeEl, idx) => {
+      const container = codeEl.closest('.interactive-duckdb');
+      if (!container) return;
+      
+      // Make code editable if enabled
+      if (editable) {
+        codeEl.setAttribute('contenteditable', 'true');
+        codeEl.setAttribute('spellcheck', 'false');
+      }
+      
+      // Create output container
+      let outputEl = container.querySelector('.duckdb-output');
+      if (!outputEl) {
+        outputEl = document.createElement('div');
+        outputEl.className = 'duckdb-output';
+        container.appendChild(outputEl);
+      }
+      
+      // Create run button
+      let btnContainer = container.querySelector('.duckdb-btn-container');
+      if (!btnContainer) {
+        btnContainer = document.createElement('div');
+        btnContainer.className = 'duckdb-btn-container';
+        
+        const runBtn = document.createElement('button');
+        runBtn.className = 'duckdb-run-btn';
+        runBtn.textContent = '▶ Run';
+        runBtn.addEventListener('click', async function() {
+          outputEl.innerHTML = '<div class="duckdb-loading">Initializing DuckDB...</div>';
+          try {
+            await initDuckDB(dbName, dataFiles);
+            await runDuckDBQuery(dbName, '', outputEl, codeEl);
+          } catch (e) {
+            outputEl.innerHTML = '<div class="duckdb-error">Error: ' + e.message + '</div>';
+          }
+        });
+        
+        btnContainer.appendChild(runBtn);
+        container.insertBefore(btnContainer, outputEl);
+      }
+      
+      // Run query on Ctrl+Enter / Cmd+Enter
+      codeEl.addEventListener('keydown', async function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          outputEl.innerHTML = '<div class="duckdb-loading">Initializing DuckDB...</div>';
+          try {
+            await initDuckDB(dbName, dataFiles);
+            await runDuckDBQuery(dbName, '', outputEl, codeEl);
+          } catch (e) {
+            outputEl.innerHTML = '<div class="duckdb-error">Error: ' + e.message + '</div>';
+          }
+        }
+      });
+    });
+  });
+})();
+</script>
 
 </section>
 
@@ -788,8 +1177,8 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../index.html" class="pagination-link" aria-label="Preface">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Preface</span>
+      <a href="../00-intro/introduction.html" class="pagination-link" aria-label="Introduction">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Introduction</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
@@ -803,4 +1192,5 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer><script src="../site_libs/quarto-contrib/interactive-duckdb-1.0.0/interactive-duckdb.js"></script>
+</body></html>

@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Paulius Alaburda">
-<meta name="dcterms.date" content="2026-04-15">
+<meta name="dcterms.date" content="2026-06-24">
 
 <title>The Data Analyst SQL Cookbook</title>
 <style>
@@ -32,7 +32,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./00-intro/the-data-model.html" rel="next">
+<link href="./00-intro/introduction.html" rel="next">
 <script src="site_libs/quarto-html/quarto.js"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -121,6 +121,12 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./00-intro/introduction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Introduction</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./00-intro/the-data-model.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">The Data Model</span></a>
   </div>
@@ -142,40 +148,64 @@ ul.task-list li input[type="checkbox"] {
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./01-basics/oltp-vs-olap.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">OLTP vs.&nbsp;OLAP</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./01-basics/using-sql-in-r.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./01-basics/using-sql-in-dbt.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./01-basics/joins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
+  <a href="./01-basics/selecting-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Selecting Tables</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-basics/joining-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Joining Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./01-basics/window-functions.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./01-basics/filtering.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Filtering</span></span></a>
+  <a href="./01-basics/filtering-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Filtering Tables</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-basics/structuring-queries.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Structuring Queries</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-basics/anti-patterns.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></span></a>
   </div>
 </li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="./02-models/models.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">models</span></a>
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">02-models/models.qmd</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -183,20 +213,26 @@ ul.task-list li input[type="checkbox"] {
       <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./02-models/types-of-models.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Types of Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./02-models/calendar-date-dimension.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Creating a Calendar Date Dimension</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Calendar Date Dimension</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./02-models/factless-fact-tables.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./02-models/ragged-depth-hierarchies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
   </div>
 </li>
       </ul>
@@ -213,19 +249,43 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./03-recipes/queries_with_dates.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./03-recipes/pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./03-recipes/customer-analytics.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Customer Analytics Recipes</span></span></a>
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Customer Analytics Recipes</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-recipes/grouping-consecutive-rows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Grouping consecutive rows</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-recipes/calculating-streaks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Calculating Streaks</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-recipes/finding-gaps-in-ordered-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">finding-gaps-in-ordered-data</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-recipes/occupancy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">Occupancy</span></span></a>
   </div>
 </li>
       </ul>
@@ -233,7 +293,7 @@ ul.task-list li input[type="checkbox"] {
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./misc/goodies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
+ <span class="menu-text"><span class="chapter-number">21</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -278,7 +338,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">April 15, 2026</p>
+      <p class="date">June 24, 2026</p>
     </div>
   </div>
   
@@ -292,10 +352,10 @@ ul.task-list li input[type="checkbox"] {
 
 <section id="preface" class="level1 unnumbered">
 <h1 class="unnumbered">Preface</h1>
-<p>I have a terrible memory for things that I use rarely. When it comes to SQL, there are certain code patterns that are extremely useful when doing data modelling. But there’s only so many data models you need to build before actually using them. I wrote this so that I have all of my useful patterns in one place with the benefit of sharing this with you.</p>
+<p>I have a terrible memory for things I use rarely. When it comes to SQL, there are certain code patterns that are extremely useful for work. But there are only so many data models you need to build before actually using them! You may use some once or twice and move on to using the resulting models. I wrote this so that I have all of my useful patterns in one place with the benefit of sharing this with you.</p>
 <p>This book was born out of a need to collect SQL queries that were too infrequently used to be memorized but too frequently used to be looked up. The queries are organized by topic and are meant to be used as a reference. The book is also meant to be a living document that will be updated as new queries are discovered and old queries are improved.</p>
 <p>Furthermore, these SQL patterns are not universally known! I have found that many developers are not aware of these patterns and are reinventing the wheel when they encounter these problems. I hope that this book will help to spread these patterns and make them more widely known. My team has been victim to the same problem - we found a solution on StackOverflow only to find a better solution a year down the line.</p>
-<p>The impetus to writing this book was that I couldn’t find a book that I could throw at a fresh data analyst and say “here, this will get you up to speed on SQL”. The book initially was supposed to be a collection of SQL queries that my team used frequently or infrequently. Think of it as a SQL cookbook of sorts - it contains recipes that are useful but not so common that you’d learn them by heart. However, I also realised that having a single resource for SQL is better than two so I added an introduction to SQL as well.</p>
+<p>Then, the scope of the book grew - instead of just having a compendium of interesting code patterns, I also add the basics. The resulting book is finally something I could throw at a fresh data analyst and say “here, this will get you up to speed on SQL”. The book initially was supposed to be a collection of SQL queries that my team used frequently or infrequently. Think of it as a SQL cookbook of sorts - it contains recipes that are useful but not so common that you’d learn them by heart. However, I also realised that having a single resource for SQL is better than two so I added an introduction to SQL as well.</p>
 <p>Part one of the book is exactly that - basics presented in a concise manner to get you up to speed on running queries as an analyst. Part two is the cookbook - the queries are loosely grouped around the types of problems they solve. For example, queries for working with time series will be in the same chapter. Loosely is a load-bearing word here - I would like to find a more natural way of organising the material but the recipes are going to be useful depending on your area. You might not even find a use for some of the queries in this book!</p>
 <p>There’s also another, secret, part - building Data Models. A lot of Data Analysts forgo building a star schema and just whack the raw data with whatever tool they’re most comfortable with. It’s not necessarily a bad practice or anything but I prefer building out my data model so that it meets two criteria:</p>
 <ul>
@@ -316,6 +376,14 @@ ul.task-list li input[type="checkbox"] {
 <p>My favourite example is how Power BI has an <a href="https://community.fabric.microsoft.com/t5/Desktop/How-to-do-DAX-logic-on-date-level-from-a-SCD2-table/td-p/3156308">unwieldy query</a> for calculating the number of subscriptions for each month, i.e.&nbsp;showing the change of active SCD2 type rows. In a data model, this is solved by building a <a href="https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/factless-fact-table/">factless fact table</a>. And you really really need to know this as a data analyst - I strongly believe that only the analyst can build the semantic layer because the semantic layer is driven by the metrics and questions that need answering. If your tables in the Data Warehouse are not built in a way that helps you answer questions and build your main KPIs, your data analysts are going to build out their logic in the BI tool or somewhere else entirely. This chapter is recipes targeted towards building tables inside of a Data Warehouse.</p>
 <p>To make this book really useful, the book uses the <a href="https://github.com/shafayetShafee/interactive-sql">interactive SQL extension</a> for Quarto. All the code chunks you find in the book are executable. Have fun!</p>
 <p>I like data modeling because it introduces clarity and a common language between data analysts. If all reports follow some sane dimension and fact structure, you can probably onboard a new data analyst faster than to reports that do not. However, I understand why people despise Kimball’s techniques and embrace stuff like one-big-table (OBTs). Have you seen the list of techniques listed on <a href="https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/">KImball’s website</a>? Half of these names don’t make sense to me. If I have a calendar table that is used as a filter on two fact tables, suddenly it’s called a “conformed” dimension? If I define multiple relationships between my dimension and fact tables, it’s called a “role playing” dimension now? That’s too much lingo for my tastes. The data modeling chapter contains techniques that I have found useful with sample SQL code to show how they could be applied.</p>
+<p>This book does not cover SQL aspects more closely related to software development. So things like indexes or parameter sniffing are not covered. While you could find value, they are unlikely to be useful in your daily practice. If you are already thinking about indexes, congratulations - you’re probably a software developer! Go ask for a promotion, you deserve it.</p>
+<p>What’s funny is that when writing this book I had to repeatedly look up my older blog posts for recipes - and this is exactly the reason I am writing this book!</p>
+<p>Generally, SQL is extremely versatile:</p>
+<ul>
+<li><p>SQL can act as a data asset management tool - in dbt, you declare your SQL statements and they are built in your data warehouse. If Kubernetes, you declare what assets you want and it builds them for you. In SQL, you declare data models and they get built.</p></li>
+<li><p>SQL is also a set operation tool -</p></li>
+<li><p>SQL has become extremely versatile</p></li>
+</ul>
 
 
 </section>
@@ -745,8 +813,8 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   <div class="nav-page nav-page-previous">
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./00-intro/the-data-model.html" class="pagination-link" aria-label="The Data Model">
-        <span class="nav-page-text">The Data Model</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./00-intro/introduction.html" class="pagination-link" aria-label="Introduction">
+        <span class="nav-page-text">Introduction</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

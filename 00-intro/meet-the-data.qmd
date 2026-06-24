@@ -1,0 +1,141 @@
+---
+title: "Meet the Data"
+engine: knitr
+filters:
+  - interactive-duckdb
+databases:
+  - name: carwash
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/carwash.duckdb"
+    format: duckdb
+---
+
+In order to demonstrate all the different ways to query data, multiple sample databases are used throughout the book. Let's meet the data!
+
+## Carwash
+
+`carwash` is a fictional self-service carwash business. In this databases, *users* can either pay per washing *session* or purchase a *subscription* that allows a number of services for monthly fee. The carwashes themselves are located in the *locations* table. Users can also create service *tickets* which can be handled by *employees*.
+
+[[ insert ERD for the carwash database here ]]
+
+[[ Add interactive sql element here ]]
+
+
+## Stocks
+
+
+uses a fictional SaaS company database. All chapters query the same set of tables so you can build on what you've learned across chapters.
+
+## Entity-Relationship Diagram
+
+```{mermaid}
+%%| label: fig-erd
+%%| fig-cap: "The cookbook database schema. `calendar` is a standalone date dimension, joined on date columns rather than by a foreign key."
+erDiagram
+    customers ||--o{ orders          : places
+    customers ||--o{ subscriptions   : subscribes
+    customers ||--o{ support_tickets : opens
+    products  ||--o{ subscriptions   : "is for"
+    products  ||--o{ order_items     : "is for"
+    orders    ||--o{ order_items     : contains
+    departments ||--o{ employees     : employs
+    employees ||--o{ employees       : manages
+    employees ||--o{ support_tickets : "assigned to"
+
+    customers {
+        INTEGER customer_id PK
+        VARCHAR first_name
+        VARCHAR last_name
+        VARCHAR email
+        VARCHAR city
+        VARCHAR country
+        DATE    signup_date
+        VARCHAR customer_segment
+    }
+    orders {
+        INTEGER order_id PK
+        INTEGER customer_id FK
+        DATE    order_date
+        VARCHAR status
+    }
+    order_items {
+        INTEGER order_item_id PK
+        INTEGER order_id FK
+        INTEGER product_id FK
+        INTEGER quantity
+        DOUBLE  unit_price
+        DOUBLE  line_total
+    }
+    products {
+        INTEGER product_id PK
+        VARCHAR product_name
+        VARCHAR category
+        DOUBLE  unit_price
+        BOOLEAN is_recurring
+    }
+    subscriptions {
+        INTEGER subscription_id PK
+        INTEGER customer_id FK
+        INTEGER product_id FK
+        VARCHAR status
+        DATE    valid_from
+        DATE    valid_to
+        DOUBLE  monthly_amount
+    }
+    support_tickets {
+        INTEGER ticket_id PK
+        INTEGER customer_id FK
+        INTEGER assigned_to FK
+        VARCHAR category
+        VARCHAR priority
+        VARCHAR status
+        DATE    created_date
+        DATE    resolved_date
+        INTEGER satisfaction_score
+    }
+    employees {
+        INTEGER employee_id PK
+        VARCHAR first_name
+        VARCHAR last_name
+        VARCHAR email
+        INTEGER department_id FK
+        DATE    hire_date
+        DOUBLE  salary
+        VARCHAR city
+        BOOLEAN is_active
+        INTEGER manager_id FK
+    }
+    departments {
+        INTEGER department_id PK
+        VARCHAR department_name
+    }
+    calendar {
+        INTEGER date_key PK
+        DATE    date
+        DOUBLE  year
+        INTEGER quarter
+        DOUBLE  month
+        ENUM    month_name
+        DOUBLE  week
+        ENUM    day_of_week
+        INTEGER day_of_month
+        DOUBLE  day_of_year
+        DATE    start_of_month
+        BOOLEAN is_weekend
+        DOUBLE  fiscal_year
+        DOUBLE  fiscal_quarter
+    }
+```
+
+## Table overview
+
+| Table | Rows | Purpose |
+|---|---|---|
+| `calendar` | 1,461 | Date dimension covering 2022–2025 |
+| `departments` | 6 | Engineering, Sales, Marketing, Support, HR, Finance |
+| `employees` | 50 | Hierarchical via `manager_id` → `employee_id` |
+| `customers` | 200 | Consumer / Business / Enterprise segments |
+| `products` | 12 | Plans, add‑ons, services, features |
+| `subscriptions` | 300 | SCD2 style with `valid_from` / `valid_to` |
+| `orders` | 800 | Completed, pending, cancelled, refunded |
+| `order_items` | ~1,400 | 1–4 line items per order |
+| `support_tickets` | 400 | With priority, category, resolution dates |

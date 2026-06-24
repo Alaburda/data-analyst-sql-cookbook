@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>6&nbsp; Creating a Calendar Date Dimension – The Data Analyst SQL Cookbook</title>
+<title>11&nbsp; Calendar Date Dimension – The Data Analyst SQL Cookbook</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -65,7 +65,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
 <link href="../02-models/factless-fact-tables.html" rel="next">
-<link href="../02-models/models.html" rel="prev">
+<link href="../02-models/types-of-models.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -75,6 +75,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/quarto-contrib/interactive-duckdb-1.0.0/interactive-duckdb.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -102,9 +103,159 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
+<script type="module">
+  import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm';
+  
+  // Global DuckDB instance management
+  window.duckdbModule = duckdb;
+  window.duckdbInstances = {};
+  window.duckdbReady = {};
+  window.duckdbInitializing = {};
+  
+  window.initDuckDB = async function(dbName, dataFiles) {
+    if (window.duckdbReady[dbName]) {
+      return window.duckdbInstances[dbName];
+    }
+    
+    // Prevent multiple simultaneous initializations
+    if (window.duckdbInitializing[dbName]) {
+      // Wait for existing initialization
+      while (window.duckdbInitializing[dbName]) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return window.duckdbInstances[dbName];
+    }
+    
+    window.duckdbInitializing[dbName] = true;
+    
+    try {
+      const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
+      const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
+      
+      const worker_url = URL.createObjectURL(
+        new Blob([`importScripts("${bundle.mainWorker}");`], {type: 'text/javascript'})
+      );
+      
+      const worker = new Worker(worker_url);
+      const logger = new duckdb.ConsoleLogger();
+      const db = new duckdb.AsyncDuckDB(logger, worker);
+      await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+      URL.revokeObjectURL(worker_url);
+      
+      const conn = await db.connect();
+      
+      // Load data files if provided
+      // dataFiles is an array of {url, format, tableName} objects
+      if (dataFiles && dataFiles.length > 0) {
+        for (const file of dataFiles) {
+          try {
+            const { url, format, tableName } = file;
+            if (!url || url.length === 0) continue;
+            
+            if (format === 'duckdb' || format === 'db') {
+              console.log('Loading DuckDB file:', url);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              console.log('DuckDB file size:', arrayBuffer.byteLength, 'bytes');
+              await db.registerFileBuffer('db.duckdb', new Uint8Array(arrayBuffer));
+              await conn.query(`ATTACH 'db.duckdb' AS filedb`);
+              await conn.query(`USE filedb`);
+            } else if (format === 'parquet') {
+              console.log('Loading parquet file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.parquet`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM parquet_scan('${fileName}')`);
+              console.log('Table', tableName, 'created successfully');
+            } else if (format === 'csv') {
+              console.log('Loading CSV file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.csv`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM read_csv_auto('${fileName}')`);
+            } else if (format === 'json') {
+              console.log('Loading JSON file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.json`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM read_json_auto('${fileName}')`);
+            } else if (format === 'sql') {
+              const response = await fetch(url);
+              const sqlScript = await response.text();
+              await conn.query(sqlScript);
+            }
+          } catch (e) {
+            console.error('Error loading file:', file, e);
+          }
+        }
+      }
+      
+      window.duckdbInstances[dbName] = { db, conn };
+      window.duckdbReady[dbName] = true;
+      
+      return { db, conn };
+    } finally {
+      window.duckdbInitializing[dbName] = false;
+    }
+  }
+  
+  window.runDuckDBQuery = async function(dbName, query, outputEl, queryEl) {
+    try {
+      const { conn } = window.duckdbInstances[dbName];
+      const actualQuery = queryEl ? queryEl.textContent : query;
+      
+      const result = await conn.query(actualQuery);
+      const rows = result.toArray();
+      
+      if (rows.length === 0) {
+        outputEl.innerHTML = '<div class="duckdb-message">Query executed successfully. No results to display.</div>';
+        return;
+      }
+      
+      // Get column names from the schema
+      const columns = result.schema.fields.map(f => f.name);
+      
+      // Build HTML table
+      let html = '<table class="duckdb-result-table"><thead><tr>';
+      columns.forEach(col => {
+        html += '<th>' + escapeHtml(col) + '</th>';
+      });
+      html += '</tr></thead><tbody>';
+      
+      rows.forEach(row => {
+        html += '<tr>';
+        columns.forEach(col => {
+          const value = row[col];
+          html += '<td>' + escapeHtml(value !== null && value !== undefined ? String(value) : 'NULL') + '</td>';
+        });
+        html += '</tr>';
+      });
+      
+      html += '</tbody></table>';
+      html += '<div class="duckdb-row-count">' + rows.length + ' row(s)</div>';
+      
+      outputEl.innerHTML = html;
+    } catch (e) {
+      outputEl.innerHTML = '<div class="duckdb-error">Error: ' + escapeHtml(e.message) + '</div>';
+    }
+  }
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+</script>
 
 
-<meta property="og:title" content="6&nbsp; Creating a Calendar Date Dimension – The Data Analyst SQL Cookbook">
+<meta property="og:title" content="11&nbsp; Calendar Date Dimension – The Data Analyst SQL Cookbook">
 <meta property="og:description" content="">
 <meta property="og:site_name" content="The Data Analyst SQL Cookbook">
 </head>
@@ -118,7 +269,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../02-models/models.html">models</a></li><li class="breadcrumb-item"><a href="../02-models/calendar-date-dimension.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Creating a Calendar Date Dimension</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../02-models/types-of-models.html">02-models/models.qmd</a></li><li class="breadcrumb-item"><a href="../02-models/calendar-date-dimension.html"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Calendar Date Dimension</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -154,6 +305,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../00-intro/introduction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Introduction</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../00-intro/the-data-model.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">The Data Model</span></a>
   </div>
@@ -175,40 +332,64 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../01-basics/oltp-vs-olap.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">OLTP vs.&nbsp;OLAP</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-r.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-dbt.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../01-basics/joins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
+  <a href="../01-basics/selecting-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Selecting Tables</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/joining-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Joining Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/window-functions.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../01-basics/filtering.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Filtering</span></span></a>
+  <a href="../01-basics/filtering-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Filtering Tables</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/structuring-queries.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Structuring Queries</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/anti-patterns.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></span></a>
   </div>
 </li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../02-models/models.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">models</span></a>
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">02-models/models.qmd</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -216,20 +397,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../02-models/types-of-models.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Types of Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../02-models/calendar-date-dimension.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Creating a Calendar Date Dimension</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Calendar Date Dimension</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/factless-fact-tables.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/ragged-depth-hierarchies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
   </div>
 </li>
       </ul>
@@ -246,19 +433,43 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/queries_with_dates.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/customer-analytics.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Customer Analytics Recipes</span></span></a>
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Customer Analytics Recipes</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/grouping-consecutive-rows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Grouping consecutive rows</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/calculating-streaks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Calculating Streaks</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/finding-gaps-in-ordered-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">finding-gaps-in-ordered-data</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/occupancy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">Occupancy</span></span></a>
   </div>
 </li>
       </ul>
@@ -266,7 +477,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../misc/goodies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
+ <span class="menu-text"><span class="chapter-number">21</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -285,17 +496,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#building-it-with-duckdb" id="toc-building-it-with-duckdb" class="nav-link active" data-scroll-target="#building-it-with-duckdb"><span class="header-section-number">6.1</span> Building it with DuckDB</a></li>
-  <li><a href="#adding-holidays" id="toc-adding-holidays" class="nav-link" data-scroll-target="#adding-holidays"><span class="header-section-number">6.2</span> Adding Holidays</a></li>
+  <li><a href="#building-it-with-duckdb" id="toc-building-it-with-duckdb" class="nav-link active" data-scroll-target="#building-it-with-duckdb"><span class="header-section-number">11.1</span> Building it with DuckDB</a></li>
+  <li><a href="#adding-holidays" id="toc-adding-holidays" class="nav-link" data-scroll-target="#adding-holidays"><span class="header-section-number">11.2</span> Adding Holidays</a></li>
+  <li><a href="#smart-keys-in-the-date-dimension" id="toc-smart-keys-in-the-date-dimension" class="nav-link" data-scroll-target="#smart-keys-in-the-date-dimension"><span class="header-section-number">11.3</span> Smart keys in the date dimension</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../02-models/models.html">models</a></li><li class="breadcrumb-item"><a href="../02-models/calendar-date-dimension.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Creating a Calendar Date Dimension</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../02-models/types-of-models.html">02-models/models.qmd</a></li><li class="breadcrumb-item"><a href="../02-models/calendar-date-dimension.html"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Calendar Date Dimension</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Creating a Calendar Date Dimension</span></h1>
+<h1 class="title"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Calendar Date Dimension</span></h1>
 </div>
 
 
@@ -312,94 +524,79 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: false</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(duckdb)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Warning: package 'duckdb' was built under R version 4.4.3</code></pre>
-</div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Loading required package: DBI</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> <span class="fu">dbConnect</span>(<span class="fu">duckdb</span>(), <span class="st">"../db/cookbook.duckdb"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p>A date dimension is a fancy synonym for the word “calendar”. I think having a calendar table is essential for any data warehouse. If you don’t have one yet, drop everything what you’re doing and go create one. Just trust me, you can thank me later.</p>
-<section id="building-it-with-duckdb" class="level2" data-number="6.1">
-<h2 data-number="6.1" class="anchored" data-anchor-id="building-it-with-duckdb"><span class="header-section-number">6.1</span> Building it with DuckDB</h2>
+<p>A date dimension is a fancy synonym for “calendar”. I think having a calendar table is essential for any data warehouse. If you don’t have one yet, drop everything that you’re doing and go create one. Just trust me, you can thank me later.</p>
+<section id="building-it-with-duckdb" class="level2" data-number="11.1">
+<h2 data-number="11.1" class="anchored" data-anchor-id="building-it-with-duckdb"><span class="header-section-number">11.1</span> Building it with DuckDB</h2>
 <p>There’s no one right way to build a calendar table. If you want to maintain an Excel file that gets regularly ingested, that’s fine. If you want to use a Python or R, that’s great too because they both have expressive ways to manipulate dates<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>. If you want to use SQL, that’s also fine. In DuckDB, it’s extremely easy because <code>generate_series</code> returns a list of dates that you can manipulate. Here’s some code that creates the calendar:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">create</span> <span class="kw">or</span> <span class="kw">replace</span> <span class="kw">table</span> dim_date <span class="kw">as</span> </span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">CAST</span>(strftime(dates, <span class="st">'%Y%m%d'</span>) <span class="kw">AS</span> <span class="dt">INTEGER</span>) <span class="kw">AS</span> date_key,</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    dates <span class="kw">AS</span> <span class="dt">date</span>,</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">YEAR</span>(dates) <span class="kw">AS</span> <span class="dt">year</span>,</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    QUARTER(dates) <span class="kw">AS</span> quarter,</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">MONTH</span>(dates) <span class="kw">AS</span> <span class="dt">month</span>,</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    monthname(dates) <span class="kw">AS</span> month_name,</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    WEEK(dates) <span class="kw">AS</span> week,</span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">DAY</span>(dates) <span class="kw">AS</span> day_of_month,</span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    DAYOFWEEK(dates) <span class="kw">AS</span> day_of_week,</span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    dayname(dates) <span class="kw">AS</span> day_name,</span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    DAYOFYEAR(dates) <span class="kw">AS</span> day_of_year,</span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">CASE</span> <span class="cf">WHEN</span> DAYOFWEEK(dates) <span class="kw">IN</span> (<span class="dv">0</span>, <span class="dv">6</span>) <span class="cf">THEN</span> <span class="kw">true</span> <span class="cf">ELSE</span> <span class="kw">false</span> <span class="cf">END</span> <span class="kw">AS</span> is_weekend,</span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>    <span class="kw">false</span> <span class="kw">AS</span> is_holiday,  <span class="co">-- Can be updated with actual holidays</span></span>
-<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">CASE</span> </span>
-<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">WHEN</span> <span class="dt">MONTH</span>(dates) <span class="op">&gt;=</span> <span class="dv">7</span> <span class="cf">THEN</span> <span class="dt">YEAR</span>(dates) <span class="op">+</span> <span class="dv">1</span> </span>
-<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>        <span class="cf">ELSE</span> <span class="dt">YEAR</span>(dates) </span>
-<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">END</span> <span class="kw">AS</span> fiscal_year,  <span class="co">-- Assuming fiscal year starts July 1</span></span>
-<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">CASE</span> </span>
-<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>        <span class="cf">WHEN</span> <span class="dt">MONTH</span>(dates) <span class="op">&gt;=</span> <span class="dv">7</span> <span class="cf">THEN</span> QUARTER(dates) <span class="op">-</span> <span class="dv">2</span></span>
-<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>        <span class="cf">ELSE</span> QUARTER(dates) <span class="op">+</span> <span class="dv">2</span></span>
-<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">END</span> <span class="kw">AS</span> fiscal_quarter</span>
-<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> generate_series(</span>
-<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>    <span class="dt">DATE</span> <span class="st">'2020-01-01'</span>,</span>
-<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>    <span class="dt">DATE</span> <span class="st">'2025-12-31'</span>,</span>
-<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>    <span class="dt">INTERVAL</span> <span class="st">'1 day'</span></span>
-<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>) <span class="kw">AS</span> t(dates);</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">CAST</span>(strftime(dates, <span class="st">'%Y%m%d'</span>) <span class="kw">AS</span> <span class="dt">INTEGER</span>) <span class="kw">AS</span> date_key,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    dates <span class="kw">AS</span> <span class="dt">date</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">YEAR</span>(dates) <span class="kw">AS</span> <span class="dt">year</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    QUARTER(dates) <span class="kw">AS</span> quarter,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">MONTH</span>(dates) <span class="kw">AS</span> <span class="dt">month</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    monthname(dates) <span class="kw">AS</span> month_name,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    WEEK(dates) <span class="kw">AS</span> week,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">DAY</span>(dates) <span class="kw">AS</span> day_of_month,</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    DAYOFWEEK(dates) <span class="kw">AS</span> day_of_week,</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    dayname(dates) <span class="kw">AS</span> day_name,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    DAYOFYEAR(dates) <span class="kw">AS</span> day_of_year,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">CASE</span> <span class="cf">WHEN</span> DAYOFWEEK(dates) <span class="kw">IN</span> (<span class="dv">0</span>, <span class="dv">6</span>) <span class="cf">THEN</span> <span class="kw">true</span> <span class="cf">ELSE</span> <span class="kw">false</span> <span class="cf">END</span> <span class="kw">AS</span> is_weekend,</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="kw">false</span> <span class="kw">AS</span> is_holiday,  <span class="co">-- Can be updated with actual holidays</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">CASE</span> </span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">WHEN</span> <span class="dt">MONTH</span>(dates) <span class="op">&gt;=</span> <span class="dv">7</span> <span class="cf">THEN</span> <span class="dt">YEAR</span>(dates) <span class="op">+</span> <span class="dv">1</span> </span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">ELSE</span> <span class="dt">YEAR</span>(dates) </span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">END</span> <span class="kw">AS</span> fiscal_year,  <span class="co">-- Assuming fiscal year starts July 1</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">CASE</span> </span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>        <span class="cf">WHEN</span> <span class="dt">MONTH</span>(dates) <span class="op">&gt;=</span> <span class="dv">7</span> <span class="cf">THEN</span> QUARTER(dates) <span class="op">-</span> <span class="dv">2</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>        <span class="cf">ELSE</span> QUARTER(dates) <span class="op">+</span> <span class="dv">2</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">END</span> <span class="kw">AS</span> fiscal_quarter</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> generate_series(</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    <span class="dt">DATE</span> <span class="st">'2020-01-01'</span>,</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    <span class="dt">DATE</span> <span class="st">'2025-12-31'</span>,</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    <span class="dt">INTERVAL</span> <span class="st">'1 day'</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>) <span class="kw">AS</span> t(dates);</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="adding-holidays" class="level2" data-number="6.2">
-<h2 data-number="6.2" class="anchored" data-anchor-id="adding-holidays"><span class="header-section-number">6.2</span> Adding Holidays</h2>
+<section id="adding-holidays" class="level2" data-number="11.2">
+<h2 data-number="11.2" class="anchored" data-anchor-id="adding-holidays"><span class="header-section-number">11.2</span> Adding Holidays</h2>
 <p>A good calendar table also needs a column whether a date is a holiday. Generally, there is no way to create a holiday field without some sort of dependency, so there is no best way of creating it. The simplest way is to create an Excel file with some years in advance that you would ingest on a yearly basis. In that case your dependency is someone on the team remembering to expand the table and updating the holidays.</p>
 <p>A different way of handling holidays is to automate the creation of the holiday field. Basically, it would be a <code>case when</code> statement that checks whether the date is December 24th, December 25th, January 1st etc. The first wrinkle is that someone will still have to keep up with adding or removing holidays. In fact, in 2019, Lithuania declared November 2nd, All Souls’ day, a holiday. Holidays do change over time!</p>
 <p>The second wrinkle is that calculating your own holidays can be tricky. For example, Easter Sunday is a holiday in many countries but it doesn’t have a fixed date. It falls on the first Sunday after the first full moon following the vernal equinox. In other words, it’s a moving target and there’s a whole Wikipedia article about the <a href="https://en.wikipedia.org/wiki/Determination_of_the_day_of_the_week#Meeus/Jones/Butcher_Gregorian_algorithm">it</a>. In SQL, you could create a macro or a function. Based on <a href="https://www.sqlservercentral.com/scripts/calculating-easter-in-sql">this great 2020 blog post</a>, here’s an implementation of an algorithm published in New Scientist in 1961:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">OR</span> <span class="kw">REPLACE</span> MACRO easter_sunday(y) <span class="kw">AS</span> <span class="kw">TABLE</span></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> easter_sunday_date</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> (<span class="kw">VALUES</span> (y % <span class="dv">19</span>, (y <span class="op">/</span> <span class="dv">100</span>):<span class="ch">:int</span>, y % <span class="dv">100</span>))              <span class="kw">AS</span> e1(a, b, c)</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> (b <span class="op">/</span> <span class="dv">4</span>, b % <span class="dv">4</span>))                            <span class="kw">AS</span> e2(d, e)</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> (<span class="fu">FLOOR</span>((<span class="dv">8</span> <span class="op">*</span> b <span class="op">+</span> <span class="dv">13</span>) <span class="op">/</span> <span class="dv">25</span>)))                 <span class="kw">AS</span> e3(g)</span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> ((<span class="dv">19</span><span class="op">*</span>a <span class="op">+</span> b <span class="op">-</span> d <span class="op">-</span> g <span class="op">+</span> <span class="dv">15</span>) % <span class="dv">30</span>, <span class="fu">FLOOR</span>(c<span class="op">/</span><span class="dv">4</span>), c%<span class="dv">4</span>)) <span class="kw">AS</span> e4(h, i, k)</span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> (<span class="fu">FLOOR</span>((<span class="dv">32</span> <span class="op">+</span> <span class="dv">2</span><span class="op">*</span>e <span class="op">+</span> <span class="dv">2</span><span class="op">*</span>i <span class="op">-</span> h <span class="op">-</span> k) % <span class="dv">7</span>)))           <span class="kw">AS</span> e5(l)</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> (<span class="fu">FLOOR</span>((a <span class="op">+</span> <span class="dv">11</span><span class="op">*</span>h <span class="op">+</span> <span class="dv">19</span><span class="op">*</span>l) <span class="op">/</span> <span class="dv">433</span>)))                 <span class="kw">AS</span> e6(m)</span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> (<span class="fu">FLOOR</span>((h <span class="op">+</span> l <span class="op">-</span> <span class="dv">7</span><span class="op">*</span>m <span class="op">+</span> <span class="dv">90</span>) <span class="op">/</span> <span class="dv">25</span>)))                 <span class="kw">AS</span> e7(n)</span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> (<span class="fu">FLOOR</span>((h <span class="op">+</span> l <span class="op">-</span> <span class="dv">7</span><span class="op">*</span>m <span class="op">+</span> <span class="dv">33</span><span class="op">*</span>n <span class="op">+</span> <span class="dv">19</span>) % <span class="dv">32</span>)))         <span class="kw">AS</span> e8(p)</span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> (make_date(y, n:<span class="ch">:int</span>, p:<span class="ch">:int</span>)))        <span class="kw">AS</span> e9(easter_sunday_date);</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">OR</span> <span class="kw">REPLACE</span> MACRO easter_sunday(y) <span class="kw">AS</span> <span class="kw">TABLE</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> easter_sunday_date</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> (<span class="kw">VALUES</span> (y % <span class="dv">19</span>, (y <span class="op">/</span> <span class="dv">100</span>):<span class="ch">:int</span>, y % <span class="dv">100</span>))              <span class="kw">AS</span> e1(a, b, c)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> (b <span class="op">/</span> <span class="dv">4</span>, b % <span class="dv">4</span>))                            <span class="kw">AS</span> e2(d, e)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> (<span class="fu">FLOOR</span>((<span class="dv">8</span> <span class="op">*</span> b <span class="op">+</span> <span class="dv">13</span>) <span class="op">/</span> <span class="dv">25</span>)))                 <span class="kw">AS</span> e3(g)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> ((<span class="dv">19</span><span class="op">*</span>a <span class="op">+</span> b <span class="op">-</span> d <span class="op">-</span> g <span class="op">+</span> <span class="dv">15</span>) % <span class="dv">30</span>, <span class="fu">FLOOR</span>(c<span class="op">/</span><span class="dv">4</span>), c%<span class="dv">4</span>)) <span class="kw">AS</span> e4(h, i, k)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> (<span class="fu">FLOOR</span>((<span class="dv">32</span> <span class="op">+</span> <span class="dv">2</span><span class="op">*</span>e <span class="op">+</span> <span class="dv">2</span><span class="op">*</span>i <span class="op">-</span> h <span class="op">-</span> k) % <span class="dv">7</span>)))           <span class="kw">AS</span> e5(l)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> (<span class="fu">FLOOR</span>((a <span class="op">+</span> <span class="dv">11</span><span class="op">*</span>h <span class="op">+</span> <span class="dv">19</span><span class="op">*</span>l) <span class="op">/</span> <span class="dv">433</span>)))                 <span class="kw">AS</span> e6(m)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> (<span class="fu">FLOOR</span>((h <span class="op">+</span> l <span class="op">-</span> <span class="dv">7</span><span class="op">*</span>m <span class="op">+</span> <span class="dv">90</span>) <span class="op">/</span> <span class="dv">25</span>)))                 <span class="kw">AS</span> e7(n)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> (<span class="fu">FLOOR</span>((h <span class="op">+</span> l <span class="op">-</span> <span class="dv">7</span><span class="op">*</span>m <span class="op">+</span> <span class="dv">33</span><span class="op">*</span>n <span class="op">+</span> <span class="dv">19</span>) % <span class="dv">32</span>)))         <span class="kw">AS</span> e8(p)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="kw">CROSS</span> <span class="kw">JOIN</span> LATERAL (<span class="kw">VALUES</span> (make_date(y, n:<span class="ch">:int</span>, p:<span class="ch">:int</span>)))        <span class="kw">AS</span> e9(easter_sunday_date);</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>To join the dates to our date dimension, we generate a series of years to pass into our macro and then join the resulting table to the date dimension:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="kw">create</span> <span class="kw">or</span> <span class="kw">replace</span> <span class="kw">table</span> dim_date_with_easter <span class="kw">as</span> </span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="kw">with</span> easter_sundays <span class="kw">as</span> (</span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> </span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  e.<span class="op">*</span></span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> generate_series(<span class="dv">2020</span>, <span class="dv">2025</span>) <span class="kw">AS</span> t(y),</span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>LATERAL easter_sunday(t.y) <span class="kw">AS</span> e</span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>  dim_date.<span class="op">*</span>,</span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>  <span class="cf">case</span> <span class="cf">when</span> easter_sunday_date <span class="kw">is</span> <span class="kw">not</span> <span class="kw">null</span> <span class="cf">then</span> <span class="dv">1</span> <span class="cf">else</span> <span class="dv">0</span> <span class="cf">end</span> <span class="kw">as</span> is_easter_sunday</span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> dim_date</span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a><span class="kw">left</span> <span class="kw">join</span> easter_sundays</span>
-<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>  <span class="kw">on</span> easter_sunday_date <span class="op">=</span> <span class="dt">date</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">create</span> <span class="kw">or</span> <span class="kw">replace</span> <span class="kw">table</span> dim_date_with_easter <span class="kw">as</span> </span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">with</span> easter_sundays <span class="kw">as</span> (</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> </span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  e.<span class="op">*</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> generate_series(<span class="dv">2020</span>, <span class="dv">2025</span>) <span class="kw">AS</span> t(y),</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>LATERAL easter_sunday(t.y) <span class="kw">AS</span> e</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  dim_date.<span class="op">*</span>,</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">case</span> <span class="cf">when</span> easter_sunday_date <span class="kw">is</span> <span class="kw">not</span> <span class="kw">null</span> <span class="cf">then</span> <span class="dv">1</span> <span class="cf">else</span> <span class="dv">0</span> <span class="cf">end</span> <span class="kw">as</span> is_easter_sunday</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> dim_date</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="kw">left</span> <span class="kw">join</span> easter_sundays</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  <span class="kw">on</span> easter_sunday_date <span class="op">=</span> <span class="dt">date</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> <span class="op">*</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> dim_date_with_easter</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="kw">where</span> is_easter_sunday <span class="op">=</span> <span class="dv">1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> <span class="op">*</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> dim_date_with_easter</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="kw">where</span> is_easter_sunday <span class="op">=</span> <span class="dv">1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <table class="caption-top table table-sm table-striped small">
 <caption>6 records</caption>
@@ -564,41 +761,27 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <p>The final way to handle holidays is to use a service provider. There are paid providers but <a href="https://date.nager.at/">Nager.Date</a> has a free API that you can use to get holidays for a given country and year. Here’s an R function that wraps it:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>
-Attaching package: 'dplyr'</code></pre>
-</div>
-<div class="cell-output cell-output-stderr">
-<pre><code>The following objects are masked from 'package:stats':
-
-    filter, lag</code></pre>
-</div>
-<div class="cell-output cell-output-stderr">
-<pre><code>The following objects are masked from 'package:base':
-
-    intersect, setdiff, setequal, union</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyr)</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(httr)</span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>get_holidays <span class="ot">&lt;-</span> <span class="cf">function</span>(<span class="at">country_code =</span> <span class="st">"lt"</span>, <span class="at">year =</span> <span class="st">"2023"</span>) {</span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  rs <span class="ot">&lt;-</span> <span class="fu">GET</span>(glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"https://date.nager.at/api/v3/publicholidays/{year}/{country_code}"</span>))</span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>  out <span class="ot">&lt;-</span> <span class="fu">content</span>(rs) <span class="sc">%&gt;%</span></span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    tibble<span class="sc">::</span><span class="fu">enframe</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(value) <span class="sc">%&gt;%</span></span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">unnest_wider</span>(value) <span class="sc">%&gt;%</span></span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">transmute</span>(<span class="at">date =</span> <span class="fu">as.Date</span>(date),</span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>           <span class="at">holiday_name_local =</span> localName,</span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>           <span class="at">holiday_name =</span> name)</span>
-<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(out)</span>
-<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a><span class="fu">get_holidays</span>(<span class="at">country_code =</span> <span class="st">"lt"</span>, <span class="at">year =</span> <span class="st">"2026"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyr)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(httr)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>get_holidays <span class="ot">&lt;-</span> <span class="cf">function</span>(<span class="at">country_code =</span> <span class="st">"lt"</span>, <span class="at">year =</span> <span class="st">"2023"</span>) {</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  rs <span class="ot">&lt;-</span> <span class="fu">GET</span>(glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"https://date.nager.at/api/v3/publicholidays/{year}/{country_code}"</span>))</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>  out <span class="ot">&lt;-</span> <span class="fu">content</span>(rs) <span class="sc">%&gt;%</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    tibble<span class="sc">::</span><span class="fu">enframe</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(value) <span class="sc">%&gt;%</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">unnest_wider</span>(value) <span class="sc">%&gt;%</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">transmute</span>(<span class="at">date =</span> <span class="fu">as.Date</span>(date),</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>           <span class="at">holiday_name_local =</span> localName,</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>           <span class="at">holiday_name =</span> name)</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(out)</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a><span class="fu">get_holidays</span>(<span class="at">country_code =</span> <span class="st">"lt"</span>, <span class="at">year =</span> <span class="st">"2026"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code># A tibble: 14 × 3
    date       holiday_name_local                       holiday_name             
@@ -620,7 +803,80 @@ Attaching package: 'dplyr'</code></pre>
 </div>
 </div>
 <p>Of course, now you are dependent on an external provider but an external provider might make more sense if you are handling holidays across different countries. In all of the ways provided, you need someone or something to handle holiday changes.</p>
+</section>
+<section id="smart-keys-in-the-date-dimension" class="level2" data-number="11.3">
+<h2 data-number="11.3" class="anchored" data-anchor-id="smart-keys-in-the-date-dimension"><span class="header-section-number">11.3</span> Smart keys in the date dimension</h2>
+<p>In Kimball dimensional modelling every dimension and fact has a primary key, the date dimension is not an exception. In fact, you could use a smart key as the primary key and use <code>20260101</code> for a row with the date <code>2026-01-01</code>. While this does make your warehouse consistent and let’s you create a reference to unknown values, I prefer joining directly on date columns. I feel like the added overhead of creating primary keys isn’t worth it considering that dates are stored as integers anyway and most databases handle NULL values in joins and aggregations just fine.</p>
 
+
+<script>
+(function() {
+  const dbName = "cookbook";
+  const dataFiles = [{url:"https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/cookbook.duckdb",format:"duckdb",tableName:"cookbook"}];
+  const editable = true;
+  const selector = 'div.interactive-duckdb pre.cookbook code';
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks for this database
+    const codeBlocks = document.querySelectorAll(selector);
+    codeBlocks.forEach((codeEl, idx) => {
+      const container = codeEl.closest('.interactive-duckdb');
+      if (!container) return;
+      
+      // Make code editable if enabled
+      if (editable) {
+        codeEl.setAttribute('contenteditable', 'true');
+        codeEl.setAttribute('spellcheck', 'false');
+      }
+      
+      // Create output container
+      let outputEl = container.querySelector('.duckdb-output');
+      if (!outputEl) {
+        outputEl = document.createElement('div');
+        outputEl.className = 'duckdb-output';
+        container.appendChild(outputEl);
+      }
+      
+      // Create run button
+      let btnContainer = container.querySelector('.duckdb-btn-container');
+      if (!btnContainer) {
+        btnContainer = document.createElement('div');
+        btnContainer.className = 'duckdb-btn-container';
+        
+        const runBtn = document.createElement('button');
+        runBtn.className = 'duckdb-run-btn';
+        runBtn.textContent = '▶ Run';
+        runBtn.addEventListener('click', async function() {
+          outputEl.innerHTML = '<div class="duckdb-loading">Initializing DuckDB...</div>';
+          try {
+            await initDuckDB(dbName, dataFiles);
+            await runDuckDBQuery(dbName, '', outputEl, codeEl);
+          } catch (e) {
+            outputEl.innerHTML = '<div class="duckdb-error">Error: ' + e.message + '</div>';
+          }
+        });
+        
+        btnContainer.appendChild(runBtn);
+        container.insertBefore(btnContainer, outputEl);
+      }
+      
+      // Run query on Ctrl+Enter / Cmd+Enter
+      codeEl.addEventListener('keydown', async function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          outputEl.innerHTML = '<div class="duckdb-loading">Initializing DuckDB...</div>';
+          try {
+            await initDuckDB(dbName, dataFiles);
+            await runDuckDBQuery(dbName, '', outputEl, codeEl);
+          } catch (e) {
+            outputEl.innerHTML = '<div class="duckdb-error">Error: ' + e.message + '</div>';
+          }
+        }
+      });
+    });
+  });
+})();
+</script>
 
 </section>
 <section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes">
@@ -1053,13 +1309,13 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../02-models/models.html" class="pagination-link" aria-label="models">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">models</span>
+      <a href="../02-models/types-of-models.html" class="pagination-link" aria-label="Types of Models">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Types of Models</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../02-models/factless-fact-tables.html" class="pagination-link" aria-label="Factless Fact Table">
-        <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../02-models/factless-fact-tables.html" class="pagination-link" aria-label="Factless Fact Tables">
+        <span class="nav-page-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1068,4 +1324,5 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer><script src="../site_libs/quarto-contrib/interactive-duckdb-1.0.0/interactive-duckdb.js"></script>
+</body></html>

@@ -1,12 +1,27 @@
 ---
 title: "Window Functions"
+engine: knitr
 filters:
   - interactive-duckdb
 databases:
   - name: cookbook
-    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbook.duckdb"
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/cookbook.duckdb"
+    format: duckdb
+  - name: stocks
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/stocks.duckdb"
     format: duckdb
 ---
+
+```{r setup}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(duckdb)
+
+con <- dbConnect(duckdb(), "../databases/cookbook.duckdb", read_only = TRUE)
+
+```
 
 # Window Functions
 
@@ -161,4 +176,66 @@ GROUP BY o.order_id, o.order_date
 ORDER BY o.order_date, o.order_id
 LIMIT 20;
 ```
+
+## Moving Averages
+
+A **moving average** (also called a rolling or sliding average) smooths out short-term noise so you can see longer-term trends. The key ingredient is the **frame clause**, which tells the window exactly how many rows to look back:
+
+```
+AVG(value) OVER (
+    PARTITION BY group
+    ORDER BY date
+    ROWS BETWEEN N PRECEDING AND CURRENT ROW
+)
+```
+
+`ROWS BETWEEN 6 PRECEDING AND CURRENT ROW` means "this row plus the 6 rows before it" — a 7-row window. Stock prices are the classic example. Here we compute 7-day and 30-day moving averages on Apple's daily closing price:
+
+```{.sql .interactive .stocks}
+SELECT
+    date,
+    ticker,
+    close,
+    ROUND(AVG(close) OVER (
+        PARTITION BY ticker
+        ORDER BY date
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ), 2) AS ma_7d,
+    ROUND(AVG(close) OVER (
+        PARTITION BY ticker
+        ORDER BY date
+        ROWS BETWEEN 29 PRECEDING AND CURRENT ROW
+    ), 2) AS ma_30d
+FROM stocks
+WHERE ticker = 'AAPL'
+ORDER BY date DESC
+LIMIT 30;
+```
+
+Notice that the earliest rows in the result have a shorter look-back than requested — DuckDB averages whatever rows are available at the start of the series. If you need `NULL` until a full window is accumulated, guard with `ROW_NUMBER()`:
+
+```{.sql .interactive .stocks}
+SELECT
+    date,
+    close,
+    CASE
+        WHEN ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY date) >= 7
+        THEN ROUND(AVG(close) OVER (
+            PARTITION BY ticker
+            ORDER BY date
+            ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+        ), 2)
+    END AS ma_7d
+FROM stocks
+WHERE ticker = 'AAPL'
+ORDER BY date
+LIMIT 15;
+```
+
+::: {.callout-tip}
+## ROWS vs RANGE
+
+`ROWS` counts physical rows; `RANGE` groups all rows that share the same `ORDER BY` value into one peer group. For a daily price series where each date is unique the two behave identically, but if your data can have duplicate dates `ROWS` is the safer default — it never accidentally widens your window.
+:::
+
 

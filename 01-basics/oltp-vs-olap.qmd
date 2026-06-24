@@ -1,0 +1,27 @@
+---
+title: "OLTP vs. OLAP"
+engine: knitr
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/cookbook.duckdb"
+    format: duckdb
+---
+
+# OLAP vs OLTP
+
+Why do you need both, what's the difference, differences between rowstore, columnstore and row groups.
+
+```{r setup}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(duckdb)
+
+con <- dbConnect(duckdb(), "../databases/cookbook.duckdb", read_only = TRUE)
+
+```
+
+Why generally neither architecture be relevant to you because you are doing table scans anyway lol. OLAP as an engine optimised for fact table data, OLTP for transactional data.

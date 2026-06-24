@@ -1,7 +1,0 @@
----
-title: "models"
-engine: knitr
----
-
-# Models
-

@@ -1,0 +1,57 @@
+---
+title: "Querying Intersecting Dates"
+engine: knitr
+filters:
+  - interactive-duckdb
+databases:
+  - name: subscriptions
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/carwas.duckdb"
+    format: duckdb
+---
+
+```{r setup}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(duckdb)
+
+con <- dbConnect(duckdb(), "../databases/carwash.duckdb", read_only = TRUE)
+
+```
+
+::: {.callout-tip}
+
+Hi, can you please find users who were on premium last year real quick?
+
+:::
+ 
+When working with type 2 dimensions, you will usually be finding which rows were active for a given date. The query design is a bit different when you are interested in rows that fall within some interval of dates. The design is useful for finding relevant cases that happened within some period of time. For example, maybe we are interested in knowing the total number of users last year, even if they were not active at the end of the year. Or maybe we want to find users that were using the carwash at some period of time if we'd like to rebate them or something. Luckily, there is a recipe for that!
+
+Let's say we are not interested in knowing the number of users with an active subscription at the end of last year but instead want to know the total number of users that had a subscription within the last year. So if you had a subscription for just one month in the middle of the year, we want to add you to the count. In the first case, we would do something like this:
+
+```{sql, connection = con}
+
+select distinct users.*
+from subscriptions subs
+inner join users
+  on subs.user_id = users.user_id
+where '2024-12-31' between date_from and date_to
+
+```
+
+To find where two date ranges intersect, we can use the following query:
+
+```{sql, connection = con}
+
+select distinct users.*
+from subscriptions subs
+inner join users
+  on subs.user_id = users.user_id
+where date_from <= '2023-12-31'
+and date_to >= '2023-01-01'
+
+```
+
+
+This query works when thinking in terms of sets. A subscription whose start date is later than our range's end date is not in scope (i.e. date_from > '2023-12-31'). So we can write the inverse of this, i.e. date_from <= '2023-12-31'. The same goes for subscriptions that end before our range of interest.

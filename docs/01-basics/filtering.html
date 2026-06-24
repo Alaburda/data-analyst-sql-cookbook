@@ -75,7 +75,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/quarto-contrib/interactive-sql-1.0.0/interactive-sql.css" rel="stylesheet">
+<link href="../site_libs/quarto-contrib/interactive-duckdb-1.0.0/interactive-duckdb.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -103,9 +103,156 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
-<script src="https://unpkg.com/@antonz/sqlite@3.40.0/dist/sqlite3.js"></script>
-<script src="https://unpkg.com/sqlime@0.1.3/dist/sqlime-db.js"></script>
-<script src="https://unpkg.com/sqlime@0.1.3/dist/sqlime-examples.js"></script>
+<script type="module">
+  import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm';
+  
+  // Global DuckDB instance management
+  window.duckdbModule = duckdb;
+  window.duckdbInstances = {};
+  window.duckdbReady = {};
+  window.duckdbInitializing = {};
+  
+  window.initDuckDB = async function(dbName, dataFiles) {
+    if (window.duckdbReady[dbName]) {
+      return window.duckdbInstances[dbName];
+    }
+    
+    // Prevent multiple simultaneous initializations
+    if (window.duckdbInitializing[dbName]) {
+      // Wait for existing initialization
+      while (window.duckdbInitializing[dbName]) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return window.duckdbInstances[dbName];
+    }
+    
+    window.duckdbInitializing[dbName] = true;
+    
+    try {
+      const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
+      const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
+      
+      const worker_url = URL.createObjectURL(
+        new Blob([`importScripts("${bundle.mainWorker}");`], {type: 'text/javascript'})
+      );
+      
+      const worker = new Worker(worker_url);
+      const logger = new duckdb.ConsoleLogger();
+      const db = new duckdb.AsyncDuckDB(logger, worker);
+      await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+      URL.revokeObjectURL(worker_url);
+      
+      const conn = await db.connect();
+      
+      // Load data files if provided
+      // dataFiles is an array of {url, format, tableName} objects
+      if (dataFiles && dataFiles.length > 0) {
+        for (const file of dataFiles) {
+          try {
+            const { url, format, tableName } = file;
+            if (!url || url.length === 0) continue;
+            
+            if (format === 'duckdb' || format === 'db') {
+              console.log('Loading DuckDB file:', url);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              console.log('DuckDB file size:', arrayBuffer.byteLength, 'bytes');
+              await db.registerFileBuffer('db.duckdb', new Uint8Array(arrayBuffer));
+              await conn.query(`ATTACH 'db.duckdb' AS filedb`);
+              await conn.query(`USE filedb`);
+            } else if (format === 'parquet') {
+              console.log('Loading parquet file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.parquet`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM parquet_scan('${fileName}')`);
+              console.log('Table', tableName, 'created successfully');
+            } else if (format === 'csv') {
+              console.log('Loading CSV file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.csv`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM read_csv_auto('${fileName}')`);
+            } else if (format === 'json') {
+              console.log('Loading JSON file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.json`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM read_json_auto('${fileName}')`);
+            } else if (format === 'sql') {
+              const response = await fetch(url);
+              const sqlScript = await response.text();
+              await conn.query(sqlScript);
+            }
+          } catch (e) {
+            console.error('Error loading file:', file, e);
+          }
+        }
+      }
+      
+      window.duckdbInstances[dbName] = { db, conn };
+      window.duckdbReady[dbName] = true;
+      
+      return { db, conn };
+    } finally {
+      window.duckdbInitializing[dbName] = false;
+    }
+  }
+  
+  window.runDuckDBQuery = async function(dbName, query, outputEl, queryEl) {
+    try {
+      const { conn } = window.duckdbInstances[dbName];
+      const actualQuery = queryEl ? queryEl.textContent : query;
+      
+      const result = await conn.query(actualQuery);
+      const rows = result.toArray();
+      
+      if (rows.length === 0) {
+        outputEl.innerHTML = '<div class="duckdb-message">Query executed successfully. No results to display.</div>';
+        return;
+      }
+      
+      // Get column names from the schema
+      const columns = result.schema.fields.map(f => f.name);
+      
+      // Build HTML table
+      let html = '<table class="duckdb-result-table"><thead><tr>';
+      columns.forEach(col => {
+        html += '<th>' + escapeHtml(col) + '</th>';
+      });
+      html += '</tr></thead><tbody>';
+      
+      rows.forEach(row => {
+        html += '<tr>';
+        columns.forEach(col => {
+          const value = row[col];
+          html += '<td>' + escapeHtml(value !== null && value !== undefined ? String(value) : 'NULL') + '</td>';
+        });
+        html += '</tr>';
+      });
+      
+      html += '</tbody></table>';
+      html += '<div class="duckdb-row-count">' + rows.length + ' row(s)</div>';
+      
+      outputEl.innerHTML = html;
+    } catch (e) {
+      outputEl.innerHTML = '<div class="duckdb-error">Error: ' + escapeHtml(e.message) + '</div>';
+    }
+  }
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+</script>
 
 
 <meta property="og:title" content="5&nbsp; Filtering – The Data Analyst SQL Cookbook">
@@ -192,7 +339,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/joins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Joins</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -212,7 +359,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a href="../02-models/models.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">models</span></a>
+ <span class="menu-text">Models</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -326,8 +473,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="anti-joins" class="level1" data-number="6">
 <h1 data-number="6"><span class="header-section-number">6</span> Anti joins</h1>
 <p>Anti joins are a type of join where you return only rows that do not match any row in a given table. For example, let’s say you have users who have done one time purchases but who have no subscription service. You want to send a marketing email to users who don’t have a subscription service yet but have done a one time purchase.</p>
-<div class="interactive-sql">
-<div class="sourceCode" id="cb1"><pre class="sourceCode sql interactive subscribers code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="interactive-duckdb">
+<div class="sourceCode" id="cb1"><pre class="sourceCode sql interactive subscriptions code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="filtering-on-the-on-clause" class="level1" data-number="7">
@@ -336,8 +483,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="joining-only-to-certain-rows-in-the-main-table" class="level2" data-number="7.1">
 <h2 data-number="7.1" class="anchored" data-anchor-id="joining-only-to-certain-rows-in-the-main-table"><span class="header-section-number">7.1</span> Joining only to certain rows in the main table</h2>
 <p>The left join clause <code>and created_channel = 2</code> ensures that the join only happens</p>
-<div class="interactive-sql">
-<div class="sourceCode" id="cb2"><pre class="sourceCode sql interactive subscribers code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a></span>
+<div class="interactive-duckdb">
+<div class="sourceCode" id="cb2"><pre class="sourceCode sql interactive subscriptions code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  users.<span class="op">*</span>,</span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  subscribers.subscription_type</span>
@@ -351,8 +498,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="joining-only-certain-rows-from-another-table" class="level2" data-number="7.2">
 <h2 data-number="7.2" class="anchored" data-anchor-id="joining-only-certain-rows-from-another-table"><span class="header-section-number">7.2</span> Joining only certain rows from another table</h2>
-<div class="interactive-sql">
-<div class="sourceCode" id="cb3"><pre class="sourceCode sql interactive subscribers code-with-copy"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a></span>
+<div class="interactive-duckdb">
+<div class="sourceCode" id="cb3"><pre class="sourceCode sql interactive subscriptions code-with-copy"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  users.<span class="op">*</span>,</span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  subscribers.subscription_type</span>
@@ -368,7 +515,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="anti-joins-1" class="level2" data-number="7.3">
 <h2 data-number="7.3" class="anchored" data-anchor-id="anti-joins-1"><span class="header-section-number">7.3</span> Anti joins</h2>
 <p>I love anti joins because they’re extremely useful for a wide range of scenarios but SQL practitioners don’t always learn about them early on (I certainly didn’t!).</p>
-<p>Add anti-join from here: https://github.com/gadenbuie/tidyexplain</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="../images/anti-join.gif" class="img-fluid figure-img"></p>
+<figcaption>How anti join works</figcaption>
+</figure>
+</div>
 </section>
 <section id="where-exists" class="level2" data-number="7.4">
 <h2 data-number="7.4" class="anchored" data-anchor-id="where-exists"><span class="header-section-number">7.4</span> WHERE EXISTS</h2>
@@ -376,8 +528,75 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>https://sqlperformance.com/2012/12/t-sql-queries/left-anti-semi-join</p>
 
 
-<sqlime-db name="subscribers" path="https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook-database/main/cookbookdb.sqlite"></sqlime-db>
-<sqlime-examples db="subscribers" selector="div.interactive-sql pre.subscribers code" editable=""></sqlime-examples>
+<script>
+(function() {
+  const dbName = "subscriptions";
+  const dataFiles = [{url:"https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/subscriptions.duckdb",format:"duckdb",tableName:"subscriptions"}];
+  const editable = true;
+  const selector = 'div.interactive-duckdb pre.subscriptions code';
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks for this database
+    const codeBlocks = document.querySelectorAll(selector);
+    codeBlocks.forEach((codeEl, idx) => {
+      const container = codeEl.closest('.interactive-duckdb');
+      if (!container) return;
+      
+      // Make code editable if enabled
+      if (editable) {
+        codeEl.setAttribute('contenteditable', 'true');
+        codeEl.setAttribute('spellcheck', 'false');
+      }
+      
+      // Create output container
+      let outputEl = container.querySelector('.duckdb-output');
+      if (!outputEl) {
+        outputEl = document.createElement('div');
+        outputEl.className = 'duckdb-output';
+        container.appendChild(outputEl);
+      }
+      
+      // Create run button
+      let btnContainer = container.querySelector('.duckdb-btn-container');
+      if (!btnContainer) {
+        btnContainer = document.createElement('div');
+        btnContainer.className = 'duckdb-btn-container';
+        
+        const runBtn = document.createElement('button');
+        runBtn.className = 'duckdb-run-btn';
+        runBtn.textContent = '▶ Run';
+        runBtn.addEventListener('click', async function() {
+          outputEl.innerHTML = '<div class="duckdb-loading">Initializing DuckDB...</div>';
+          try {
+            await initDuckDB(dbName, dataFiles);
+            await runDuckDBQuery(dbName, '', outputEl, codeEl);
+          } catch (e) {
+            outputEl.innerHTML = '<div class="duckdb-error">Error: ' + e.message + '</div>';
+          }
+        });
+        
+        btnContainer.appendChild(runBtn);
+        container.insertBefore(btnContainer, outputEl);
+      }
+      
+      // Run query on Ctrl+Enter / Cmd+Enter
+      codeEl.addEventListener('keydown', async function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          outputEl.innerHTML = '<div class="duckdb-loading">Initializing DuckDB...</div>';
+          try {
+            await initDuckDB(dbName, dataFiles);
+            await runDuckDBQuery(dbName, '', outputEl, codeEl);
+          } catch (e) {
+            outputEl.innerHTML = '<div class="duckdb-error">Error: ' + e.message + '</div>';
+          }
+        }
+      });
+    });
+  });
+})();
+</script>
+
 </section>
 </section>
 
@@ -809,8 +1028,8 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../02-models/models.html" class="pagination-link" aria-label="models">
-        <span class="nav-page-text">models</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../02-models/models.html" class="pagination-link" aria-label="Models">
+        <span class="nav-page-text">Models</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -819,5 +1038,5 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer><script src="../site_libs/quarto-contrib/interactive-sql-1.0.0/interactive-sql.js"></script>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer><script src="../site_libs/quarto-contrib/interactive-duckdb-1.0.0/interactive-duckdb.js"></script>
 </body></html>

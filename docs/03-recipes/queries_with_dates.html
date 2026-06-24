@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>9&nbsp; Queries with Dates – The Data Analyst SQL Cookbook</title>
+<title>14&nbsp; Queries with Dates – The Data Analyst SQL Cookbook</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -75,7 +75,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/quarto-contrib/interactive-sql-1.0.0/interactive-sql.css" rel="stylesheet">
+<link href="../site_libs/quarto-contrib/interactive-duckdb-1.0.0/interactive-duckdb.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -103,12 +103,159 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
-<script src="https://unpkg.com/@antonz/sqlite@3.40.0/dist/sqlite3.js"></script>
-<script src="https://unpkg.com/sqlime@0.1.3/dist/sqlime-db.js"></script>
-<script src="https://unpkg.com/sqlime@0.1.3/dist/sqlime-examples.js"></script>
+<script type="module">
+  import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm';
+  
+  // Global DuckDB instance management
+  window.duckdbModule = duckdb;
+  window.duckdbInstances = {};
+  window.duckdbReady = {};
+  window.duckdbInitializing = {};
+  
+  window.initDuckDB = async function(dbName, dataFiles) {
+    if (window.duckdbReady[dbName]) {
+      return window.duckdbInstances[dbName];
+    }
+    
+    // Prevent multiple simultaneous initializations
+    if (window.duckdbInitializing[dbName]) {
+      // Wait for existing initialization
+      while (window.duckdbInitializing[dbName]) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return window.duckdbInstances[dbName];
+    }
+    
+    window.duckdbInitializing[dbName] = true;
+    
+    try {
+      const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
+      const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
+      
+      const worker_url = URL.createObjectURL(
+        new Blob([`importScripts("${bundle.mainWorker}");`], {type: 'text/javascript'})
+      );
+      
+      const worker = new Worker(worker_url);
+      const logger = new duckdb.ConsoleLogger();
+      const db = new duckdb.AsyncDuckDB(logger, worker);
+      await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+      URL.revokeObjectURL(worker_url);
+      
+      const conn = await db.connect();
+      
+      // Load data files if provided
+      // dataFiles is an array of {url, format, tableName} objects
+      if (dataFiles && dataFiles.length > 0) {
+        for (const file of dataFiles) {
+          try {
+            const { url, format, tableName } = file;
+            if (!url || url.length === 0) continue;
+            
+            if (format === 'duckdb' || format === 'db') {
+              console.log('Loading DuckDB file:', url);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              console.log('DuckDB file size:', arrayBuffer.byteLength, 'bytes');
+              await db.registerFileBuffer('db.duckdb', new Uint8Array(arrayBuffer));
+              await conn.query(`ATTACH 'db.duckdb' AS filedb`);
+              await conn.query(`USE filedb`);
+            } else if (format === 'parquet') {
+              console.log('Loading parquet file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.parquet`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM parquet_scan('${fileName}')`);
+              console.log('Table', tableName, 'created successfully');
+            } else if (format === 'csv') {
+              console.log('Loading CSV file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.csv`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM read_csv_auto('${fileName}')`);
+            } else if (format === 'json') {
+              console.log('Loading JSON file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.json`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM read_json_auto('${fileName}')`);
+            } else if (format === 'sql') {
+              const response = await fetch(url);
+              const sqlScript = await response.text();
+              await conn.query(sqlScript);
+            }
+          } catch (e) {
+            console.error('Error loading file:', file, e);
+          }
+        }
+      }
+      
+      window.duckdbInstances[dbName] = { db, conn };
+      window.duckdbReady[dbName] = true;
+      
+      return { db, conn };
+    } finally {
+      window.duckdbInitializing[dbName] = false;
+    }
+  }
+  
+  window.runDuckDBQuery = async function(dbName, query, outputEl, queryEl) {
+    try {
+      const { conn } = window.duckdbInstances[dbName];
+      const actualQuery = queryEl ? queryEl.textContent : query;
+      
+      const result = await conn.query(actualQuery);
+      const rows = result.toArray();
+      
+      if (rows.length === 0) {
+        outputEl.innerHTML = '<div class="duckdb-message">Query executed successfully. No results to display.</div>';
+        return;
+      }
+      
+      // Get column names from the schema
+      const columns = result.schema.fields.map(f => f.name);
+      
+      // Build HTML table
+      let html = '<table class="duckdb-result-table"><thead><tr>';
+      columns.forEach(col => {
+        html += '<th>' + escapeHtml(col) + '</th>';
+      });
+      html += '</tr></thead><tbody>';
+      
+      rows.forEach(row => {
+        html += '<tr>';
+        columns.forEach(col => {
+          const value = row[col];
+          html += '<td>' + escapeHtml(value !== null && value !== undefined ? String(value) : 'NULL') + '</td>';
+        });
+        html += '</tr>';
+      });
+      
+      html += '</tbody></table>';
+      html += '<div class="duckdb-row-count">' + rows.length + ' row(s)</div>';
+      
+      outputEl.innerHTML = html;
+    } catch (e) {
+      outputEl.innerHTML = '<div class="duckdb-error">Error: ' + escapeHtml(e.message) + '</div>';
+    }
+  }
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+</script>
 
 
-<meta property="og:title" content="9&nbsp; Queries with Dates – The Data Analyst SQL Cookbook">
+<meta property="og:title" content="14&nbsp; Queries with Dates – The Data Analyst SQL Cookbook">
 <meta property="og:description" content="">
 <meta property="og:site_name" content="The Data Analyst SQL Cookbook">
 </head>
@@ -122,7 +269,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03-recipes/recipes.html">SQL Recipes</a></li><li class="breadcrumb-item"><a href="../03-recipes/queries_with_dates.html"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Queries with Dates</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03-recipes/recipes.html">SQL Recipes</a></li><li class="breadcrumb-item"><a href="../03-recipes/queries_with_dates.html"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Queries with Dates</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -158,6 +305,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../00-intro/introduction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Introduction</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../00-intro/the-data-model.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">The Data Model</span></a>
   </div>
@@ -179,40 +332,64 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../01-basics/oltp-vs-olap.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">OLTP vs.&nbsp;OLAP</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-r.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-dbt.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../01-basics/joins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
+  <a href="../01-basics/selecting-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Selecting Tables</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/joining-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Joining Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/window-functions.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../01-basics/filtering.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Filtering</span></span></a>
+  <a href="../01-basics/filtering-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Filtering Tables</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/structuring-queries.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Structuring Queries</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/anti-patterns.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></span></a>
   </div>
 </li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../02-models/models.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">models</span></a>
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">02-models/models.qmd</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -220,20 +397,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../02-models/types-of-models.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Types of Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../02-models/calendar-date-dimension.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Creating a Calendar Date Dimension</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Calendar Date Dimension</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/factless-fact-tables.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/ragged-depth-hierarchies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
   </div>
 </li>
       </ul>
@@ -250,19 +433,43 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/queries_with_dates.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/customer-analytics.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Customer Analytics Recipes</span></span></a>
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Customer Analytics Recipes</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/grouping-consecutive-rows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Grouping consecutive rows</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/calculating-streaks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Calculating Streaks</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/finding-gaps-in-ordered-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">finding-gaps-in-ordered-data</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/occupancy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">Occupancy</span></span></a>
   </div>
 </li>
       </ul>
@@ -270,7 +477,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../misc/goodies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
+ <span class="menu-text"><span class="chapter-number">21</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -289,21 +496,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#intersecting-dates" id="toc-intersecting-dates" class="nav-link active" data-scroll-target="#intersecting-dates"><span class="header-section-number">10</span> Intersecting Dates</a></li>
-  <li><a href="#counting-active-date-ranges" id="toc-counting-active-date-ranges" class="nav-link" data-scroll-target="#counting-active-date-ranges"><span class="header-section-number">11</span> Counting Active Date Ranges</a></li>
-  <li><a href="#calculating-date-ranges-based-on-gaps" id="toc-calculating-date-ranges-based-on-gaps" class="nav-link" data-scroll-target="#calculating-date-ranges-based-on-gaps"><span class="header-section-number">12</span> Calculating date ranges based on gaps</a></li>
-  <li><a href="#sessionization" id="toc-sessionization" class="nav-link" data-scroll-target="#sessionization"><span class="header-section-number">13</span> Sessionization</a></li>
-  <li><a href="#islands-problem" id="toc-islands-problem" class="nav-link" data-scroll-target="#islands-problem"><span class="header-section-number">14</span> Islands Problem</a></li>
-  <li><a href="#section" id="toc-section" class="nav-link" data-scroll-target="#section"><span class="header-section-number">15</span> </a></li>
+  <li><a href="#intersecting-dates" id="toc-intersecting-dates" class="nav-link active" data-scroll-target="#intersecting-dates"><span class="header-section-number">15</span> Intersecting Dates</a></li>
+  <li><a href="#counting-active-date-ranges" id="toc-counting-active-date-ranges" class="nav-link" data-scroll-target="#counting-active-date-ranges"><span class="header-section-number">16</span> Counting Active Date Ranges</a></li>
+  <li><a href="#calculating-date-ranges-based-on-gaps" id="toc-calculating-date-ranges-based-on-gaps" class="nav-link" data-scroll-target="#calculating-date-ranges-based-on-gaps"><span class="header-section-number">17</span> Calculating date ranges based on gaps</a></li>
+  <li><a href="#sessionization" id="toc-sessionization" class="nav-link" data-scroll-target="#sessionization"><span class="header-section-number">18</span> Sessionization</a></li>
+  <li><a href="#islands-problem" id="toc-islands-problem" class="nav-link" data-scroll-target="#islands-problem"><span class="header-section-number">19</span> Islands Problem</a></li>
+  <li><a href="#section" id="toc-section" class="nav-link" data-scroll-target="#section"><span class="header-section-number">20</span> </a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03-recipes/recipes.html">SQL Recipes</a></li><li class="breadcrumb-item"><a href="../03-recipes/queries_with_dates.html"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Queries with Dates</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03-recipes/recipes.html">SQL Recipes</a></li><li class="breadcrumb-item"><a href="../03-recipes/queries_with_dates.html"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Queries with Dates</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Queries with Dates</span></h1>
+<h1 class="title"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Queries with Dates</span></h1>
 </div>
 
 
@@ -320,12 +527,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="intersecting-dates" class="level1" data-number="10">
-<h1 data-number="10"><span class="header-section-number">10</span> Intersecting Dates</h1>
+<section id="intersecting-dates" class="level1" data-number="15">
+<h1 data-number="15"><span class="header-section-number">15</span> Intersecting Dates</h1>
 <p>Let’s say you have a table of subscriptions that all different start and end dates. How would you filter down a list of subscriptions to show those that were active within a time range? In other words, how do you find rows that have intersecting dates?</p>
 <p>For example, here are all subscribers that had active subscriptions in 2023:</p>
-<div class="interactive-sql">
-<div class="sourceCode" id="cb1"><pre class="sourceCode sql interactive subscribers code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a></span>
+<div class="interactive-duckdb">
+<div class="sourceCode" id="cb1"><pre class="sourceCode sql interactive subscriptions code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> <span class="op">*</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> subscribers</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">where</span> subscription_valid_from <span class="op">&lt;=</span> <span class="st">'2023-12-31'</span></span>
@@ -333,11 +540,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <p>This query works when thinking in terms of sets. A subscription whose start date is later than our range’s end date is not in scope (i.e.&nbsp;date_from &gt; ‘2023-12-31’). So we can write the inverse of this, i.e.&nbsp;date_from &lt;= ‘2023-12-31’. The same goes for subscriptions that end before our range of interest.</p>
 </section>
-<section id="counting-active-date-ranges" class="level1" data-number="11">
-<h1 data-number="11"><span class="header-section-number">11</span> Counting Active Date Ranges</h1>
+<section id="counting-active-date-ranges" class="level1" data-number="16">
+<h1 data-number="16"><span class="header-section-number">16</span> Counting Active Date Ranges</h1>
 <p>If you have a SCD2 type dimension like subscriptions, a common question might be to provide the number of active subscriptions for each day, week, month or year. It’s best to use a calendar table like this:</p>
-<div class="interactive-sql">
-<div class="sourceCode" id="cb2"><pre class="sourceCode sql interactive subscribers code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a></span>
+<div class="interactive-duckdb">
+<div class="sourceCode" id="cb2"><pre class="sourceCode sql interactive subscriptions code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">date</span>,</span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(<span class="op">*</span>) <span class="kw">as</span> number_of_subscribers</span>
@@ -349,8 +556,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>You can also build a query without using a calendar table:</p>
-<div class="interactive-sql">
-<div class="sourceCode" id="cb3"><pre class="sourceCode sql interactive subscribers code-with-copy"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a></span>
+<div class="interactive-duckdb">
+<div class="sourceCode" id="cb3"><pre class="sourceCode sql interactive subscriptions code-with-copy"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">with</span> d <span class="kw">as</span> (</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>      <span class="kw">select</span> validfrom <span class="kw">as</span> dte, <span class="dv">1</span> <span class="kw">as</span> inc</span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>      <span class="kw">from</span> t</span>
@@ -364,10 +571,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="kw">order</span> <span class="kw">by</span> dte;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="calculating-date-ranges-based-on-gaps" class="level1" data-number="12">
-<h1 data-number="12"><span class="header-section-number">12</span> Calculating date ranges based on gaps</h1>
+<section id="calculating-date-ranges-based-on-gaps" class="level1" data-number="17">
+<h1 data-number="17"><span class="header-section-number">17</span> Calculating date ranges based on gaps</h1>
 <p>Let’s say we have subscriptions but we need to show a start date and an end date of gaps between subscriptions. For example, if I subscribed from 2023-01-01 to 2023-05-31 and then from 2023-07-01 to 2023-12-31, I would want to return a row that said I was not a subscriber from 2023-06-01 to 2023-06-30.</p>
-<div class="interactive-sql">
+<div class="interactive-duckdb">
 <div class="sourceCode" id="cb4"><pre class="sourceCode sql interactive chinook code-with-copy"><code class="sourceCode sql"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span>   </span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  seqval <span class="op">+</span> <span class="dv">1</span> <span class="kw">AS</span> start_range,   </span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  (</span>
@@ -384,12 +591,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <p>This solution is based on subqueries. In order to understand it you should first focus on the filtering activity in the WHERE clause and then proceed to the activity in the SELECT list. The purpose of the NOT EXISTS predicate in the WHERE clause is to filter only points that are a point before a gap. You can identify a point before a gap when you see that for such a point, the value plus 1 doesn’t exist in the sequence. The purpose of the second predicate in the WHERE clause is to filter out the maximum value from the sequence because it represents the point before infinity, which does not concern us.</p>
 </section>
-<section id="sessionization" class="level1" data-number="13">
-<h1 data-number="13"><span class="header-section-number">13</span> Sessionization</h1>
+<section id="sessionization" class="level1" data-number="18">
+<h1 data-number="18"><span class="header-section-number">18</span> Sessionization</h1>
 </section>
-<section id="islands-problem" class="level1" data-number="14">
-<h1 data-number="14"><span class="header-section-number">14</span> Islands Problem</h1>
-<div class="interactive-sql">
+<section id="islands-problem" class="level1" data-number="19">
+<h1 data-number="19"><span class="header-section-number">19</span> Islands Problem</h1>
+<div class="interactive-duckdb">
 <div class="sourceCode" id="cb5"><pre class="sourceCode sql interactive chinook code-with-copy"><code class="sourceCode sql"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> </span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">MIN</span>(seqval) <span class="kw">AS</span> start_range, </span>
@@ -402,12 +609,79 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>  ) <span class="kw">AS</span> D <span class="kw">GROUP</span> <span class="kw">BY</span> grp;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="section" class="level1" data-number="15">
-<h1 data-number="15"><span class="header-section-number">15</span> </h1>
+<section id="section" class="level1" data-number="20">
+<h1 data-number="20"><span class="header-section-number">20</span> </h1>
 
 
-<sqlime-db name="subscribers" path="https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/subscribers.db"></sqlime-db>
-<sqlime-examples db="subscribers" selector="div.interactive-sql pre.subscribers code" editable=""></sqlime-examples>
+<script>
+(function() {
+  const dbName = "subscriptions";
+  const dataFiles = [{url:"https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/subscriptions.duckdb",format:"duckdb",tableName:"subscriptions"}];
+  const editable = true;
+  const selector = 'div.interactive-duckdb pre.subscriptions code';
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks for this database
+    const codeBlocks = document.querySelectorAll(selector);
+    codeBlocks.forEach((codeEl, idx) => {
+      const container = codeEl.closest('.interactive-duckdb');
+      if (!container) return;
+      
+      // Make code editable if enabled
+      if (editable) {
+        codeEl.setAttribute('contenteditable', 'true');
+        codeEl.setAttribute('spellcheck', 'false');
+      }
+      
+      // Create output container
+      let outputEl = container.querySelector('.duckdb-output');
+      if (!outputEl) {
+        outputEl = document.createElement('div');
+        outputEl.className = 'duckdb-output';
+        container.appendChild(outputEl);
+      }
+      
+      // Create run button
+      let btnContainer = container.querySelector('.duckdb-btn-container');
+      if (!btnContainer) {
+        btnContainer = document.createElement('div');
+        btnContainer.className = 'duckdb-btn-container';
+        
+        const runBtn = document.createElement('button');
+        runBtn.className = 'duckdb-run-btn';
+        runBtn.textContent = '▶ Run';
+        runBtn.addEventListener('click', async function() {
+          outputEl.innerHTML = '<div class="duckdb-loading">Initializing DuckDB...</div>';
+          try {
+            await initDuckDB(dbName, dataFiles);
+            await runDuckDBQuery(dbName, '', outputEl, codeEl);
+          } catch (e) {
+            outputEl.innerHTML = '<div class="duckdb-error">Error: ' + e.message + '</div>';
+          }
+        });
+        
+        btnContainer.appendChild(runBtn);
+        container.insertBefore(btnContainer, outputEl);
+      }
+      
+      // Run query on Ctrl+Enter / Cmd+Enter
+      codeEl.addEventListener('keydown', async function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          outputEl.innerHTML = '<div class="duckdb-loading">Initializing DuckDB...</div>';
+          try {
+            await initDuckDB(dbName, dataFiles);
+            await runDuckDBQuery(dbName, '', outputEl, codeEl);
+          } catch (e) {
+            outputEl.innerHTML = '<div class="duckdb-error">Error: ' + e.message + '</div>';
+          }
+        }
+      });
+    });
+  });
+})();
+</script>
+
 </section>
 
 </main> <!-- /main -->
@@ -839,7 +1113,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   </div>
   <div class="nav-page nav-page-next">
       <a href="../03-recipes/pivoting-and-unpivoting.html" class="pagination-link" aria-label="Pivoting and Unpivoting">
-        <span class="nav-page-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span> <i class="bi bi-arrow-right-short"></i>
+        <span class="nav-page-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -848,5 +1122,5 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer><script src="../site_libs/quarto-contrib/interactive-sql-1.0.0/interactive-sql.js"></script>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer><script src="../site_libs/quarto-contrib/interactive-duckdb-1.0.0/interactive-duckdb.js"></script>
 </body></html>

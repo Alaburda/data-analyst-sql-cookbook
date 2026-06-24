@@ -1,0 +1,14 @@
+---
+title: "Schemaless Tables"
+engine: knitr
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/cookbook.duckdb"
+    format: duckdb
+---
+
+Schemaless tables contain json blobs in their columns. For the software developer, there is a lot of upside to this approach. Since the data is parsed at query time, you can structure the json any way you want, you don't really need to do table migrations and adding new values is very straightforward. For the data analyst, this is a headache because you need to parse the json before actually conducting any useful operations.
+
+If you're handling json data, this creates a very compelling use case for having a data lake architecture or some sort of "raw" layer. I would not recommend handling the data directly - instead, transform it into some schema structure for analytics purposes. A lot of SQL engines will provide some json handling capability. Since this book is serverless, we will show how DuckDB can handle json data. What's also great is that you can use DuckDB for your transformation before landing data in your data warehouse. 

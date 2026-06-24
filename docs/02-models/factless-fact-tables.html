@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>7&nbsp; Factless Fact Table – The Data Analyst SQL Cookbook</title>
+<title>17&nbsp; Factless Fact Tables – The Data Analyst SQL Cookbook</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -64,7 +64,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../02-models/ragged-depth-hierarchies.html" rel="next">
+<link href="../02-models/bridge-tables.html" rel="next">
 <link href="../02-models/calendar-date-dimension.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -75,7 +75,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/quarto-contrib/interactive-sql-1.0.0/interactive-sql.css" rel="stylesheet">
+<link href="../site_libs/quarto-contrib/interactive-duckdb-1.0.0/interactive-duckdb.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -103,12 +103,159 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
-<script src="https://unpkg.com/@antonz/sqlite@3.40.0/dist/sqlite3.js"></script>
-<script src="https://unpkg.com/sqlime@0.1.3/dist/sqlime-db.js"></script>
-<script src="https://unpkg.com/sqlime@0.1.3/dist/sqlime-examples.js"></script>
+<script type="module">
+  import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm';
+  
+  // Global DuckDB instance management
+  window.duckdbModule = duckdb;
+  window.duckdbInstances = {};
+  window.duckdbReady = {};
+  window.duckdbInitializing = {};
+  
+  window.initDuckDB = async function(dbName, dataFiles) {
+    if (window.duckdbReady[dbName]) {
+      return window.duckdbInstances[dbName];
+    }
+    
+    // Prevent multiple simultaneous initializations
+    if (window.duckdbInitializing[dbName]) {
+      // Wait for existing initialization
+      while (window.duckdbInitializing[dbName]) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      return window.duckdbInstances[dbName];
+    }
+    
+    window.duckdbInitializing[dbName] = true;
+    
+    try {
+      const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
+      const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
+      
+      const worker_url = URL.createObjectURL(
+        new Blob([`importScripts("${bundle.mainWorker}");`], {type: 'text/javascript'})
+      );
+      
+      const worker = new Worker(worker_url);
+      const logger = new duckdb.ConsoleLogger();
+      const db = new duckdb.AsyncDuckDB(logger, worker);
+      await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+      URL.revokeObjectURL(worker_url);
+      
+      const conn = await db.connect();
+      
+      // Load data files if provided
+      // dataFiles is an array of {url, format, tableName} objects
+      if (dataFiles && dataFiles.length > 0) {
+        for (const file of dataFiles) {
+          try {
+            const { url, format, tableName } = file;
+            if (!url || url.length === 0) continue;
+            
+            if (format === 'duckdb' || format === 'db') {
+              console.log('Loading DuckDB file:', url);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              console.log('DuckDB file size:', arrayBuffer.byteLength, 'bytes');
+              await db.registerFileBuffer('db.duckdb', new Uint8Array(arrayBuffer));
+              await conn.query(`ATTACH 'db.duckdb' AS filedb`);
+              await conn.query(`USE filedb`);
+            } else if (format === 'parquet') {
+              console.log('Loading parquet file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.parquet`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM parquet_scan('${fileName}')`);
+              console.log('Table', tableName, 'created successfully');
+            } else if (format === 'csv') {
+              console.log('Loading CSV file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.csv`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM read_csv_auto('${fileName}')`);
+            } else if (format === 'json') {
+              console.log('Loading JSON file:', url, 'as table:', tableName);
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              const arrayBuffer = await response.arrayBuffer();
+              const fileName = `${tableName}.json`;
+              await db.registerFileBuffer(fileName, new Uint8Array(arrayBuffer));
+              await conn.query(`CREATE TABLE ${tableName} AS SELECT * FROM read_json_auto('${fileName}')`);
+            } else if (format === 'sql') {
+              const response = await fetch(url);
+              const sqlScript = await response.text();
+              await conn.query(sqlScript);
+            }
+          } catch (e) {
+            console.error('Error loading file:', file, e);
+          }
+        }
+      }
+      
+      window.duckdbInstances[dbName] = { db, conn };
+      window.duckdbReady[dbName] = true;
+      
+      return { db, conn };
+    } finally {
+      window.duckdbInitializing[dbName] = false;
+    }
+  }
+  
+  window.runDuckDBQuery = async function(dbName, query, outputEl, queryEl) {
+    try {
+      const { conn } = window.duckdbInstances[dbName];
+      const actualQuery = queryEl ? queryEl.textContent : query;
+      
+      const result = await conn.query(actualQuery);
+      const rows = result.toArray();
+      
+      if (rows.length === 0) {
+        outputEl.innerHTML = '<div class="duckdb-message">Query executed successfully. No results to display.</div>';
+        return;
+      }
+      
+      // Get column names from the schema
+      const columns = result.schema.fields.map(f => f.name);
+      
+      // Build HTML table
+      let html = '<table class="duckdb-result-table"><thead><tr>';
+      columns.forEach(col => {
+        html += '<th>' + escapeHtml(col) + '</th>';
+      });
+      html += '</tr></thead><tbody>';
+      
+      rows.forEach(row => {
+        html += '<tr>';
+        columns.forEach(col => {
+          const value = row[col];
+          html += '<td>' + escapeHtml(value !== null && value !== undefined ? String(value) : 'NULL') + '</td>';
+        });
+        html += '</tr>';
+      });
+      
+      html += '</tbody></table>';
+      html += '<div class="duckdb-row-count">' + rows.length + ' row(s)</div>';
+      
+      outputEl.innerHTML = html;
+    } catch (e) {
+      outputEl.innerHTML = '<div class="duckdb-error">Error: ' + escapeHtml(e.message) + '</div>';
+    }
+  }
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+</script>
 
 
-<meta property="og:title" content="7&nbsp; Factless Fact Table – The Data Analyst SQL Cookbook">
+<meta property="og:title" content="17&nbsp; Factless Fact Tables – The Data Analyst SQL Cookbook">
 <meta property="og:description" content="">
 <meta property="og:site_name" content="The Data Analyst SQL Cookbook">
 </head>
@@ -122,7 +269,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../02-models/models.html">models</a></li><li class="breadcrumb-item"><a href="../02-models/factless-fact-tables.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../02-models/models.html">Models</a></li><li class="breadcrumb-item"><a href="../02-models/factless-fact-tables.html"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -179,32 +326,80 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../01-basics/know-before-starting.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Things to Know Before Starting SQL</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/why-i-love-sql.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Why I love SQL - the case for SQL</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/oltp-vs-olap.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">OLTP vs OLAP</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-r.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-dbt.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/select.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/joins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Joins</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/window-functions.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/filtering.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Filtering</span></span></a>
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Filtering</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/keys.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">keys</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/structuring-queries.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">structuring-queries</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/query-plans.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">query-plans</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/anti_patterns.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></span></a>
   </div>
 </li>
       </ul>
@@ -212,7 +407,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a href="../02-models/models.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">models</span></a>
+ <span class="menu-text">Models</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -220,20 +415,38 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../02-models/facts-vs-dimensions.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">facts-vs-dimensions</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../02-models/fact-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Fact tables</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../02-models/calendar-date-dimension.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Creating a Calendar Date Dimension</span></span></a>
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Creating a Calendar Date Dimension</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/factless-fact-tables.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../02-models/bridge-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Bridge tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/ragged-depth-hierarchies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
+ <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
   </div>
 </li>
       </ul>
@@ -250,19 +463,43 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/queries_with_dates.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
+ <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
+ <span class="menu-text"><span class="chapter-number">21</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/customer-analytics.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Customer Analytics Recipes</span></span></a>
+ <span class="menu-text"><span class="chapter-number">22</span>&nbsp; <span class="chapter-title">Customer Analytics Recipes</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/grouping-consecutive-rows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">23</span>&nbsp; <span class="chapter-title">Grouping consecutive rows</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/calculating-streaks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">24</span>&nbsp; <span class="chapter-title">calculating-streaks</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/finding-gaps-in-ordered-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">25</span>&nbsp; <span class="chapter-title">finding-gaps-in-ordered-data</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/occupancy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">26</span>&nbsp; <span class="chapter-title">Occupancy</span></span></a>
   </div>
 </li>
       </ul>
@@ -270,7 +507,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../misc/goodies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
+ <span class="menu-text"><span class="chapter-number">27</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -289,16 +526,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#factless-fact-tables" id="toc-factless-fact-tables" class="nav-link active" data-scroll-target="#factless-fact-tables"><span class="header-section-number">8</span> Factless Fact Tables</a>
+  <li><a href="#for-scd2-type-tables" id="toc-for-scd2-type-tables" class="nav-link active" data-scroll-target="#for-scd2-type-tables"><span class="header-section-number">17.1</span> For SCD2-type tables</a></li>
+  <li><a href="#for-scd1-type-tables" id="toc-for-scd1-type-tables" class="nav-link" data-scroll-target="#for-scd1-type-tables"><span class="header-section-number">17.2</span> For SCD1-type tables</a></li>
+  <li><a href="#naming-conventions" id="toc-naming-conventions" class="nav-link" data-scroll-target="#naming-conventions"><span class="header-section-number">17.3</span> Naming conventions</a></li>
+  <li><a href="#sql-code" id="toc-sql-code" class="nav-link" data-scroll-target="#sql-code"><span class="header-section-number">17.4</span> SQL code</a></li>
+  <li><a href="#how-is-this-different-from-snapshot-fact-tables" id="toc-how-is-this-different-from-snapshot-fact-tables" class="nav-link" data-scroll-target="#how-is-this-different-from-snapshot-fact-tables"><span class="header-section-number">17.5</span> How is this different from snapshot fact tables?</a></li>
+  <li><a href="#sample-sql" id="toc-sample-sql" class="nav-link" data-scroll-target="#sample-sql"><span class="header-section-number">17.6</span> Sample SQL</a></li>
+  <li><a href="#creating-a-factless-fact-table" id="toc-creating-a-factless-fact-table" class="nav-link" data-scroll-target="#creating-a-factless-fact-table"><span class="header-section-number">18</span> Creating a Factless Fact Table</a>
   <ul class="collapse">
-  <li><a href="#sql-code" id="toc-sql-code" class="nav-link" data-scroll-target="#sql-code"><span class="header-section-number">8.1</span> SQL code</a></li>
-  <li><a href="#how-is-this-different-from-snapshot-fact-tables" id="toc-how-is-this-different-from-snapshot-fact-tables" class="nav-link" data-scroll-target="#how-is-this-different-from-snapshot-fact-tables"><span class="header-section-number">8.2</span> How is this different from snapshot fact tables?</a></li>
-  <li><a href="#sample-sql" id="toc-sample-sql" class="nav-link" data-scroll-target="#sample-sql"><span class="header-section-number">8.3</span> Sample SQL</a></li>
-  </ul></li>
-  <li><a href="#creating-a-factless-fact-table" id="toc-creating-a-factless-fact-table" class="nav-link" data-scroll-target="#creating-a-factless-fact-table"><span class="header-section-number">9</span> Creating a Factless Fact Table</a>
-  <ul class="collapse">
-  <li><a href="#without-using-a-calendar-table" id="toc-without-using-a-calendar-table" class="nav-link" data-scroll-target="#without-using-a-calendar-table"><span class="header-section-number">9.1</span> Without using a calendar table</a></li>
-  <li><a href="#using-a-calendar-table" id="toc-using-a-calendar-table" class="nav-link" data-scroll-target="#using-a-calendar-table"><span class="header-section-number">9.2</span> Using a calendar table</a></li>
+  <li><a href="#without-using-a-calendar-table" id="toc-without-using-a-calendar-table" class="nav-link" data-scroll-target="#without-using-a-calendar-table"><span class="header-section-number">18.1</span> Without using a calendar table</a></li>
+  <li><a href="#using-a-calendar-table" id="toc-using-a-calendar-table" class="nav-link" data-scroll-target="#using-a-calendar-table"><span class="header-section-number">18.2</span> Using a calendar table</a></li>
   </ul></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -306,9 +543,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../02-models/models.html">models</a></li><li class="breadcrumb-item"><a href="../02-models/factless-fact-tables.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../02-models/models.html">Models</a></li><li class="breadcrumb-item"><a href="../02-models/factless-fact-tables.html"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></h1>
+<h1 class="title"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></h1>
 </div>
 
 
@@ -325,26 +562,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: false</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(duckdb)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Warning: package 'duckdb' was built under R version 4.4.3</code></pre>
-</div>
-<div class="cell-output cell-output-stderr">
-<pre><code>Loading required package: DBI</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> <span class="fu">dbConnect</span>(<span class="fu">duckdb</span>(), <span class="st">"../db/cookbook.duckdb"</span>, <span class="at">read_only =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<section id="factless-fact-tables" class="level1" data-number="8">
-<h1 data-number="8"><span class="header-section-number">8</span> Factless Fact Tables</h1>
-<p>If I wanted to show the number of subscriptions that were active for each month in my favourite BI tool, I would be in trouble. In Power BI, I would have to resort to <a href="https://community.fabric.microsoft.com/t5/Power-BI-Community-Blog/HR-Analytics-Active-Employee-Hire-and-Termination-trend/ba-p/882970">a multi-line DAX formula</a>. In Tableau, <a href="https://help.salesforce.com/s/articleView?id=001458045&amp;type=1">the options have 8 steps in them</a>. I couldn’t even find a tutorial for Looker. Luckily, Factless Fact Tables sidestep these solutions altogether so that your BI tool only has to do a simple count.</p>
-<p>Kimball defines Factless Fact Tables as a <a href="https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/factless-fact-table/">table of dimensional entities coming together at a moment in time</a>. Now that’s one eldritch definition! In human terms, a factless fact table is a table structure that facilities counting whether a thing existed at a point in time. It’s best to show the technique using an example.</p>
+<p>If I only had BI tools and I wanted to show the number of subscriptions that were active for each month, I would be in trouble. In Power BI, I would have to resort to <a href="https://community.fabric.microsoft.com/t5/Power-BI-Community-Blog/HR-Analytics-Active-Employee-Hire-and-Termination-trend/ba-p/882970">a multi-line DAX formula</a>. In Tableau, <a href="https://help.salesforce.com/s/articleView?id=001458045&amp;type=1">the options have 8 steps in them</a>. I couldn’t even find a tutorial for Looker. Luckily, Factless Fact Tables sidestep these solutions altogether so that your BI tool only has to do a simple count.</p>
+<p>Kimball defines Factless Fact Tables as a <a href="https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/factless-fact-table/">table of dimensional entities coming together at a moment in time</a>. Now that’s one eldritch definition! In human terms, a factless fact table is a collection of snapshots [[ maybe let’s add some sort of universal index that? I define snapshot once and then I can have tooltips across multiple instances? ]] of what was true at a point in time. For example, if I had a yearly subscription, I would have been a subscriber during each of those months of the year. A monthly factless fact table would represent me, as a subscriber, as twelve rows where each row is a different month.</p>
+<section id="for-scd2-type-tables" class="level2" data-number="17.1">
+<h2 data-number="17.1" class="anchored" data-anchor-id="for-scd2-type-tables"><span class="header-section-number">17.1</span> For SCD2-type tables</h2>
+</section>
+<section id="for-scd1-type-tables" class="level2" data-number="17.2">
+<h2 data-number="17.2" class="anchored" data-anchor-id="for-scd1-type-tables"><span class="header-section-number">17.2</span> For SCD1-type tables</h2>
+</section>
+<section id="naming-conventions" class="level2" data-number="17.3">
+<h2 data-number="17.3" class="anchored" data-anchor-id="naming-conventions"><span class="header-section-number">17.3</span> Naming conventions</h2>
+<p>Based on our example, a good name might be <code>fct_subscriptions</code>, but it convey the notion that subscriptions are events which is wrong. At point I prefered <code>factless_fct_subscription</code> but it’s wordy. Possibly the best convention would be <code>subscription_snapshots</code> or <code>snapshot_subscriptions</code>. The only caveat being that it’s not clear whether we’re doing point-in-time snapshots or snapshotting the whole <code>subscriptions</code> table.</p>
+<p>In this chapter, I show how to build factless fact tables using type 1 and type 2 dimensional data. The technique for type 1 data can be applied to type 2 data as well but that solution requires an orchestrator, i.e.&nbsp;you need to trigger it on a schedule. Type 2 data is great in that regard because it encodes</p>
 <p>Let’s say I have a table of subscriptions that looks like this:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> <span class="op">*</span> <span class="kw">from</span> subscriptions <span class="kw">limit</span> <span class="dv">10</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> <span class="op">*</span> <span class="kw">from</span> subscriptions <span class="kw">limit</span> <span class="dv">10</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <table class="caption-top table table-sm table-striped small">
 <caption>Displaying records 1 - 10</caption>
@@ -464,23 +697,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>Whenever we want to count something, it’s best to count it using a fact table. However, subscriptions are a SCD2 type dimension and you want to count whether they existed between the <code>valid_from</code> and <code>valid_to</code>. Counting becomes trivial if the date range is expanded into their dedicated rows. For example, if I were building a monthly fact table, the first id would be 6 rows and my second id would be 4 rows because they were active subscriptions during those months. In order to build it, it’s best to have a calendar table so that we could perform a cross join using a <code>BETWEEN</code> statement.</p>
-<section id="sql-code" class="level2" data-number="8.1">
-<h2 data-number="8.1" class="anchored" data-anchor-id="sql-code"><span class="header-section-number">8.1</span> SQL code</h2>
+<p>[[ let’s do a demo with ojs instead of a gif]]</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="../images/factless-fact-table.gif" class="img-fluid figure-img"></p>
+<figcaption>How a factless fact table explodes intervals into months</figcaption>
+</figure>
+</div>
 </section>
-<section id="how-is-this-different-from-snapshot-fact-tables" class="level2" data-number="8.2">
-<h2 data-number="8.2" class="anchored" data-anchor-id="how-is-this-different-from-snapshot-fact-tables"><span class="header-section-number">8.2</span> How is this different from snapshot fact tables?</h2>
+<section id="sql-code" class="level2" data-number="17.4">
+<h2 data-number="17.4" class="anchored" data-anchor-id="sql-code"><span class="header-section-number">17.4</span> SQL code</h2>
+</section>
+<section id="how-is-this-different-from-snapshot-fact-tables" class="level2" data-number="17.5">
+<h2 data-number="17.5" class="anchored" data-anchor-id="how-is-this-different-from-snapshot-fact-tables"><span class="header-section-number">17.5</span> How is this different from snapshot fact tables?</h2>
 <p>You may have heard about snapshot fact tables - they are VERY similar to factless fact tables. In fact, if you saved snapshots of active subscriptions for each month, you’d end up with the same table! The different comes down to implementation: snapshots are run on a regular basis to create the final dataset, a factless fact table can be recreated from scratch.</p>
 <p>Kimball defines Factless Fact Tables as a <a href="https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/factless-fact-table/">table of dimensional entities coming together at a moment in time</a>. Now that’s one eldtrich definition! In human terms, the <strong>raison d’être</strong> of these tables comes from the need to count whether a thing existed at a point in time. And if that definition is too vague, here’s an exercise - try showing how many subscribers you had on a monthly basis. For example, let’s say I had 10 subscriptions that were each active between January and December of last year, how would you show those 10 subscriptions for each month of the year? In Power BI, you need to resort to <a href="https://community.fabric.microsoft.com/t5/Power-BI-Community-Blog/HR-Analytics-Active-Employee-Hire-and-Termination-trend/ba-p/882970">a multi-line DAX formula</a>. In Tableau, <a href="https://help.salesforce.com/s/articleView?id=001458045&amp;type=1">the options have 8 steps in them</a>. Factless fact tables sidestep these solution altogether so that all you need is a simple count.</p>
 <p>Factless fact tables can be built by combining your SCD2 type table (i.e.&nbsp;data that has an end date and a start date) with a calendar table (a date dimension). Here’s how to do it in SQL:</p>
 <p>in your favourite BI tool</p>
 <p>Factless fact tables solve this problem by showing whether a thing existed for a given time point. For example, if we were to build a factless table on a monthly granularity, a Netflix subscriber whose subscription starts at 2025-01-01 and ends at 2025-12-31 would show up as 12 rows, one for each of the months in a year. As a result, if you were to put your months on an x-axis, you could just do a count of rows from this table along the y axis. And it’s not just subscribers - it works on any table that has a start date and an end date<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>. Factless fact tables allow you to keep the modeling and KPI layer relatively simple - learning to build and use them is extremely helpful.</p>
 </section>
-<section id="sample-sql" class="level2" data-number="8.3">
-<h2 data-number="8.3" class="anchored" data-anchor-id="sample-sql"><span class="header-section-number">8.3</span> Sample SQL</h2>
+<section id="sample-sql" class="level2" data-number="17.6">
+<h2 data-number="17.6" class="anchored" data-anchor-id="sample-sql"><span class="header-section-number">17.6</span> Sample SQL</h2>
 </section>
-</section>
-<section id="creating-a-factless-fact-table" class="level1" data-number="9">
-<h1 data-number="9"><span class="header-section-number">9</span> Creating a Factless Fact Table</h1>
+<section id="creating-a-factless-fact-table" class="level1" data-number="18">
+<h1 data-number="18"><span class="header-section-number">18</span> Creating a Factless Fact Table</h1>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -496,18 +736,18 @@ Note
 </div>
 <p>If you’re working with SCD Type 2 data (e.g.&nbsp;subscriptions, marketing campaigns), it’s straightforward to count the number of rows at a single point in time:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="kw">with</span> months <span class="kw">as</span> (</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">select</span> <span class="kw">distinct</span> start_of_month</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">from</span> calendar</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  subscription_id,</span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  start_of_month</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> subscriptions</span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="kw">inner</span> <span class="kw">join</span> months </span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">on</span> start_of_month <span class="kw">between</span> valid_from <span class="kw">and</span> ifnull(valid_to,<span class="st">'2099-01-01'</span>)</span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="kw">order</span> <span class="kw">by</span> subscription_id, start_of_month</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">with</span> months <span class="kw">as</span> (</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">select</span> <span class="kw">distinct</span> start_of_month</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">from</span> calendar</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> </span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  subscription_id,</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  start_of_month</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> subscriptions</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="kw">inner</span> <span class="kw">join</span> months </span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">on</span> start_of_month <span class="kw">between</span> valid_from <span class="kw">and</span> ifnull(valid_to,<span class="st">'2099-01-01'</span>)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="kw">order</span> <span class="kw">by</span> subscription_id, start_of_month</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <table class="caption-top table table-sm table-striped small">
 <caption>Displaying records 1 - 10</caption>
@@ -562,36 +802,103 @@ Note
 </table>
 </div>
 </div>
-<div class="interactive-sql">
-<div class="sourceCode" id="cb7"><pre class="sourceCode sql interactive db code-with-copy"><code class="sourceCode sql"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> <span class="fu">count</span>(<span class="op">*</span>)</span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> subscriptions</span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="kw">where</span> <span class="st">'2024-08-01'</span> <span class="kw">between</span> date_from <span class="kw">and</span> date_to</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="interactive-duckdb">
+<div class="sourceCode" id="cb3"><pre class="sourceCode sql interactive db code-with-copy"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> <span class="fu">count</span>(<span class="op">*</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> subscriptions</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="kw">where</span> <span class="st">'2024-08-01'</span> <span class="kw">between</span> date_from <span class="kw">and</span> date_to</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>But it’s not if you’d like to count it over multiple points in time, i.e.&nbsp;how do you group by each month of a year and show how many subscriptions were active for a given month? The problem can be solved two ways!</p>
-<section id="without-using-a-calendar-table" class="level2" data-number="9.1">
-<h2 data-number="9.1" class="anchored" data-anchor-id="without-using-a-calendar-table"><span class="header-section-number">9.1</span> Without using a calendar table</h2>
+<section id="without-using-a-calendar-table" class="level2" data-number="18.1">
+<h2 data-number="18.1" class="anchored" data-anchor-id="without-using-a-calendar-table"><span class="header-section-number">18.1</span> Without using a calendar table</h2>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">with</span> d <span class="kw">as</span> (</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>      <span class="kw">select</span> validfrom <span class="kw">as</span> dte, <span class="dv">1</span> <span class="kw">as</span> inc</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>      <span class="kw">from</span> t</span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>      <span class="kw">union</span> <span class="kw">all</span></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>      <span class="kw">select</span> validto, <span class="op">-</span><span class="dv">1</span></span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>      <span class="kw">from</span> t</span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>     )</span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> dte, <span class="fu">sum</span>(<span class="fu">sum</span>(inc)) <span class="kw">over</span> (<span class="kw">order</span> <span class="kw">by</span> dte)</span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> d</span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="kw">group</span> <span class="kw">by</span> dte</span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="kw">order</span> <span class="kw">by</span> dte;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">with</span> d <span class="kw">as</span> (</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>      <span class="kw">select</span> validfrom <span class="kw">as</span> dte, <span class="dv">1</span> <span class="kw">as</span> inc</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>      <span class="kw">from</span> t</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>      <span class="kw">union</span> <span class="kw">all</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>      <span class="kw">select</span> validto, <span class="op">-</span><span class="dv">1</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>      <span class="kw">from</span> t</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>     )</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span> dte, <span class="fu">sum</span>(<span class="fu">sum</span>(inc)) <span class="kw">over</span> (<span class="kw">order</span> <span class="kw">by</span> dte)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> d</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="kw">group</span> <span class="kw">by</span> dte</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="kw">order</span> <span class="kw">by</span> dte;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="using-a-calendar-table" class="level2" data-number="9.2">
-<h2 data-number="9.2" class="anchored" data-anchor-id="using-a-calendar-table"><span class="header-section-number">9.2</span> Using a calendar table</h2>
+<section id="using-a-calendar-table" class="level2" data-number="18.2">
+<h2 data-number="18.2" class="anchored" data-anchor-id="using-a-calendar-table"><span class="header-section-number">18.2</span> Using a calendar table</h2>
 <p><a href="https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/factless-fact-table/"></a></p>
 
 
-<sqlime-db name="db" path="https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/db/cookbookdb.sqlite"></sqlime-db>
-<sqlime-examples db="db" selector="div.interactive-sql pre.db code" editable=""></sqlime-examples>
+<script>
+(function() {
+  const dbName = "cookbook";
+  const dataFiles = [{url:"https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/cookbook.duckdb",format:"duckdb",tableName:"cookbook"}];
+  const editable = true;
+  const selector = 'div.interactive-duckdb pre.cookbook code';
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks for this database
+    const codeBlocks = document.querySelectorAll(selector);
+    codeBlocks.forEach((codeEl, idx) => {
+      const container = codeEl.closest('.interactive-duckdb');
+      if (!container) return;
+      
+      // Make code editable if enabled
+      if (editable) {
+        codeEl.setAttribute('contenteditable', 'true');
+        codeEl.setAttribute('spellcheck', 'false');
+      }
+      
+      // Create output container
+      let outputEl = container.querySelector('.duckdb-output');
+      if (!outputEl) {
+        outputEl = document.createElement('div');
+        outputEl.className = 'duckdb-output';
+        container.appendChild(outputEl);
+      }
+      
+      // Create run button
+      let btnContainer = container.querySelector('.duckdb-btn-container');
+      if (!btnContainer) {
+        btnContainer = document.createElement('div');
+        btnContainer.className = 'duckdb-btn-container';
+        
+        const runBtn = document.createElement('button');
+        runBtn.className = 'duckdb-run-btn';
+        runBtn.textContent = '▶ Run';
+        runBtn.addEventListener('click', async function() {
+          outputEl.innerHTML = '<div class="duckdb-loading">Initializing DuckDB...</div>';
+          try {
+            await initDuckDB(dbName, dataFiles);
+            await runDuckDBQuery(dbName, '', outputEl, codeEl);
+          } catch (e) {
+            outputEl.innerHTML = '<div class="duckdb-error">Error: ' + e.message + '</div>';
+          }
+        });
+        
+        btnContainer.appendChild(runBtn);
+        container.insertBefore(btnContainer, outputEl);
+      }
+      
+      // Run query on Ctrl+Enter / Cmd+Enter
+      codeEl.addEventListener('keydown', async function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          outputEl.innerHTML = '<div class="duckdb-loading">Initializing DuckDB...</div>';
+          try {
+            await initDuckDB(dbName, dataFiles);
+            await runDuckDBQuery(dbName, '', outputEl, codeEl);
+          } catch (e) {
+            outputEl.innerHTML = '<div class="duckdb-error">Error: ' + e.message + '</div>';
+          }
+        }
+      });
+    });
+  });
+})();
+</script>
+
 </section>
 </section>
 <section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes">
@@ -1025,12 +1332,12 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
       <a href="../02-models/calendar-date-dimension.html" class="pagination-link" aria-label="Creating a Calendar Date Dimension">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Creating a Calendar Date Dimension</span></span>
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Creating a Calendar Date Dimension</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../02-models/ragged-depth-hierarchies.html" class="pagination-link" aria-label="Ragged Depth Hierarchies">
-        <span class="nav-page-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../02-models/bridge-tables.html" class="pagination-link" aria-label="Bridge tables">
+        <span class="nav-page-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Bridge tables</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1039,5 +1346,5 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer><script src="../site_libs/quarto-contrib/interactive-sql-1.0.0/interactive-sql.js"></script>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer><script src="../site_libs/quarto-contrib/interactive-duckdb-1.0.0/interactive-duckdb.js"></script>
 </body></html>
