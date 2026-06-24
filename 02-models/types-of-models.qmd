@@ -1,0 +1,41 @@
+---
+title: "Types of Models"
+engine: knitr
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/cookbook.duckdb"
+    format: duckdb
+---
+
+```{r setup}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(duckdb)
+
+con <- dbConnect(duckdb(), "../databases/cookbook.duckdb", read_only = TRUE)
+
+```
+
+## Dimensions
+
+### Type 1 dimensions
+
+### Type 2 dimensions
+
+## Facts
+
+### Snapshot facts / Factless facts
+
+### Transactional fact tables
+
+### Periodic snapshot fact tables
+
+### Accumulating fact tables
+
+https://brazenly.blogspot.com/2015/02/datawarehouse-dimensional-modeling_12.html
+
+## Bridge tables

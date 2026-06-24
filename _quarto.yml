@@ -13,25 +13,35 @@ book:
   repo-actions: issue
   chapters:
     - index.qmd
-    - 00-intro/the-data-model.qmd
-    - 00-intro/sql-tools.qmd
+    - 00-intro/introduction.qmd
+    - 00-intro/meet-the-data.qmd
+    - 00-intro/meet-the-tools.qmd
     - part: 01-basics/basics.qmd
       chapters:
+        - 01-basics/oltp-vs-olap.qmd
         - 01-basics/using-sql-in-r.qmd
         - 01-basics/using-sql-in-dbt.qmd
-        - 01-basics/joins.qmd
+        - 01-basics/selecting-tables.qmd
+        - 01-basics/joining-tables.qmd
         - 01-basics/window-functions.qmd
-        - 01-basics/filtering.qmd
+        - 01-basics/filtering-tables.qmd
+        - 01-basics/structuring-queries.qmd
+        - 01-basics/anti-patterns.qmd
     - part: 02-models/models.qmd
       chapters:
+        - 02-models/types-of-models.qmd
         - 02-models/calendar-date-dimension.qmd
         - 02-models/factless-fact-tables.qmd
         - 02-models/ragged-depth-hierarchies.qmd
     - part: 03-recipes/recipes.qmd
       chapters:
-        - 03-recipes/queries_with_dates.qmd
+        - 03-recipes/splitting-time-intervals.qmd
+        - 03-recipes/querying-intersecting-dates.qmd
         - 03-recipes/pivoting-and-unpivoting.qmd
-        - 03-recipes/customer-analytics.qmd
+        - 03-recipes/grouping-consecutive-rows.qmd
+        - 03-recipes/finding-gaps-in-ordered-data.qmd
+        - 03-recipes/occupancy.qmd
+        - 03-recipes/qualifying-events-in-time.qmd
     - misc/goodies.qmd
     - references.qmd
 

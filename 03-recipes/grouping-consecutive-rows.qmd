@@ -5,12 +5,11 @@ filters:
   - interactive-duckdb
 databases:
   - name: cookbook
-    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/subscriptions.duckdb"
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/carwash.duckdb"
     format: duckdb
 ---
 
 ```{r}
-
 #| echo: false
 #| message: false
 #| warning: false
@@ -18,11 +17,9 @@ databases:
 
 library(duckdb)
 
-con <- dbConnect(duckdb(), "../databases/subscriptions.duckdb")
+con <- dbConnect(duckdb(), "../databases/carwash.duckdb")
 
 ```
-
-# Grouping consecutive rows
 
 ::: {.callout-note}
 
@@ -36,7 +33,214 @@ A lot of data we work with can be ordered by time. Sometimes it's user interacti
 
 Every way of finding consecutive rows is based on calculating the difference between two ranks in your table. The second rank will be partitioned by all the columns you are interested in so that you have a row number for each partition. Then the **first** rank will have one column fewer - essentially created a more general rank. The theory is that if both of these ranks are increasing at the same rate, they must be consecutive and belonging to the same group. Once the second rank reaches the end of the partition - and the second rank will always be shorted than the first one since we're partitioning - the rank counter will reset but the first rank will continue counting up. Now the difference between the ranks is a larger number but if both ranks continue being consecutive, the difference will remain constant because they'll be increasing by one over every row. The chapter below illustrates this principle in practice.
 
-![How consecutive rows form islands](../images/consecutive-rows.gif)
+```{ojs}
+//| echo: false
+islandColors = ({
+  "0": "#B8E0D2",
+  "1": "#F7D08A",
+  "2": "#D6C3F0"
+})
+
+sourceRows = [
+  {user_id:"Alice", date_from:"2024-01-01", date_to:"2024-01-31", tier:"Basic",    user_rank:1, tier_rank:1, island_id:"0"},
+  {user_id:"Alice", date_from:"2024-02-01", date_to:"2024-02-29", tier:"Basic",    user_rank:2, tier_rank:2, island_id:"0"},
+  {user_id:"Alice", date_from:"2024-03-01", date_to:"2024-03-31", tier:"Premium",  user_rank:3, tier_rank:1, island_id:"2"},
+  {user_id:"Alice", date_from:"2024-04-01", date_to:"2024-04-30", tier:"Basic",    user_rank:4, tier_rank:3, island_id:"1"},
+  {user_id:"Alice", date_from:"2024-05-01", date_to:"2024-05-31", tier:"Basic",    user_rank:5, tier_rank:4, island_id:"1"}
+]
+
+groupedRows = [
+  {user_id:"Alice", tier:"Basic",   island_id:"0", date_from:"2024-01-01", date_to:"2024-02-29", rows_in_island:2},
+  {user_id:"Alice", tier:"Premium", island_id:"2", date_from:"2024-03-01", date_to:"2024-03-31", rows_in_island:1},
+  {user_id:"Alice", tier:"Basic",   island_id:"1", date_from:"2024-04-01", date_to:"2024-05-31", rows_in_island:2}
+]
+
+sqlLines = [
+  "WITH tmp AS (",
+  "  SELECT",
+  "    user_id,",
+  "    tier,",
+  "    date_from,",
+  "    date_to,",
+  "    ROW_NUMBER() OVER (",
+  "      PARTITION BY user_id",
+  "      ORDER BY date_from",
+  "    ) AS user_rank,",
+  "    ROW_NUMBER() OVER (",
+  "      PARTITION BY user_id, tier",
+  "      ORDER BY date_from",
+  "    ) AS tier_rank",
+  "  FROM subscriptions",
+  ")",
+  "SELECT",
+  "  user_id,",
+  "  tier,",
+  "  MIN(date_from) AS date_from,",
+  "  MAX(date_to)   AS date_to,",
+  "  COUNT(*)       AS rows_in_island",
+  "FROM tmp",
+  "GROUP BY",
+  "  user_id,",
+  "  tier,",
+  "  (user_rank - tier_rank)",
+  "ORDER BY date_from"
+]
+
+steps = [
+  {title: "1. Raw data — one user switching tiers",
+   data: sourceRows, cols: ["user_id","tier","date_from","date_to"], color: false,
+   highlight: [2,3,4,5,14]},
+  {title: "2. ROW_NUMBER() over the user — keeps counting forward",
+   data: sourceRows, cols: ["user_id","tier","date_from","date_to","user_rank"], color: false,
+   highlight: [6,7,8,9]},
+  {title: "3. Second ROW_NUMBER() resets inside each (user, tier) partition",
+   data: sourceRows, cols: ["user_id","tier","date_from","date_to","user_rank","tier_rank"], color: false,
+   highlight: [10,11,12,13]},
+  {title: "4. Subtract the two ranks — the difference is stable inside each island",
+   data: sourceRows, cols: ["user_id","tier","date_from","date_to","user_rank","tier_rank","island_id"], color: true,
+   highlight: [23,24,25,26]},
+  {title: "5. Group by (user, tier, island_id) — one collapsed row per island",
+   data: groupedRows, cols: ["user_id","tier","island_id","date_from","date_to","rows_in_island"], color: true,
+   highlight: [16,17,18,19,20,21,22,23,24,25,26,27]}
+]
+```
+
+```{ojs}
+//| echo: false
+viewof stepIndex = {
+  let index = 0
+
+  const btnStyle = `
+    font-size: 1.2em;
+    padding: 4px 14px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #f5f5f5;
+  `
+
+  const prev = Object.assign(document.createElement("button"), { textContent: "←" })
+  const next = Object.assign(document.createElement("button"), { textContent: "→" })
+  prev.style.cssText = btnStyle
+  next.style.cssText = btnStyle
+
+  const counter = document.createElement("span")
+  counter.style.cssText = "font-size:0.9em;color:#666;margin:0 10px"
+
+  const container = document.createElement("div")
+  container.style.cssText = "display:flex;align-items:center;margin-bottom:12px"
+  container.append(prev, counter, next)
+
+  const update = () => {
+    counter.textContent = `${index + 1} / ${steps.length}`
+    prev.disabled = index === 0
+    next.disabled = index === steps.length - 1
+    container.value = index
+    container.dispatchEvent(new CustomEvent("input"))
+  }
+
+  prev.onclick = () => { if (index > 0) { index--; update() } }
+  next.onclick = () => { if (index < steps.length - 1) { index++; update() } }
+
+  container.value = index
+  update()
+  return container
+}
+
+{
+  const s = steps[stepIndex]
+
+  // Root container
+  const root = document.createElement("div")
+
+  // Step title
+  const titleEl = document.createElement("div")
+  titleEl.style.cssText = "font-weight:600;color:#333;margin-bottom:14px;font-size:1em"
+  titleEl.textContent = s.title
+  root.appendChild(titleEl)
+
+  // Side-by-side layout
+  const layout = document.createElement("div")
+  layout.style.cssText = "display:flex;flex-direction:column;gap:12px"
+
+  // --- SQL toggle button ---
+  let sqlVisible = true
+  const toggle = document.createElement("button")
+  toggle.style.cssText = [
+    "align-self:flex-start",
+    "font-size:0.82em",
+    "padding:3px 10px",
+    "cursor:pointer",
+    "border:1px solid #ccc",
+    "border-radius:4px",
+    "background:#f5f5f5",
+    "color:#444"
+  ].join(";")
+  const setToggleLabel = () => { toggle.textContent = sqlVisible ? "▾ Hide SQL" : "▸ Show SQL" }
+  setToggleLabel()
+
+  // --- SQL block ---
+  const pre = document.createElement("pre")
+  pre.style.cssText = [
+    "font-family:monospace",
+    "font-size:0.82em",
+    "line-height:1.55",
+    "background:#F8F8F8",
+    "border:1px solid #DDD",
+    "border-radius:6px",
+    "padding:14px 6px",
+    "margin:0",
+    "overflow:auto"
+  ].join(";")
+
+  toggle.onclick = () => {
+    sqlVisible = !sqlVisible
+    pre.style.display = sqlVisible ? "" : "none"
+    setToggleLabel()
+  }
+
+  sqlLines.forEach((line, i) => {
+    const row = document.createElement("div")
+    const hl = s.highlight.includes(i)
+    row.style.cssText = [
+      `background:${hl ? "#FFF9C4" : "transparent"}`,
+      `font-weight:${hl ? "600" : "normal"}`,
+      "padding:0 10px",
+      "white-space:pre",
+      "border-radius:3px"
+    ].join(";")
+    row.textContent = line
+    pre.appendChild(row)
+  })
+
+  layout.append(toggle, pre)
+
+  // --- Table ---
+  const tableWrap = document.createElement("div")
+  tableWrap.style.cssText = "overflow:auto"
+
+  const th = s.cols.map(c =>
+    `<th style="background:#E0E0E0;padding:8px 14px;border:2px solid white;font-weight:700">${c}</th>`
+  ).join("")
+
+  const tbody = s.data.map(row => {
+    const bg = s.color ? (islandColors[String(row.island_id)] ?? "#F5F5F5") : "#F5F5F5"
+    const tds = s.cols.map(c =>
+      `<td style="background:${bg};padding:8px 14px;border:2px solid white">${row[c] ?? ""}</td>`
+    ).join("")
+    return `<tr>${tds}</tr>`
+  }).join("")
+
+  tableWrap.innerHTML = `<table style="border-collapse:collapse;font-size:0.9em">
+    <thead><tr>${th}</tr></thead>
+    <tbody>${tbody}</tbody>
+  </table>`
+
+  layout.append(tableWrap)
+  root.appendChild(layout)
+  return root
+}
+```
 
 
 ## Grouping consecutive intervals
@@ -46,33 +250,7 @@ Now let's answer the question on the second order - how could we group consecuti
 What's different from the previous scenario is that intervals do not have a single column to describe their consecutive-ness. For example, my first subscription might have started on January 1st, then my second one starts on March 1st. Previously, the request date by itself encoded the rank. Now we need to create the rank ourselves.
 
 
-Most data we're working with will contain an incremental id, a timestamp or a creation date. Sometimes, we are interested in grouping rows if the timestamp is consecutive between rows or if the rows have some desired distance between them. For example, we might want to create a session id if events are within 1 hour of each other. Or we might want to group rows if their dates are consecutive. In SQL-land, they're called "islands"[1]:. For me, it's easier to visualise this concept:
-
-```{r}
-#| echo: false
-
-library(ggplot2)
-
-ggplot(data_long, aes(x = reorder(name, date, min), y = date)) + 
-  geom_line() + 
-  scale_y_date(limits = c(as.Date("2007-01-01"),as.Date("2026-01-01")), date_breaks = "2 years", date_labels =  "%Y") +
-  coord_flip() + 
-  geom_hline(yintercept=as.Date("2016-03-07"), linetype="dashed", 
-                color = "#B82B1A", size=1) +
-  annotate("text", x=25, y=as.Date("2013-04-07"), label="PRIME scheme launched", color = "#B82B1A") +
-  geom_point(aes(color = prime)) +
-  geom_text(aes(label = name), size = 3, data = data_long[data_long$event == "authorisation_date",], hjust = -0.3) + 
-  theme_bw() + 
-  theme(axis.title.y=element_blank(),
-        axis.text.y=element_blank(),
-        axis.ticks.y=element_blank(),
-        panel.grid.major.y = element_blank()) + 
-  labs(y = "Day 1 to Marketing Authorisation Timeline", color = "PRIME scheme") + 
-  scale_color_manual(values = c("#B82B1A","#289e9a")) + 
-  guides(color = FALSE)
-
-
-```
+Most data we're working with will contain an incremental id, a timestamp or a creation date. Sometimes, we are interested in grouping rows if the timestamp is consecutive between rows or if the rows have some desired distance between them. For example, we might want to create a session id if events are within 1 hour of each other. Or we might want to group rows if their dates are consecutive. In SQL-land, they're called "islands"[^1]. For me, it's easier to visualise the concept using the interactive table above.
 
 Gaps are the inverse problem - if there is a gap between two consecutive rows, we would like to infer new rows that show when/where the gap begins and when/where it ends.
 
@@ -85,21 +263,21 @@ There are actually a few use cases for using these methods, so we'll go through 
 with tmp as (
   select
     row_number() over (partition by user_id order by date_from) as user_rank,
-    row_number() over (partition by user_id, tier order by date_from) as tier_rank,
+    row_number() over (partition by user_id, plan_id order by date_from) as tier_rank,
     user_id,
     date_from,
     date_to,
-    tier
+    plan_id
   from subscriptions
 )
 select
   user_id,
-  tier,
+  plan_id,
   min(date_from) as date_from,
   max(date_to) as date_to,
   count(*)
 from tmp
-group by user_id, tier, (user_rank-tier_rank)
+group by user_id, plan_id, (user_rank-tier_rank)
 
 
 ```
@@ -130,21 +308,21 @@ with lag_date_from as (
 tmp as (
   select
     row_number() over (partition by user_id order by date_from) as user_rank,
-    row_number() over (partition by user_id, tier, coalesce(is_sub_consecutive,1) order by date_from) as consecutive_tier_rank,
+    row_number() over (partition by user_id, plan_id, coalesce(is_sub_consecutive,1) order by date_from) as consecutive_tier_rank,
     user_id,
     is_sub_consecutive,
-    tier,
+    plan_id,
     date_from,
     date_to
   from lag_date_from
 )
 select 
   user_id,
-  tier,
+  plan_id,
   min(date_from) as date_from,
   max(date_to) as date_to
 from tmp
-group by user_id, tier, (user_rank-consecutive_tier_rank)
+group by user_id, plan_id, (user_rank-consecutive_tier_rank)
 order by user_id, date_from
 
 
@@ -152,6 +330,7 @@ order by user_id, date_from
 
 
 ```{sql, connection = con}
+#| eval: false
 
 with aggregate as (
   select request_submitted_at, count(*) as request_count
@@ -188,6 +367,7 @@ order by request_submitted_at*/
 
 
 ```{sql, connection = con}
+#| eval: false
 
 with aggregate as (
   select request_submitted_at, count(*) as request_count
@@ -205,6 +385,7 @@ from aggregate
 
 
 ```{sql, connection = con}
+#| eval: false
 
 with aggregate as (
   select request_submitted_at, count(*) as request_count
@@ -238,6 +419,11 @@ https://dba.stackexchange.com/questions/193680/group-rows-by-uninterrupted-dates
 
 https://stackoverflow.com/questions/53519702/group-rows-with-that-are-less-than-15-days-apart-and-assign-min-max-date
 
+
+## End of chapter exercises
+
+1. So the islands solution groups by rank but also groups by group type. Could we remove that column maybe? What happens when we do?
+2. What would the query look like if I wanted to create islands based on an additional column?
 
 
 [^1]: As far as I can find the term "Islands and Gaps", I think it was first coined in the [SQL Server MVP Deep Dives](https://www.manning.com/books/sql-server-mvp-deep-dives) book.

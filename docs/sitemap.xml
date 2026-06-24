@@ -2,11 +2,11 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/index.html</loc>
-    <lastmod>2026-05-10T06:01:36.483Z</lastmod>
+    <lastmod>2026-06-20T19:41:45.044Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/00-intro/the-data-model.html</loc>
-    <lastmod>2026-05-31T11:10:39.035Z</lastmod>
+    <lastmod>2026-06-24T11:47:21.937Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/00-intro/sql-tools.html</loc>
@@ -22,7 +22,7 @@
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/joins.html</loc>
-    <lastmod>2026-05-31T11:32:03.977Z</lastmod>
+    <lastmod>2026-06-15T21:49:20.478Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/window-functions.html</loc>
@@ -34,11 +34,11 @@
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/02-models/calendar-date-dimension.html</loc>
-    <lastmod>2026-06-09T19:28:52.931Z</lastmod>
+    <lastmod>2026-06-23T23:04:29.228Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/02-models/factless-fact-tables.html</loc>
-    <lastmod>2026-05-31T11:12:35.281Z</lastmod>
+    <lastmod>2026-06-20T07:54:08.643Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/02-models/ragged-depth-hierarchies.html</loc>
@@ -46,7 +46,7 @@
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/03-recipes/queries_with_dates.html</loc>
-    <lastmod>2026-05-31T11:32:16.000Z</lastmod>
+    <lastmod>2026-06-24T05:39:15.111Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/03-recipes/pivoting-and-unpivoting.html</loc>
@@ -75,5 +75,65 @@
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/03-recipes/recipes.html</loc>
     <lastmod>2026-04-15T18:09:09.632Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/03-recipes/grouping-consecutive-rows.html</loc>
+    <lastmod>2026-06-24T19:46:24.558Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/anti_patterns.html</loc>
+    <lastmod>2026-06-15T21:41:28.765Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/02-models/types-of-models.html</loc>
+    <lastmod>2026-06-20T07:59:05.125Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/00-intro/introduction.html</loc>
+    <lastmod>2026-06-20T19:43:32.612Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/selecting-tables.html</loc>
+    <lastmod>2026-06-20T08:21:20.950Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/joining-tables.html</loc>
+    <lastmod>2026-06-20T08:21:14.348Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/filtering-tables.html</loc>
+    <lastmod>2026-06-20T08:21:24.448Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/anti-patterns.html</loc>
+    <lastmod>2026-06-23T23:45:59.527Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/oltp-vs-olap.html</loc>
+    <lastmod>2026-06-20T08:19:43.839Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/structuring-queries.html</loc>
+    <lastmod>2026-06-20T08:21:51.234Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/03-recipes/calculating-streaks.html</loc>
+    <lastmod>2026-06-20T08:36:15.254Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/03-recipes/occupancy.html</loc>
+    <lastmod>2026-06-20T08:00:56.776Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/03-recipes/querying-intersecting-dates.html</loc>
+    <lastmod>2026-06-24T06:04:04.550Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/03-recipes/finding-gaps-in-ordered-data.html</loc>
+    <lastmod>2026-06-24T06:03:58.492Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/03-recipes/qualifying-events-in-time.html</loc>
+    <lastmod>2026-06-24T20:20:29.264Z</lastmod>
   </url>
 </urlset>

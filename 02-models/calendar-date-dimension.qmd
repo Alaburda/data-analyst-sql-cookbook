@@ -1,5 +1,5 @@
 ---
-title: "Creating a Calendar Date Dimension"
+title: "Calendar Date Dimension"
 engine: knitr
 filters:
   - interactive-duckdb
@@ -147,4 +147,11 @@ get_holidays(country_code = "lt", year = "2026")
 ```
 
 Of course, now you are dependent on an external provider but an external provider might make more sense if you are handling holidays across different countries. In all of the ways provided, you need someone or something to handle holiday changes.
+
+## Smart keys in the date dimension
+
+In Kimball dimensional modelling every dimension and fact has a primary key, the date dimension is not an exception. In fact, you could use a smart key as the primary key and use `20260101` for a row with the date `2026-01-01`. While this does make your warehouse consistent and let's you create a reference to unknown values, I prefer joining directly on date columns. I feel like the added overhead of creating primary keys isn't worth it considering that dates are stored as integers anyway and most databases handle NULL values in joins and aggregations just fine.
+
+
+
 

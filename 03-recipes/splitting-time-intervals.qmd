@@ -1,5 +1,5 @@
 ---
-title: "Split datetime intervals"
+title: "Splitting Time Intervals"
 author: "Paulius Alaburda"
 engine: knitr
 ---
@@ -7,7 +7,6 @@ engine: knitr
 Event data that has a start and an end does not gel well with datetime aggregations when the events overlap multiple datetime periods. For example, if your user session started on August 1st but ended on August 3rd, you probably want to show that a session was happening on the 1st, 2nd and 3rd.
 
 ```{r}
-
 #| echo: false
 #| message: false
 
@@ -91,6 +90,7 @@ dbWriteTable(con, "overlapping_ranges", df, overwrite = TRUE)
 ```
 
 ```{sql}
+#| eval: false
 
 WITH C1 AS(  SELECT *,    MAX(endtime) OVER(PARTITION BY actid          ORDER BY starttime, endtime, sessionid          ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prvend  FROM dbo.Sessions)SELECT *FROM C1  CROSS APPLY ( VALUES(CASE WHEN starttime <= prvend THEN NULL ELSE 1 END) ) AS A(isstart);
 
@@ -100,6 +100,7 @@ WITH C1 AS(  SELECT *,    MAX(endtime) OVER(PARTITION BY actid          ORDER BY
 
 
 ```{sql connection = con, output.var="overlapping_islands"}
+#| eval: false
 
 with prev_date as (
 SELECT
@@ -129,6 +130,7 @@ group by group_id, island_id
 ```
 
 ```{r}
+#| eval: false
 
 df %>% 
   plot_timeline() +
@@ -146,6 +148,7 @@ df %>%
 Let's say our data looks like this:
 
 ```{r}
+#| eval: false
 
 
 dbWriteTable(con, "sessions", sessions, overwrite = TRUE)
@@ -153,6 +156,8 @@ dbWriteTable(con, "sessions", sessions, overwrite = TRUE)
 ```
 
 ```{sql connection = con}
+#| eval: false
+
 select *
 from sessions
 limit 6
@@ -164,7 +169,7 @@ In this example, how do you properly aggregate by hour? By using a tally table!
 
 The correct approach is to use a tally table or a reference table with specified hours. [A tally table is a technique created by Itzik Ben-Gan in 2009](https://www.itprotoday.com/server-virtualization/virtual-auxiliary-table-of-numbers) that uses recursive CTEs to create an index table **fast**. Here's an example of it:
 
-  ```{sql}
+```{sql}
 #| eval: false
 
 GO
@@ -190,6 +195,7 @@ GO
 I couldn't find a good enough explanation of why they are fast (best case is [here](https://www.sqlservercentral.com/articles/the-numbers-or-tally-table-what-it-is-and-how-it-replaces-a-loop-1)), so I would appreciate a link! In this post, I am simply resorting to DuckDB to generate series of hourly intervals:
 
 ```{sql connection = con}
+#| eval: false
 
 CREATE TABLE calendar_hours as
 with start_times as (
@@ -205,6 +211,8 @@ from start_times
 
 ```{sql connection = con}
 #| echo: false
+#| eval: false
+
 
 select *
 from calendar_hours
@@ -215,6 +223,7 @@ limit 10
 Now that we have a reference table of hourly intervals, we can run a range join:
 
 ```{sql connection = con}
+#| eval: false
 
 CREATE TABLE session_intervals as
 select
@@ -247,6 +256,7 @@ Having built this, we can finally aggregate our data correctly:
 ## The final output
 
 ```{sql connection = con}
+#| eval: false
 
 select
   cast(session_start as date) as session_day,

@@ -4,3 +4,28 @@ format: html
 ---
 
 The reverse side of finding consecutive in ordered
+
+
+
+## Calculating date ranges based on gaps
+
+Let's say we have subscriptions but we need to show a start date and an end date of gaps between subscriptions. For example, if I subscribed from 2023-01-01 to 2023-05-31 and then from 2023-07-01 to 2023-12-31, I would want to return a row that said I was not a subscriber from 2023-06-01 to 2023-06-30.
+
+```{.sql .interactive .chinook}
+SELECT   
+  seqval + 1 AS start_range,   
+  (
+    SELECT 
+      MIN(B.seqval)    
+    FROM dbo.NumSeq AS B    
+    WHERE B.seqval > A.seqval
+    ) - 1 AS end_range 
+FROM dbo.NumSeq AS A 
+WHERE NOT EXISTS (
+  SELECT * FROM dbo.NumSeq AS B    
+  WHERE B.seqval = A.seqval + 1)
+AND seqval < (SELECT MAX(seqval) FROM dbo.NumSeq);
+
+```
+
+This solution is based on subqueries. In order to understand it you should first focus on the filtering activity in the WHERE clause and then proceed to the activity in the SELECT list. The purpose of the NOT EXISTS predicate in the WHERE clause is to filter only points that are a point before a gap. You can identify a point before a gap when you see that for such a point, the value plus 1 doesn’t exist in the sequence. The purpose of the second predicate in the WHERE clause is to filter out the maximum value from the sequence because it represents the point before infinity, which does not concern us.

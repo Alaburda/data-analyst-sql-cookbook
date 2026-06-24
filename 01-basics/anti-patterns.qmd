@@ -1,0 +1,228 @@
+---
+title: "Anti-Patterns"
+engine: knitr
+filters:
+  - interactive-duckdb
+databases:
+  - name: cookbook
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/carwash.duckdb"
+    format: duckdb
+---
+
+```{r setup}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(duckdb)
+library(DBI)
+
+con <- dbConnect(duckdb(), "../databases/carwash.duckdb", read_only = TRUE)
+
+# Render a query alongside its DuckDB physical plan as two clean code blocks.
+# DuckDB's EXPLAIN returns an ASCII tree; printing it through a normal SQL chunk
+# turns it into an HTML <table> that mangles the alignment. Emitting it as raw
+# markdown (results: asis) keeps it in a monospaced <pre> block instead.
+# `pre` holds statements to run *and* display first, e.g. a SET VARIABLE.
+show_plan <- function(query, pre = NULL) {
+  display <- query
+  if (!is.null(pre)) {
+    for (s in pre) dbExecute(con, s)
+    display <- paste0(paste0(pre, ";\n\n", collapse = ""), query)
+  }
+  plan <- dbGetQuery(con, paste("EXPLAIN", query))[["explain_value"]]
+  cat(sprintf("```sql\n%s\n```\n\n::: {.sql-plan}\n```\n%s\n```\n:::\n",
+              display, plan))
+}
+
+```
+
+```{=html}
+<style>
+.sql-plan { overflow-x: auto; }
+.sql-plan pre { white-space: pre; font-size: 0.78rem; line-height: 1.2; }
+</style>
+```
+
+SQL is a sneaky language because you can keep building your select statement to your heart's desires until one change suddenly makes the query slow. There are some anti-patterns you can avoid - in fact, they're easy to spot with enough practice.
+
+## Doing dbt style statements for the latest values  
+
+So dbt has been recommending doing incremental refreshes using this sort of syntax:
+
+```{r}
+#| echo: false
+#| results: asis
+show_plan(
+"SELECT *
+FROM subscriptions
+WHERE date_from >= (SELECT max(date_from) FROM subscriptions)"
+)
+```
+
+Notice the plan: the scalar subquery forces a `NESTED_LOOP_JOIN` against a second scan of `subscriptions`, plus a `CASE WHEN … error('More than one row…')` guard that DuckDB injects to enforce scalar-subquery semantics. This happens because the database cannot use an existing query plan and can't do "parameter sniffing". One way to avoid this is to set the max value from the subquery and then pass it forward to the main query:
+
+```{r}
+#| echo: false
+#| results: asis
+show_plan(
+"SELECT *
+FROM subscriptions
+WHERE date_from >= getvariable('max_date')",
+  pre = "SET VARIABLE max_date = (SELECT max(date_from) FROM subscriptions)"
+)
+```
+
+Now the plan collapses to a single `SEQ_SCAN` with a constant filter — the subquery is evaluated once, up front, and the main query never sees it.
+
+
+## Using OR in joins
+
+Just because you can use an OR statement in a SQL query, doesn't mean you have to - in practice, the query optimizer may not correctly [interpret what you're doing](https://stackoverflow.com/questions/5901791/is-having-an-or-in-an-inner-join-condition-a-bad-idea). See the query plan for this:
+
+```{r}
+#| echo: false
+#| results: asis
+show_plan(
+"SELECT users.* 
+FROM users 
+INNER JOIN calendar cal
+  ON signup_date = cal.date
+  OR confirmation_date = cal.date
+where year(cal.date) = 2023")
+```
+
+```{r}
+#| echo: false
+#| results: asis
+show_plan(
+"SELECT users.* 
+FROM users 
+INNER JOIN calendar cal
+  ON signup_date = cal.date
+where year(cal.date) = 2023
+
+UNION 
+
+SELECT users.* 
+FROM users 
+INNER JOIN calendar cal
+  ON confirmation_date = cal.date
+where year(cal.date) = 2023
+")
+
+
+
+```
+
+`BLOCKWISE_NL_JOIN` in the query plan is a blockwise nested loop join - it's a very inefficient algorithm whereas the UNION is much faster.
+
+## left join with left side predicate in join 
+
+I haven't tried this in other databases, but apparently DuckDB doesn't support efficient joins when you want to join a table only to some of the rows but you want to keep the whole table intact. Luckily, in my experience, this is easy to overcome using a `case when` statement and overall this pattern is VERY rare! 
+
+```{r}
+
+#| echo: false
+#| results: asis
+show_plan(
+"SELECT users.* 
+FROM users 
+LEFT JOIN calendar cal
+  ON confirmation_date = cal.date
+  AND year(confirmation_date) = 2023
+")
+
+```
+
+
+```{sql, connection = con}
+#| eval: false
+
+EXPLAIN
+
+
+```
+
+```{sql, connection = con}
+#| eval: false
+
+EXPLAIN
+WITH tmp AS (
+  SELECT *,
+    CASE WHEN plan_autorenew = 1 THEN 1 WHEN plan_legacy = 1 THEN 1 END AS plan_vip
+  FROM subscriptions
+)
+SELECT *
+FROM tmp
+INNER JOIN vip ON vip.id = plan_vip
+
+```
+
+```{sql, connection = con}
+#| eval: false
+
+EXPLAIN
+SELECT * FROM subscriptions INNER JOIN vip ON plan_autorenew = vip.id AND plan_legacy IS NULL
+UNION ALL
+SELECT * FROM subscriptions INNER JOIN vip ON plan_legacy = vip.id AND plan_autorenew IS NULL
+
+```
+
+## Using UNION where UNION ALL is sufficient
+
+UNION deduplicates data after the join, which is a waste of resources if you know that the data is already unique. Use UNION ALL instead.
+
+```{r}
+#| echo: false
+#| results: asis
+show_plan(
+"SELECT users.* 
+FROM users 
+INNER JOIN calendar cal
+  ON signup_date = cal.date
+where year(cal.date) = 2023
+
+UNION 
+
+SELECT users.* 
+FROM users 
+INNER JOIN calendar cal
+  ON confirmation_date = cal.date
+where year(cal.date) = 2023
+")
+
+
+
+```
+
+```{r}
+#| echo: false
+#| results: asis
+show_plan(
+"SELECT users.* 
+FROM users 
+INNER JOIN calendar cal
+  ON signup_date = cal.date
+where year(cal.date) = 2023
+
+UNION ALL
+
+SELECT users.* 
+FROM users 
+INNER JOIN calendar cal
+  ON confirmation_date = cal.date
+where year(cal.date) = 2023
+")
+
+
+
+```
+
+## GROUP BY vs. DISTINCT vs. EXISTS
+
+EXISTS is the fastest but also most verbose way of returning unique values in a table. See the following:
+
+
+
+

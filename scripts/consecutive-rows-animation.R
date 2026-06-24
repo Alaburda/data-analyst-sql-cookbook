@@ -8,18 +8,22 @@ library(ggplot2)
 library(gganimate)
 library(dplyr)
 library(tidyr)
+library(lubridate)
 
 # ---- 1. Build the source table ---------------------------------------------
+# Single user (Alice) switching tiers: Basic → Premium → Basic
+# This creates 3 distinct islands.
 
 subscriptions <- tibble(
-  user_id = c("Alice", "Alice", "Alice", "Alice", "Bob", "Bob", "Bob"),
-  date_from = c("2024-01-01", "2024-02-01", "2024-03-01", "2024-05-01", "2024-01-01", "2024-02-01", "2024-03-01"),
-  tier = c("Basic", "Basic", "Premium", "Premium", "Basic", "Basic", "Basic")
+  user_id = c("Alice", "Alice", "Alice", "Alice", "Alice"),
+  date_from = c("2024-01-01", "2024-02-01", "2024-03-01", "2024-04-01", "2024-05-01"),
+  tier = c("Basic", "Basic", "Premium", "Basic", "Basic")
 ) |>
   mutate(
     date_from = as.Date(date_from),
-    month_label = format(date_from, "%Y-%m")
-  )
+    date_to   = as.Date(format(date_from + months(1) - days(1), "%Y-%m-%d"))
+  ) |>
+  arrange(date_from)
 
 ranked <- subscriptions |>
   group_by(user_id) |>
@@ -35,11 +39,12 @@ ranked <- subscriptions |>
 grouped <- ranked |>
   group_by(user_id, tier, island_id) |>
   summarise(
-    start_month = min(month_label),
-    end_month = max(month_label),
+    date_from     = min(date_from),
+    date_to       = max(date_to),
     rows_in_island = n(),
     .groups = "drop"
-  )
+  ) |>
+  arrange(date_from)
 
 island_colors <- c(
   "0" = "#B8E0D2",
@@ -83,7 +88,8 @@ build_frame <- function(data, columns, state, state_label,
         alpha = alpha_val,
         is_header = FALSE,
         state = state,
-        state_label = state_label
+        state_label = state_label,
+        group_id = paste(c_idx, -r, sep = "_")
       )
     }
   }
@@ -97,7 +103,8 @@ build_frame <- function(data, columns, state, state_label,
       alpha = 1,
       is_header = TRUE,
       state = state,
-      state_label = state_label
+      state_label = state_label,
+      group_id = paste(c_idx, 0, sep = "_")
     )
   }
 
@@ -108,38 +115,39 @@ build_frame <- function(data, columns, state, state_label,
 
 f1 <- build_frame(
   ranked,
-  c("user_id", "month_label", "tier"),
+  c("user_id", "date_from", "date_to", "tier"),
   1,
-  "1. Start with ordered rows for each user"
+  "1. One user switching tiers: Basic \u2192 Premium \u2192 Basic"
 )
 
 f2 <- build_frame(
   ranked,
-  c("user_id", "month_label", "tier", "user_rank"),
+  c("user_id", "date_from", "date_to", "tier", "user_rank"),
   2,
-  "2. ROW_NUMBER() over each user keeps counting forward"
+  "2. ROW_NUMBER() over the user keeps counting forward"
 )
 
 f3 <- build_frame(
   ranked,
-  c("user_id", "month_label", "tier", "user_rank", "tier_rank"),
+  c("user_id", "date_from", "date_to", "tier", "user_rank", "tier_rank"),
   3,
-  "3. A second ROW_NUMBER() resets inside each user + tier partition"
+  "3. A second ROW_NUMBER() resets inside each (user, tier) partition"
 )
 
 f4 <- build_frame(
   ranked,
-  c("user_id", "month_label", "tier", "user_rank", "tier_rank", "island_id"),
+  c("user_id", "date_from", "date_to", "tier", "user_rank", "tier_rank", "island_id"),
   4,
-  "4. The difference stays constant inside each island",
+  "4. Subtracting the two ranks gives a stable island ID — each island gets its own colour",
   color_islands = TRUE
 )
 
 f5 <- build_frame(
   grouped,
-  c("user_id", "tier", "island_id", "start_month", "end_month", "rows_in_island"),
+  c("user_id", "tier", "island_id", "date_from", "date_to", "rows_in_island"),
   5,
-  "5. Group by the stable difference to collapse each island"
+  "5. Group by (user, tier, island_id) to collapse each island into one row",
+  color_islands = TRUE
 )
 
 all_frames <- bind_rows(f1, f2, f3, f4, f5)
@@ -151,14 +159,14 @@ th <- 0.82
 
 p <- ggplot(all_frames, aes(x = col_x, y = row_y)) +
   geom_tile(
-    aes(fill = fill, alpha = alpha),
+    aes(fill = fill, alpha = alpha, group = group_id),
     width = tw,
     height = th,
     colour = "white",
     linewidth = 1.8
   ) +
   geom_text(
-    aes(label = label, alpha = alpha),
+    aes(label = label, alpha = alpha, group = group_id),
     size = 4.4,
     family = "sans",
     fontface = ifelse(all_frames$is_header, "bold", "plain")
@@ -185,12 +193,12 @@ p <- ggplot(all_frames, aes(x = col_x, y = row_y)) +
       colour = "#444444",
       margin = margin(b = 10),
       lineheight = 1.15,
-      family = "mono"
+      family = "sans"
     ),
     plot.margin = margin(20, 40, 20, 40),
     plot.background = element_rect(fill = "white", colour = NA)
   ) +
-  transition_states(state_label, transition_length = 2, state_length = 5, wrap = FALSE) +
+  transition_states(state_label, transition_length = 1, state_length = 6, wrap = FALSE) +
   enter_fade() +
   exit_fade() +
   ease_aes("cubic-in-out")
@@ -199,11 +207,11 @@ p <- ggplot(all_frames, aes(x = col_x, y = row_y)) +
 
 anim <- animate(
   p,
-  nframes = 160,
+  nframes = 150,
   fps = 20,
-  width = 1100,
-  height = 560,
-  res = 96,
+  width = 1900,
+  height = 680,
+  res = 144,
   renderer = magick_renderer()
 )
 

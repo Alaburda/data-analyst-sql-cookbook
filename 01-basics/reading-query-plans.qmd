@@ -1,0 +1,7 @@
+---
+title: "Reading Query Plans"
+format: html
+---
+
+
+Most of the time, you shouldn't care about query plans? What should I recommend here?

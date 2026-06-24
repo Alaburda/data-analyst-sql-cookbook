@@ -1,12 +1,12 @@
 # Preface {.unnumbered}
 
-I have a terrible memory for things that I use rarely. When it comes to SQL, there are certain code patterns that are extremely useful when doing data modelling. But there's only so many data models you need to build before actually using them. I wrote this so that I have all of my useful patterns in one place with the benefit of sharing this with you.
+I have a terrible memory for things I use rarely. When it comes to SQL, there are certain code patterns that are extremely useful for work. But there are only so many data models you need to build before actually using them! You may use some once or twice and move on to using the resulting models. I wrote this so that I have all of my useful patterns in one place with the benefit of sharing this with you.
 
 This book was born out of a need to collect SQL queries that were too infrequently used to be memorized but too frequently used to be looked up. The queries are organized by topic and are meant to be used as a reference. The book is also meant to be a living document that will be updated as new queries are discovered and old queries are improved.
 
 Furthermore, these SQL patterns are not universally known! I have found that many developers are not aware of these patterns and are reinventing the wheel when they encounter these problems. I hope that this book will help to spread these patterns and make them more widely known. My team has been victim to the same problem - we found a solution on StackOverflow only to find a better solution a year down the line.
 
-The impetus to writing this book was that I couldn't find a book that I could throw at a fresh data analyst and say "here, this will get you up to speed on SQL". The book initially was supposed to be a collection of SQL queries that my team used frequently or infrequently. Think of it as a SQL cookbook of sorts - it contains recipes that are useful but not so common that you'd learn them by heart. However, I also realised that having a single resource for SQL is better than two so I added an introduction to SQL as well.
+Then, the scope of the book grew - instead of just having a compendium of interesting code patterns, I also add the basics. The resulting book is finally something I could throw at a fresh data analyst and say "here, this will get you up to speed on SQL". The book initially was supposed to be a collection of SQL queries that my team used frequently or infrequently. Think of it as a SQL cookbook of sorts - it contains recipes that are useful but not so common that you'd learn them by heart. However, I also realised that having a single resource for SQL is better than two so I added an introduction to SQL as well.
 
 Part one of the book is exactly that - basics presented in a concise manner to get you up to speed on running queries as an analyst. Part two is the cookbook - the queries are loosely grouped around the types of problems they solve. For example, queries for working with time series will be in the same chapter. Loosely is a load-bearing word here - I would like to find a more natural way of organising the material but the recipes are going to be useful depending on your area. You might not even find a use for some of the queries in this book!
 
@@ -40,3 +40,10 @@ What's funny is that when writing this book I had to repeatedly look up my older
 
 
 
+Generally, SQL is extremely versatile:
+
+* SQL can act as a data asset management tool - in dbt, you declare your SQL statements and they are built in your data warehouse. If Kubernetes, you declare what assets you want and it builds them for you. In SQL, you declare data models and they get built.
+
+* SQL is also a set operation tool - 
+
+* SQL has become extremely versatile
