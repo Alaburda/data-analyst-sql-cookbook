@@ -316,3 +316,6 @@ I really like Microsoft's SQL Server page on [range join optimization](https://l
 Rolling joins are essentially non-equi joins that only return the "closest" row. R users may be familliar with this technique as Rolling Joins, DuckDB and Snowflake refers to these as "ASOF" joins: https://duckdb.org/docs/stable/guides/sql_features/asof_join.html
 
 These operations are incredibly useful when working with attribution. For example, two customer representatives performed a sale and marked it in the CRM but you need to attribute the sale to the sale that was performed first.  
+
+[[ maybe I could take inspo from R4DS? https://r4ds.hadley.nz/joins.html I LOVE the set theory of joins ]]
+

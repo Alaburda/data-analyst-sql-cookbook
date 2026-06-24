@@ -1,0 +1,7 @@
+---
+title: "Programming in SQL"
+format: html
+---
+
+[[ the focus of the book isn't on software development in SQL but maybe it's worth adding things here? Like setting variables, defining macros, functions etc? ]]
+
