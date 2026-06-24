@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>9&nbsp; Anti-Patterns – The Data Analyst SQL Cookbook</title>
+<title>10&nbsp; Anti-Patterns – The Data Analyst SQL Cookbook</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -64,7 +64,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../02-models/types-of-models.html" rel="next">
+<link href="../02-models/models.html" rel="next">
 <link href="../01-basics/structuring-queries.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -255,7 +255,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </script>
 
 
-<meta property="og:title" content="9&nbsp; Anti-Patterns – The Data Analyst SQL Cookbook">
+<meta property="og:title" content="10&nbsp; Anti-Patterns – The Data Analyst SQL Cookbook">
 <meta property="og:description" content="">
 <meta property="og:site_name" content="The Data Analyst SQL Cookbook">
 </head>
@@ -269,7 +269,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../01-basics/basics.html">The Basics</a></li><li class="breadcrumb-item"><a href="../01-basics/anti-patterns.html"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../01-basics/basics.html">The Basics</a></li><li class="breadcrumb-item"><a href="../01-basics/anti-patterns.html"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -311,14 +311,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../00-intro/the-data-model.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">The Data Model</span></a>
+  <a href="../00-intro/meet-the-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Meet the Data</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../00-intro/sql-tools.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Where to write SQL?</span></a>
+  <a href="../00-intro/meet-the-tools.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Meet the Tools</span></a>
   </div>
 </li>
         <li class="sidebar-item sidebar-item-section">
@@ -333,63 +333,63 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/oltp-vs-olap.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">OLTP vs.&nbsp;OLAP</span></span></a>
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">OLTP vs.&nbsp;OLAP</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-r.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-dbt.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/selecting-tables.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Selecting Tables</span></span></a>
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Selecting Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/joining-tables.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Joining Tables</span></span></a>
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Joining Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/window-functions.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/filtering-tables.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Filtering Tables</span></span></a>
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Filtering Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/structuring-queries.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Structuring Queries</span></span></a>
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Structuring Queries</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/anti-patterns.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></span></a>
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></span></a>
   </div>
 </li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
- <span class="menu-text">02-models/models.qmd</span></a>
+            <a href="../02-models/models.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">models</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -398,25 +398,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/types-of-models.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Types of Models</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Types of Models</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/calendar-date-dimension.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Calendar Date Dimension</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Calendar Date Dimension</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/factless-fact-tables.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></span></a>
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/ragged-depth-hierarchies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
   </div>
 </li>
       </ul>
@@ -424,7 +424,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a href="../03-recipes/recipes.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">SQL Recipes</span></a>
+ <span class="menu-text">recipes.html</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -432,32 +432,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../03-recipes/queries_with_dates.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
+  <a href="../03-recipes/splitting-time-intervals.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Splitting Time Intervals</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/querying-intersecting-dates.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Querying Intersecting Dates</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../03-recipes/customer-analytics.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Customer Analytics Recipes</span></span></a>
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/grouping-consecutive-rows.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Grouping consecutive rows</span></span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../03-recipes/calculating-streaks.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Calculating Streaks</span></span></a>
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Grouping consecutive rows</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -472,12 +466,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">Occupancy</span></span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/qualifying-events-in-time.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">21</span>&nbsp; <span class="chapter-title">Qualifying Events in Time</span></span></a>
+  </div>
+</li>
       </ul>
   </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../misc/goodies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">21</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
+ <span class="menu-text"><span class="chapter-number">22</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -496,20 +496,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#doing-dbt-style-statements-for-the-latest-values" id="toc-doing-dbt-style-statements-for-the-latest-values" class="nav-link active" data-scroll-target="#doing-dbt-style-statements-for-the-latest-values"><span class="header-section-number">9.1</span> Doing dbt style statements for the latest values</a></li>
-  <li><a href="#using-or-in-joins" id="toc-using-or-in-joins" class="nav-link" data-scroll-target="#using-or-in-joins"><span class="header-section-number">9.2</span> Using OR in joins</a></li>
-  <li><a href="#left-join-with-left-side-predicate-in-join" id="toc-left-join-with-left-side-predicate-in-join" class="nav-link" data-scroll-target="#left-join-with-left-side-predicate-in-join"><span class="header-section-number">9.3</span> left join with left side predicate in join</a></li>
-  <li><a href="#using-union-where-union-all-is-sufficient" id="toc-using-union-where-union-all-is-sufficient" class="nav-link" data-scroll-target="#using-union-where-union-all-is-sufficient"><span class="header-section-number">9.4</span> Using UNION where UNION ALL is sufficient</a></li>
-  <li><a href="#group-by-vs.-distinct-vs.-exists" id="toc-group-by-vs.-distinct-vs.-exists" class="nav-link" data-scroll-target="#group-by-vs.-distinct-vs.-exists"><span class="header-section-number">9.5</span> GROUP BY vs.&nbsp;DISTINCT vs.&nbsp;EXISTS</a></li>
+  <li><a href="#doing-dbt-style-statements-for-the-latest-values" id="toc-doing-dbt-style-statements-for-the-latest-values" class="nav-link active" data-scroll-target="#doing-dbt-style-statements-for-the-latest-values"><span class="header-section-number">10.1</span> Doing dbt style statements for the latest values</a></li>
+  <li><a href="#using-or-in-joins" id="toc-using-or-in-joins" class="nav-link" data-scroll-target="#using-or-in-joins"><span class="header-section-number">10.2</span> Using OR in joins</a></li>
+  <li><a href="#left-join-with-left-side-predicate-in-join" id="toc-left-join-with-left-side-predicate-in-join" class="nav-link" data-scroll-target="#left-join-with-left-side-predicate-in-join"><span class="header-section-number">10.3</span> left join with left side predicate in join</a></li>
+  <li><a href="#using-union-where-union-all-is-sufficient" id="toc-using-union-where-union-all-is-sufficient" class="nav-link" data-scroll-target="#using-union-where-union-all-is-sufficient"><span class="header-section-number">10.4</span> Using UNION where UNION ALL is sufficient</a></li>
+  <li><a href="#group-by-vs.-distinct-vs.-exists" id="toc-group-by-vs.-distinct-vs.-exists" class="nav-link" data-scroll-target="#group-by-vs.-distinct-vs.-exists"><span class="header-section-number">10.5</span> GROUP BY vs.&nbsp;DISTINCT vs.&nbsp;EXISTS</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../01-basics/basics.html">The Basics</a></li><li class="breadcrumb-item"><a href="../01-basics/anti-patterns.html"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../01-basics/basics.html">The Basics</a></li><li class="breadcrumb-item"><a href="../01-basics/anti-patterns.html"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></h1>
+<h1 class="title"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></h1>
 </div>
 
 
@@ -531,8 +531,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 .sql-plan pre { white-space: pre; font-size: 0.78rem; line-height: 1.2; }
 </style>
 <p>SQL is a sneaky language because you can keep building your select statement to your heart’s desires until one change suddenly makes the query slow. There are some anti-patterns you can avoid - in fact, they’re easy to spot with enough practice.</p>
-<section id="doing-dbt-style-statements-for-the-latest-values" class="level2" data-number="9.1">
-<h2 data-number="9.1" class="anchored" data-anchor-id="doing-dbt-style-statements-for-the-latest-values"><span class="header-section-number">9.1</span> Doing dbt style statements for the latest values</h2>
+<section id="doing-dbt-style-statements-for-the-latest-values" class="level2" data-number="10.1">
+<h2 data-number="10.1" class="anchored" data-anchor-id="doing-dbt-style-statements-for-the-latest-values"><span class="header-section-number">10.1</span> Doing dbt style statements for the latest values</h2>
 <p>So dbt has been recommending doing incremental refreshes using this sort of syntax:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="op">*</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> subscriptions</span>
@@ -658,8 +658,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <p>Now the plan collapses to a single <code>SEQ_SCAN</code> with a constant filter — the subquery is evaluated once, up front, and the main query never sees it.</p>
 </section>
-<section id="using-or-in-joins" class="level2" data-number="9.2">
-<h2 data-number="9.2" class="anchored" data-anchor-id="using-or-in-joins"><span class="header-section-number">9.2</span> Using OR in joins</h2>
+<section id="using-or-in-joins" class="level2" data-number="10.2">
+<h2 data-number="10.2" class="anchored" data-anchor-id="using-or-in-joins"><span class="header-section-number">10.2</span> Using OR in joins</h2>
 <p>Just because you can use an OR statement in a SQL query, doesn’t mean you have to - in practice, the query optimizer may not correctly <a href="https://stackoverflow.com/questions/5901791/is-having-an-or-in-an-inner-join-condition-a-bad-idea">interpret what you’re doing</a>. See the query plan for this:</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> users.<span class="op">*</span> </span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> users </span>
@@ -802,8 +802,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <p><code>BLOCKWISE_NL_JOIN</code> in the query plan is a blockwise nested loop join - it’s a very inefficient algorithm whereas the UNION is much faster.</p>
 </section>
-<section id="left-join-with-left-side-predicate-in-join" class="level2" data-number="9.3">
-<h2 data-number="9.3" class="anchored" data-anchor-id="left-join-with-left-side-predicate-in-join"><span class="header-section-number">9.3</span> left join with left side predicate in join</h2>
+<section id="left-join-with-left-side-predicate-in-join" class="level2" data-number="10.3">
+<h2 data-number="10.3" class="anchored" data-anchor-id="left-join-with-left-side-predicate-in-join"><span class="header-section-number">10.3</span> left join with left side predicate in join</h2>
 <p>I haven’t tried this in other databases, but apparently DuckDB doesn’t support efficient joins when you want to join a table only to some of the rows but you want to keep the whole table intact. Luckily, in my experience, this is easy to overcome using a <code>case when</code> statement and overall this pattern is VERY rare!</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: false</span></span>
@@ -894,8 +894,8 @@ LEFT JOIN calendar cal
 <span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="op">*</span> <span class="kw">FROM</span> subscriptions <span class="kw">INNER</span> <span class="kw">JOIN</span> vip <span class="kw">ON</span> plan_legacy <span class="op">=</span> vip.<span class="kw">id</span> <span class="kw">AND</span> plan_autorenew <span class="kw">IS</span> <span class="kw">NULL</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="using-union-where-union-all-is-sufficient" class="level2" data-number="9.4">
-<h2 data-number="9.4" class="anchored" data-anchor-id="using-union-where-union-all-is-sufficient"><span class="header-section-number">9.4</span> Using UNION where UNION ALL is sufficient</h2>
+<section id="using-union-where-union-all-is-sufficient" class="level2" data-number="10.4">
+<h2 data-number="10.4" class="anchored" data-anchor-id="using-union-where-union-all-is-sufficient"><span class="header-section-number">10.4</span> Using UNION where UNION ALL is sufficient</h2>
 <p>UNION deduplicates data after the join, which is a waste of resources if you know that the data is already unique. Use UNION ALL instead.</p>
 <div class="sourceCode" id="cb14"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> users.<span class="op">*</span> </span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> users </span>
@@ -1048,8 +1048,8 @@ LEFT JOIN calendar cal
 </code></pre>
 </div>
 </section>
-<section id="group-by-vs.-distinct-vs.-exists" class="level2" data-number="9.5">
-<h2 data-number="9.5" class="anchored" data-anchor-id="group-by-vs.-distinct-vs.-exists"><span class="header-section-number">9.5</span> GROUP BY vs.&nbsp;DISTINCT vs.&nbsp;EXISTS</h2>
+<section id="group-by-vs.-distinct-vs.-exists" class="level2" data-number="10.5">
+<h2 data-number="10.5" class="anchored" data-anchor-id="group-by-vs.-distinct-vs.-exists"><span class="header-section-number">10.5</span> GROUP BY vs.&nbsp;DISTINCT vs.&nbsp;EXISTS</h2>
 <p>EXISTS is the fastest but also most verbose way of returning unique values in a table. See the following:</p>
 
 
@@ -1548,12 +1548,12 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
       <a href="../01-basics/structuring-queries.html" class="pagination-link" aria-label="Structuring Queries">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Structuring Queries</span></span>
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Structuring Queries</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../02-models/types-of-models.html" class="pagination-link" aria-label="Types of Models">
-        <span class="nav-page-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Types of Models</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../02-models/models.html" class="pagination-link" aria-label="models">
+        <span class="nav-page-text">models</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

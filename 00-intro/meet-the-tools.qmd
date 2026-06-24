@@ -8,8 +8,9 @@ The tools that leverage SQL are incredible these days. Below are some tools that
 * [DB Fiddle](https://www.db-fiddle.com/) - an online sandbox to run your SQL queries. You can think of this as GitHub gists but you can run the code and share it with others. I use this when running SQL interviews.
 * [SQLime](https://sqlime.org/) - another online sandbox to write queries
 * [DuckDB Local UI](https://duckdb.org/2025/03/12/duckdb-ui) - haven't tested it yet but looks neat so far
-* {DuckDB Shell}(https://shell.duckdb.org/)
+* [DuckDB Shell](https://shell.duckdb.org/)
 * [SQLGlot](https://github.com/tobymao/sqlglot) and [Polyglot](https://github.com/tobilg/polyglot) - transpile any SQL flavor to any other flavor. This is great for porting codebases, taking examples from this book into your own database or just learning different SQL flavors. 
+* [DuckDB's query visualizer](https://db.cs.uni-tuebingen.de/explain/)
 
 ## Learning Resources
 

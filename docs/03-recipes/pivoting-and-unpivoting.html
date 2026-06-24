@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>10&nbsp; Pivoting and Unpivoting – The Data Analyst SQL Cookbook</title>
+<title>17&nbsp; Pivoting and Unpivoting – The Data Analyst SQL Cookbook</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -64,8 +64,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../03-recipes/customer-analytics.html" rel="next">
-<link href="../03-recipes/queries_with_dates.html" rel="prev">
+<link href="../03-recipes/grouping-consecutive-rows.html" rel="next">
+<link href="../03-recipes/querying-intersecting-dates.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -255,7 +255,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </script>
 
 
-<meta property="og:title" content="10&nbsp; Pivoting and Unpivoting – The Data Analyst SQL Cookbook">
+<meta property="og:title" content="17&nbsp; Pivoting and Unpivoting – The Data Analyst SQL Cookbook">
 <meta property="og:description" content="">
 <meta property="og:site_name" content="The Data Analyst SQL Cookbook">
 </head>
@@ -269,7 +269,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03-recipes/recipes.html">SQL Recipes</a></li><li class="breadcrumb-item"><a href="../03-recipes/pivoting-and-unpivoting.html"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03-recipes/recipes.html">recipes.html</a></li><li class="breadcrumb-item"><a href="../03-recipes/pivoting-and-unpivoting.html"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -305,14 +305,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../00-intro/the-data-model.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">The Data Model</span></a>
+  <a href="../00-intro/introduction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Introduction</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../00-intro/sql-tools.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Where to write SQL?</span></a>
+  <a href="../00-intro/meet-the-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Meet the Data</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../00-intro/meet-the-tools.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Meet the Tools</span></a>
   </div>
 </li>
         <li class="sidebar-item sidebar-item-section">
@@ -326,32 +332,56 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../01-basics/oltp-vs-olap.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">OLTP vs.&nbsp;OLAP</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-r.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-dbt.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../01-basics/joins.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Joins</span></span></a>
+  <a href="../01-basics/selecting-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Selecting Tables</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/joining-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Joining Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/window-functions.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../01-basics/filtering.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Filtering</span></span></a>
+  <a href="../01-basics/filtering-tables.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Filtering Tables</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/structuring-queries.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Structuring Queries</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../01-basics/anti-patterns.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></span></a>
   </div>
 </li>
       </ul>
@@ -359,7 +389,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a href="../02-models/models.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Models</span></a>
+ <span class="menu-text">models</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -367,20 +397,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../02-models/types-of-models.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Types of Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../02-models/calendar-date-dimension.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Creating a Calendar Date Dimension</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Calendar Date Dimension</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/factless-fact-tables.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Factless Fact Table</span></span></a>
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/ragged-depth-hierarchies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
   </div>
 </li>
       </ul>
@@ -388,7 +424,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a href="../03-recipes/recipes.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">SQL Recipes</span></a>
+ <span class="menu-text">recipes.html</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -396,20 +432,44 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../03-recipes/queries_with_dates.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span></a>
+  <a href="../03-recipes/splitting-time-intervals.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Splitting Time Intervals</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/querying-intersecting-dates.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Querying Intersecting Dates</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../03-recipes/customer-analytics.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Customer Analytics Recipes</span></span></a>
+  <a href="../03-recipes/grouping-consecutive-rows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Grouping consecutive rows</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/finding-gaps-in-ordered-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">finding-gaps-in-ordered-data</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/occupancy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">Occupancy</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/qualifying-events-in-time.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">21</span>&nbsp; <span class="chapter-title">Qualifying Events in Time</span></span></a>
   </div>
 </li>
       </ul>
@@ -417,7 +477,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../misc/goodies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
+ <span class="menu-text"><span class="chapter-number">22</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -436,14 +496,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#pivoting" id="toc-pivoting" class="nav-link active" data-scroll-target="#pivoting"><span class="header-section-number">11</span> Pivoting</a></li>
-  <li><a href="#advanced-pivoting" id="toc-advanced-pivoting" class="nav-link" data-scroll-target="#advanced-pivoting"><span class="header-section-number">12</span> Advanced Pivoting</a></li>
-  <li><a href="#unpivoting" id="toc-unpivoting" class="nav-link" data-scroll-target="#unpivoting"><span class="header-section-number">13</span> Unpivoting</a></li>
-  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">14</span> References</a></li>
-  <li><a href="#pivoting-and-unpivoting" id="toc-pivoting-and-unpivoting" class="nav-link" data-scroll-target="#pivoting-and-unpivoting"><span class="header-section-number">15</span> Pivoting and Unpivoting</a>
+  <li><a href="#pivoting" id="toc-pivoting" class="nav-link active" data-scroll-target="#pivoting"><span class="header-section-number">18</span> Pivoting</a></li>
+  <li><a href="#advanced-pivoting" id="toc-advanced-pivoting" class="nav-link" data-scroll-target="#advanced-pivoting"><span class="header-section-number">19</span> Advanced Pivoting</a></li>
+  <li><a href="#unpivoting" id="toc-unpivoting" class="nav-link" data-scroll-target="#unpivoting"><span class="header-section-number">20</span> Unpivoting</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">21</span> References</a></li>
+  <li><a href="#pivoting-and-unpivoting" id="toc-pivoting-and-unpivoting" class="nav-link" data-scroll-target="#pivoting-and-unpivoting"><span class="header-section-number">22</span> Pivoting and Unpivoting</a>
   <ul class="collapse">
-  <li><a href="#pivoting-1" id="toc-pivoting-1" class="nav-link" data-scroll-target="#pivoting-1"><span class="header-section-number">15.1</span> Pivoting</a></li>
-  <li><a href="#unpivoting-1" id="toc-unpivoting-1" class="nav-link" data-scroll-target="#unpivoting-1"><span class="header-section-number">15.2</span> Unpivoting</a></li>
+  <li><a href="#pivoting-1" id="toc-pivoting-1" class="nav-link" data-scroll-target="#pivoting-1"><span class="header-section-number">22.1</span> Pivoting</a></li>
+  <li><a href="#unpivoting-1" id="toc-unpivoting-1" class="nav-link" data-scroll-target="#unpivoting-1"><span class="header-section-number">22.2</span> Unpivoting</a></li>
   </ul></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Alaburda/data-analyst-sql-cookbook/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -451,9 +511,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03-recipes/recipes.html">SQL Recipes</a></li><li class="breadcrumb-item"><a href="../03-recipes/pivoting-and-unpivoting.html"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03-recipes/recipes.html">recipes.html</a></li><li class="breadcrumb-item"><a href="../03-recipes/pivoting-and-unpivoting.html"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></h1>
+<h1 class="title"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></h1>
 </div>
 
 
@@ -497,29 +557,29 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">2007-03-02</td>
-<td style="text-align: right;">3.050357</td>
-<td style="text-align: right;">18.61</td>
+<td style="text-align: left;">2007-02-22</td>
+<td style="text-align: right;">3.196786</td>
+<td style="text-align: right;">10.18</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">2007-03-08</td>
-<td style="text-align: right;">3.142857</td>
-<td style="text-align: right;">14.29</td>
+<td style="text-align: left;">2007-03-15</td>
+<td style="text-align: right;">3.198929</td>
+<td style="text-align: right;">16.43</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">2007-03-16</td>
-<td style="text-align: right;">3.199643</td>
-<td style="text-align: right;">16.79</td>
+<td style="text-align: left;">2007-03-20</td>
+<td style="text-align: right;">3.267143</td>
+<td style="text-align: right;">13.27</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">2007-04-23</td>
-<td style="text-align: right;">3.339643</td>
-<td style="text-align: right;">13.04</td>
+<td style="text-align: left;">2007-03-26</td>
+<td style="text-align: right;">3.423214</td>
+<td style="text-align: right;">13.16</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">2007-08-07</td>
-<td style="text-align: right;">4.822500</td>
-<td style="text-align: right;">21.56</td>
+<td style="text-align: left;">2007-03-28</td>
+<td style="text-align: right;">3.330000</td>
+<td style="text-align: right;">14.98</td>
 </tr>
 </tbody>
 </table>
@@ -546,29 +606,29 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">2007-03-02</td>
-<td style="text-align: right;">3.050357</td>
-<td style="text-align: right;">18.61</td>
+<td style="text-align: left;">2007-01-08</td>
+<td style="text-align: right;">3.052500</td>
+<td style="text-align: right;">12.00</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">2007-03-08</td>
-<td style="text-align: right;">3.142857</td>
-<td style="text-align: right;">14.29</td>
+<td style="text-align: left;">2007-01-11</td>
+<td style="text-align: right;">3.421429</td>
+<td style="text-align: right;">10.87</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">2007-03-16</td>
-<td style="text-align: right;">3.199643</td>
-<td style="text-align: right;">16.79</td>
+<td style="text-align: left;">2007-01-16</td>
+<td style="text-align: right;">3.467857</td>
+<td style="text-align: right;">10.74</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">2007-04-23</td>
-<td style="text-align: right;">3.339643</td>
-<td style="text-align: right;">13.04</td>
+<td style="text-align: left;">2007-05-15</td>
+<td style="text-align: right;">3.840000</td>
+<td style="text-align: right;">14.01</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">2007-08-07</td>
-<td style="text-align: right;">4.822500</td>
-<td style="text-align: right;">21.56</td>
+<td style="text-align: left;">2007-06-12</td>
+<td style="text-align: right;">4.299286</td>
+<td style="text-align: right;">16.67</td>
 </tr>
 </tbody>
 </table>
@@ -597,29 +657,29 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">2007-03-02</td>
-<td style="text-align: right;">3.050357</td>
-<td style="text-align: right;">18.61</td>
+<td style="text-align: left;">2007-01-08</td>
+<td style="text-align: right;">3.052500</td>
+<td style="text-align: right;">12.00</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">2007-03-08</td>
-<td style="text-align: right;">3.142857</td>
-<td style="text-align: right;">14.29</td>
+<td style="text-align: left;">2007-01-11</td>
+<td style="text-align: right;">3.421429</td>
+<td style="text-align: right;">10.87</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">2007-03-16</td>
-<td style="text-align: right;">3.199643</td>
-<td style="text-align: right;">16.79</td>
+<td style="text-align: left;">2007-01-16</td>
+<td style="text-align: right;">3.467857</td>
+<td style="text-align: right;">10.74</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">2007-04-23</td>
-<td style="text-align: right;">3.339643</td>
-<td style="text-align: right;">13.04</td>
+<td style="text-align: left;">2007-05-15</td>
+<td style="text-align: right;">3.840000</td>
+<td style="text-align: right;">14.01</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">2007-08-07</td>
-<td style="text-align: right;">4.822500</td>
-<td style="text-align: right;">21.56</td>
+<td style="text-align: left;">2007-06-12</td>
+<td style="text-align: right;">4.299286</td>
+<td style="text-align: right;">16.67</td>
 </tr>
 </tbody>
 </table>
@@ -630,8 +690,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Pivoting is the act of representing data in a wider format by using one column</p>
 <p>Pivoting is the act of transforming a table from a long format to a wide format.</p>
 <p>At this point it’s likely you’re using a database that supports pivoting and unpivoting but it’s good to know how to do it yourself.</p>
-<section id="pivoting" class="level1" data-number="11">
-<h1 data-number="11"><span class="header-section-number">11</span> Pivoting</h1>
+<section id="pivoting" class="level1" data-number="18">
+<h1 data-number="18"><span class="header-section-number">18</span> Pivoting</h1>
 <p>The most basic way to pivot is to use a CASE statement for each column you want to pivot.</p>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
@@ -640,30 +700,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </figure>
 </div>
 </section>
-<section id="advanced-pivoting" class="level1" data-number="12">
-<h1 data-number="12"><span class="header-section-number">12</span> Advanced Pivoting</h1>
+<section id="advanced-pivoting" class="level1" data-number="19">
+<h1 data-number="19"><span class="header-section-number">19</span> Advanced Pivoting</h1>
 <p>Why I like pivoting in SQL is that I can create arbitrary case when statements to control how my data is pivoted:</p>
 </section>
-<section id="unpivoting" class="level1" data-number="13">
-<h1 data-number="13"><span class="header-section-number">13</span> Unpivoting</h1>
+<section id="unpivoting" class="level1" data-number="20">
+<h1 data-number="20"><span class="header-section-number">20</span> Unpivoting</h1>
 <p>I wish you don’t ever need to unpivot manually in SQL. A universal way to unpivot in SQL is to take each column of interest and do a UNION ALL.</p>
 </section>
-<section id="references" class="level1" data-number="14">
-<h1 data-number="14"><span class="header-section-number">14</span> References</h1>
+<section id="references" class="level1" data-number="21">
+<h1 data-number="21"><span class="header-section-number">21</span> References</h1>
 <p>https://sqlperformance.com/2019/09/t-sql-queries/t-sql-pitfalls-pivoting-unpivoting</p>
 </section>
-<section id="pivoting-and-unpivoting" class="level1" data-number="15">
-<h1 data-number="15"><span class="header-section-number">15</span> Pivoting and Unpivoting</h1>
+<section id="pivoting-and-unpivoting" class="level1" data-number="22">
+<h1 data-number="22"><span class="header-section-number">22</span> Pivoting and Unpivoting</h1>
 <p>Pivoting refers to a transformation where you take two columns: one containing values that will represent the names of your columns and another containing the values that you want those columns to contain. In a sense, we’re making our data wider (<code>dplyr</code>’s R refers to pivoting and unpivoting as <code>pivot_wider</code> and <code>pivot_longer</code>, respectively). Accordingly, unpivoting collects your column names into one column and the contents of those columns into another.</p>
 <p>Chances are that your tooling allows you to perform these operations. Unless, of course, you are an unlucky fellow or you prefer to roll your own code.</p>
-<section id="pivoting-1" class="level2" data-number="15.1">
-<h2 data-number="15.1" class="anchored" data-anchor-id="pivoting-1"><span class="header-section-number">15.1</span> Pivoting</h2>
+<section id="pivoting-1" class="level2" data-number="22.1">
+<h2 data-number="22.1" class="anchored" data-anchor-id="pivoting-1"><span class="header-section-number">22.1</span> Pivoting</h2>
 <p>Pivoting in SQL looks like this:</p>
 <p>If you need to pivot into a lot of columns, you are going to have a bad time. First, you need to specify each column that is <em>not</em> being pivoted into the select statement as well as the group by clause. Second, you need to manually type out each column that appears in the pivot.</p>
 <p>Nonetheless, I love pivoting in SQL because you can individually define how each column is pivoted. Maybe you need to average one column, but sum another? Maybe you want to add two conditional statements when you are pivoting <code>Activity = 'Running'</code>? I’ve done my fair share of intricate SQL pivots that would have taken me much more time in other languages.</p>
 </section>
-<section id="unpivoting-1" class="level2" data-number="15.2">
-<h2 data-number="15.2" class="anchored" data-anchor-id="unpivoting-1"><span class="header-section-number">15.2</span> Unpivoting</h2>
+<section id="unpivoting-1" class="level2" data-number="22.2">
+<h2 data-number="22.2" class="anchored" data-anchor-id="unpivoting-1"><span class="header-section-number">22.2</span> Unpivoting</h2>
 <p>Unpivoting is a little tricky in SQL. Essentially, we’ll be creating multiple select statements for each column we would like to unpivot, with each select statement containing a different column:</p>
 <p>I don’t love unpivoting in SQL. When pivoting, a single line of code translates into a column, whereas a single column translates into a whole separate SQL statement. Please use some framework or an engine that supports unpivoting through a function (e.g.&nbsp;Snowflake’s <code>UNPIVOT</code> or dbt’s <code>unpivot</code> macro).</p>
 
@@ -1163,13 +1223,13 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../03-recipes/queries_with_dates.html" class="pagination-link" aria-label="Queries with Dates">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Queries with Dates</span></span>
+      <a href="../03-recipes/querying-intersecting-dates.html" class="pagination-link" aria-label="Querying Intersecting Dates">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Querying Intersecting Dates</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../03-recipes/customer-analytics.html" class="pagination-link" aria-label="Customer Analytics Recipes">
-        <span class="nav-page-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Customer Analytics Recipes</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../03-recipes/grouping-consecutive-rows.html" class="pagination-link" aria-label="Grouping consecutive rows">
+        <span class="nav-page-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Grouping consecutive rows</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>14&nbsp; Querying Intersecting Dates – The Data Analyst SQL Cookbook</title>
+<title>16&nbsp; Querying Intersecting Dates – The Data Analyst SQL Cookbook</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -65,7 +65,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
 <link href="../03-recipes/pivoting-and-unpivoting.html" rel="next">
-<link href="../03-recipes/recipes.html" rel="prev">
+<link href="../03-recipes/splitting-time-intervals.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -255,7 +255,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </script>
 
 
-<meta property="og:title" content="14&nbsp; Querying Intersecting Dates – The Data Analyst SQL Cookbook">
+<meta property="og:title" content="16&nbsp; Querying Intersecting Dates – The Data Analyst SQL Cookbook">
 <meta property="og:description" content="">
 <meta property="og:site_name" content="The Data Analyst SQL Cookbook">
 </head>
@@ -269,7 +269,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03-recipes/recipes.html">SQL Recipes</a></li><li class="breadcrumb-item"><a href="../03-recipes/querying-intersecting-dates.html"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Querying Intersecting Dates</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03-recipes/recipes.html">recipes.html</a></li><li class="breadcrumb-item"><a href="../03-recipes/querying-intersecting-dates.html"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Querying Intersecting Dates</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -311,14 +311,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../00-intro/the-data-model.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">The Data Model</span></a>
+  <a href="../00-intro/meet-the-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Meet the Data</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../00-intro/sql-tools.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Where to write SQL?</span></a>
+  <a href="../00-intro/meet-the-tools.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Meet the Tools</span></a>
   </div>
 </li>
         <li class="sidebar-item sidebar-item-section">
@@ -333,63 +333,63 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/oltp-vs-olap.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">OLTP vs.&nbsp;OLAP</span></span></a>
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">OLTP vs.&nbsp;OLAP</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-r.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Using SQL in R</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/using-sql-in-dbt.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">dbt incremental models should be configured VERY differently from official documentation</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/selecting-tables.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Selecting Tables</span></span></a>
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Selecting Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/joining-tables.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Joining Tables</span></span></a>
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Joining Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/window-functions.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Window Functions</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/filtering-tables.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Filtering Tables</span></span></a>
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Filtering Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/structuring-queries.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Structuring Queries</span></span></a>
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Structuring Queries</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../01-basics/anti-patterns.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></span></a>
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Anti-Patterns</span></span></a>
   </div>
 </li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
- <span class="menu-text">02-models/models.qmd</span></a>
+            <a href="../02-models/models.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">models</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -398,25 +398,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/types-of-models.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Types of Models</span></span></a>
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Types of Models</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/calendar-date-dimension.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Calendar Date Dimension</span></span></a>
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Calendar Date Dimension</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/factless-fact-tables.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></span></a>
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Factless Fact Tables</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../02-models/ragged-depth-hierarchies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Ragged Depth Hierarchies</span></span></a>
   </div>
 </li>
       </ul>
@@ -424,7 +424,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a href="../03-recipes/recipes.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">SQL Recipes</span></a>
+ <span class="menu-text">recipes.html</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -432,38 +432,44 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../03-recipes/splitting-time-intervals.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Splitting Time Intervals</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../03-recipes/querying-intersecting-dates.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Querying Intersecting Dates</span></span></a>
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Querying Intersecting Dates</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/pivoting-and-unpivoting.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/grouping-consecutive-rows.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Grouping consecutive rows</span></span></a>
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Grouping consecutive rows</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/finding-gaps-in-ordered-data.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">finding-gaps-in-ordered-data</span></span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../03-recipes/calculating-streaks.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">Calculating Streaks</span></span></a>
+ <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">finding-gaps-in-ordered-data</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../03-recipes/occupancy.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">Occupancy</span></span></a>
+ <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">Occupancy</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../03-recipes/qualifying-events-in-time.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">21</span>&nbsp; <span class="chapter-title">Qualifying Events in Time</span></span></a>
   </div>
 </li>
       </ul>
@@ -471,7 +477,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../misc/goodies.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
+ <span class="menu-text"><span class="chapter-number">22</span>&nbsp; <span class="chapter-title">LIKE for fixed length wildcards</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -491,9 +497,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03-recipes/recipes.html">SQL Recipes</a></li><li class="breadcrumb-item"><a href="../03-recipes/querying-intersecting-dates.html"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Querying Intersecting Dates</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../03-recipes/recipes.html">recipes.html</a></li><li class="breadcrumb-item"><a href="../03-recipes/querying-intersecting-dates.html"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Querying Intersecting Dates</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Querying Intersecting Dates</span></h1>
+<h1 class="title"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">Querying Intersecting Dates</span></h1>
 </div>
 
 
@@ -557,48 +563,48 @@ Tip
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: right;">42</td>
-<td style="text-align: left;">Hannah</td>
-<td style="text-align: left;">Garcia</td>
-<td style="text-align: left;">user42@example.com</td>
-<td style="text-align: left;">2023-04-18</td>
-<td style="text-align: left;">NA</td>
-<td style="text-align: left;">NA</td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">1</td>
-<td style="text-align: left;">Hannah</td>
-<td style="text-align: left;">King</td>
-<td style="text-align: left;">user1@example.com</td>
-<td style="text-align: left;">2023-01-26</td>
-<td style="text-align: left;">NA</td>
-<td style="text-align: left;">NA</td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">82</td>
-<td style="text-align: left;">Gina</td>
-<td style="text-align: left;">Baker</td>
-<td style="text-align: left;">user82@example.com</td>
-<td style="text-align: left;">2023-12-12</td>
-<td style="text-align: left;">2023-12-19</td>
-<td style="text-align: left;">2024-01-07</td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">12</td>
-<td style="text-align: left;">Bob</td>
-<td style="text-align: left;">Smith</td>
-<td style="text-align: left;">user12@example.com</td>
-<td style="text-align: left;">2023-10-11</td>
-<td style="text-align: left;">2023-10-17</td>
-<td style="text-align: left;">NA</td>
-</tr>
-<tr class="odd">
 <td style="text-align: right;">59</td>
 <td style="text-align: left;">Nina</td>
 <td style="text-align: left;">Taylor</td>
 <td style="text-align: left;">user59@example.com</td>
 <td style="text-align: left;">2023-04-28</td>
 <td style="text-align: left;">NA</td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">Eva</td>
+<td style="text-align: left;">Williams</td>
+<td style="text-align: left;">user11@example.com</td>
+<td style="text-align: left;">2024-08-15</td>
+<td style="text-align: left;">2024-08-18</td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">49</td>
+<td style="text-align: left;">Alice</td>
+<td style="text-align: left;">Wright</td>
+<td style="text-align: left;">user49@example.com</td>
+<td style="text-align: left;">2023-07-08</td>
+<td style="text-align: left;">2023-07-09</td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">53</td>
+<td style="text-align: left;">Alice</td>
+<td style="text-align: left;">Wright</td>
+<td style="text-align: left;">user53@example.com</td>
+<td style="text-align: left;">2024-03-20</td>
+<td style="text-align: left;">2024-03-26</td>
+<td style="text-align: left;">2024-04-11</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">12</td>
+<td style="text-align: left;">Bob</td>
+<td style="text-align: left;">Smith</td>
+<td style="text-align: left;">user12@example.com</td>
+<td style="text-align: left;">2023-10-11</td>
+<td style="text-align: left;">2023-10-17</td>
 <td style="text-align: left;">NA</td>
 </tr>
 <tr class="even">
@@ -620,13 +626,13 @@ Tip
 <td style="text-align: left;">NA</td>
 </tr>
 <tr class="even">
-<td style="text-align: right;">46</td>
-<td style="text-align: left;">George</td>
-<td style="text-align: left;">Brown</td>
-<td style="text-align: left;">user46@example.com</td>
-<td style="text-align: left;">2024-04-03</td>
-<td style="text-align: left;">2024-04-03</td>
-<td style="text-align: left;">2024-04-16</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">Rachel</td>
+<td style="text-align: left;">Baker</td>
+<td style="text-align: left;">user5@example.com</td>
+<td style="text-align: left;">2023-02-01</td>
+<td style="text-align: left;">NA</td>
+<td style="text-align: left;">NA</td>
 </tr>
 <tr class="odd">
 <td style="text-align: right;">56</td>
@@ -638,11 +644,11 @@ Tip
 <td style="text-align: left;">NA</td>
 </tr>
 <tr class="even">
-<td style="text-align: right;">5</td>
-<td style="text-align: left;">Rachel</td>
-<td style="text-align: left;">Baker</td>
-<td style="text-align: left;">user5@example.com</td>
-<td style="text-align: left;">2023-02-01</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">Hannah</td>
+<td style="text-align: left;">King</td>
+<td style="text-align: left;">user1@example.com</td>
+<td style="text-align: left;">2023-01-26</td>
 <td style="text-align: left;">NA</td>
 <td style="text-align: left;">NA</td>
 </tr>
@@ -684,93 +690,93 @@ Tip
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: right;">7</td>
-<td style="text-align: left;">Lena</td>
-<td style="text-align: left;">Thomas</td>
-<td style="text-align: left;">user7@example.com</td>
-<td style="text-align: left;">2023-07-22</td>
-<td style="text-align: left;">2023-07-23</td>
-<td style="text-align: left;">2023-08-15</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">Xander</td>
+<td style="text-align: left;">Adams</td>
+<td style="text-align: left;">user8@example.com</td>
+<td style="text-align: left;">2023-02-04</td>
+<td style="text-align: left;">2023-02-04</td>
+<td style="text-align: left;">2023-03-05</td>
 </tr>
 <tr class="even">
-<td style="text-align: right;">25</td>
-<td style="text-align: left;">Leo</td>
-<td style="text-align: left;">Davis</td>
-<td style="text-align: left;">user25@example.com</td>
-<td style="text-align: left;">2024-03-16</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: left;">Chloe</td>
+<td style="text-align: left;">Hill</td>
+<td style="text-align: left;">user14@example.com</td>
+<td style="text-align: left;">2023-08-04</td>
+<td style="text-align: left;">2023-08-05</td>
+<td style="text-align: left;">2023-08-21</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">23</td>
+<td style="text-align: left;">Xander</td>
+<td style="text-align: left;">Jones</td>
+<td style="text-align: left;">user23@example.com</td>
+<td style="text-align: left;">2024-09-09</td>
+<td style="text-align: left;">2024-09-12</td>
+<td style="text-align: left;">2024-09-28</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">99</td>
+<td style="text-align: left;">Chloe</td>
+<td style="text-align: left;">Adams</td>
+<td style="text-align: left;">user99@example.com</td>
+<td style="text-align: left;">2023-03-21</td>
+<td style="text-align: left;">NA</td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">Quinn</td>
+<td style="text-align: left;">Adams</td>
+<td style="text-align: left;">user3@example.com</td>
+<td style="text-align: left;">2024-07-15</td>
+<td style="text-align: left;">2024-07-20</td>
+<td style="text-align: left;">2024-08-10</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">36</td>
+<td style="text-align: left;">Sam</td>
+<td style="text-align: left;">Wilson</td>
+<td style="text-align: left;">user36@example.com</td>
+<td style="text-align: left;">2024-04-08</td>
+<td style="text-align: left;">2024-04-08</td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">59</td>
+<td style="text-align: left;">Nina</td>
+<td style="text-align: left;">Taylor</td>
+<td style="text-align: left;">user59@example.com</td>
+<td style="text-align: left;">2023-04-28</td>
+<td style="text-align: left;">NA</td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">79</td>
+<td style="text-align: left;">Lena</td>
+<td style="text-align: left;">Clark</td>
+<td style="text-align: left;">user79@example.com</td>
+<td style="text-align: left;">2024-10-22</td>
+<td style="text-align: left;">2024-10-24</td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">13</td>
+<td style="text-align: left;">Olivia</td>
+<td style="text-align: left;">Harris</td>
+<td style="text-align: left;">user13@example.com</td>
+<td style="text-align: left;">2023-10-31</td>
+<td style="text-align: left;">2023-11-07</td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">18</td>
+<td style="text-align: left;">Quinn</td>
+<td style="text-align: left;">Green</td>
+<td style="text-align: left;">user18@example.com</td>
 <td style="text-align: left;">2024-03-17</td>
 <td style="text-align: left;">NA</td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">26</td>
-<td style="text-align: left;">Charlie</td>
-<td style="text-align: left;">Baker</td>
-<td style="text-align: left;">user26@example.com</td>
-<td style="text-align: left;">2023-12-02</td>
-<td style="text-align: left;">2023-12-09</td>
-<td style="text-align: left;">2023-12-29</td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">30</td>
-<td style="text-align: left;">Ivan</td>
-<td style="text-align: left;">Jones</td>
-<td style="text-align: left;">user30@example.com</td>
-<td style="text-align: left;">2023-08-05</td>
-<td style="text-align: left;">2023-08-07</td>
-<td style="text-align: left;">2023-08-30</td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">43</td>
-<td style="text-align: left;">Nathan</td>
-<td style="text-align: left;">Nelson</td>
-<td style="text-align: left;">user43@example.com</td>
-<td style="text-align: left;">2023-09-18</td>
-<td style="text-align: left;">2023-09-24</td>
-<td style="text-align: left;">2023-10-23</td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">73</td>
-<td style="text-align: left;">Charlie</td>
-<td style="text-align: left;">Miller</td>
-<td style="text-align: left;">user73@example.com</td>
-<td style="text-align: left;">2023-03-09</td>
-<td style="text-align: left;">2023-03-11</td>
-<td style="text-align: left;">NA</td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">81</td>
-<td style="text-align: left;">Fiona</td>
-<td style="text-align: left;">Anderson</td>
-<td style="text-align: left;">user81@example.com</td>
-<td style="text-align: left;">2023-05-27</td>
-<td style="text-align: left;">2023-06-03</td>
-<td style="text-align: left;">2023-06-12</td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">98</td>
-<td style="text-align: left;">Amelia</td>
-<td style="text-align: left;">Lewis</td>
-<td style="text-align: left;">user98@example.com</td>
-<td style="text-align: left;">2024-07-29</td>
-<td style="text-align: left;">2024-07-30</td>
-<td style="text-align: left;">NA</td>
-</tr>
-<tr class="odd">
-<td style="text-align: right;">48</td>
-<td style="text-align: left;">Jasmine</td>
-<td style="text-align: left;">Young</td>
-<td style="text-align: left;">user48@example.com</td>
-<td style="text-align: left;">2023-11-25</td>
-<td style="text-align: left;">2023-11-27</td>
-<td style="text-align: left;">2023-12-27</td>
-</tr>
-<tr class="even">
-<td style="text-align: right;">50</td>
-<td style="text-align: left;">Chloe</td>
-<td style="text-align: left;">King</td>
-<td style="text-align: left;">user50@example.com</td>
-<td style="text-align: left;">2023-09-16</td>
-<td style="text-align: left;">2023-09-22</td>
 <td style="text-align: left;">NA</td>
 </tr>
 </tbody>
@@ -1272,13 +1278,13 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../03-recipes/recipes.html" class="pagination-link" aria-label="SQL Recipes">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">SQL Recipes</span>
+      <a href="../03-recipes/splitting-time-intervals.html" class="pagination-link" aria-label="Splitting Time Intervals">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Splitting Time Intervals</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
       <a href="../03-recipes/pivoting-and-unpivoting.html" class="pagination-link" aria-label="Pivoting and Unpivoting">
-        <span class="nav-page-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span> <i class="bi bi-arrow-right-short"></i>
+        <span class="nav-page-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">Pivoting and Unpivoting</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

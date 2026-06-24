@@ -15,9 +15,127 @@ In order to demonstrate all the different ways to query data, multiple sample da
 
 `carwash` is a fictional self-service carwash business. In this databases, *users* can either pay per washing *session* or purchase a *subscription* that allows a number of services for monthly fee. The carwashes themselves are located in the *locations* table. Users can also create service *tickets* which can be handled by *employees*.
 
-[[ insert ERD for the carwash database here ]]
+```{mermaid}
+%%| label: fig-carwash-erd
+%%| fig-cap: "The carwash database schema. `calendar` is a standalone date dimension, joined on date columns rather than by a foreign key. `employees` is hierarchical via the self-referencing `manager_id`."
+erDiagram
+    users    ||--o{ subscriptions : has
+    users    ||--o{ vouchers      : holds
+    users    ||--o{ sessions      : visits
+    users    ||--o{ requests      : raises
+    plans    ||--o{ subscriptions : "is for"
+    locations ||--o{ sessions     : "hosts"
+    subscriptions ||--o{ sessions  : covers
+    vouchers ||--o{ sessions      : "redeemed in"
+    employees ||--o{ requests     : answers
+    employees ||--o{ employees    : manages
 
-[[ Add interactive sql element here ]]
+    users {
+        INTEGER user_id PK
+        VARCHAR first_name
+        VARCHAR last_name
+        VARCHAR email
+        DATE    signup_date
+        DATE    confirmation_date
+        DATE    activation_date
+    }
+    plans {
+        INTEGER plan_id PK
+        VARCHAR plan_name
+        VARCHAR tier
+        DOUBLE  monthly_price
+        INTEGER washes_included
+    }
+    locations {
+        INTEGER location_id PK
+        VARCHAR location_name
+        VARCHAR city
+        VARCHAR country
+        INTEGER n_bays
+        DATE    opened_date
+    }
+    subscriptions {
+        INTEGER subscription_id PK
+        INTEGER user_id FK
+        INTEGER plan_id FK
+        DATE    date_from
+        DATE    date_to
+    }
+    vouchers {
+        INTEGER voucher_id PK
+        VARCHAR code
+        INTEGER user_id FK
+        INTEGER discount_pct
+        DATE    valid_from
+        DATE    valid_to
+        BOOLEAN is_redeemed
+    }
+    sessions {
+        INTEGER session_id PK
+        INTEGER user_id FK
+        INTEGER location_id FK
+        INTEGER subscription_id FK
+        INTEGER voucher_id FK
+        TIMESTAMP started_at
+        TIMESTAMP ended_at
+        INTEGER duration_min
+        DOUBLE  amount_paid
+    }
+    employees {
+        INTEGER employee_id PK
+        VARCHAR first_name
+        VARCHAR last_name
+        VARCHAR email
+        VARCHAR role
+        DATE    hire_date
+        DOUBLE  salary
+        BOOLEAN is_active
+        INTEGER manager_id FK
+    }
+    requests {
+        INTEGER request_id PK
+        INTEGER user_id FK
+        INTEGER employee_id FK
+        VARCHAR category
+        VARCHAR status
+        DATE    submitted_at
+        DATE    resolved_at
+        INTEGER satisfaction
+    }
+    calendar {
+        INTEGER date_key PK
+        DATE    date
+        INTEGER year
+        INTEGER quarter
+        INTEGER month
+        VARCHAR month_name
+        INTEGER week
+        VARCHAR day_of_week
+        INTEGER day_of_month
+        INTEGER day_of_year
+        DATE    start_of_month
+        BOOLEAN is_weekend
+    }
+```
+
+Try it yourself — the query below runs entirely in your browser. Edit it and press **▶ Run** (or `Ctrl`/`Cmd`+`Enter`) to see how `users`, their `subscriptions`, and the `plans` they're on fit together:
+
+```{.sql .interactive .carwash}
+
+select
+  u.user_id,
+  u.first_name,
+  u.last_name,
+  p.plan_name,
+  s.date_from,
+  s.date_to
+from users u
+join subscriptions s on s.user_id = u.user_id
+join plans p on p.plan_id = s.plan_id
+order by u.user_id, s.date_from
+limit 10
+
+```
 
 
 ## Stocks

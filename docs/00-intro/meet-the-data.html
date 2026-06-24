@@ -20,6 +20,40 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -357,8 +391,8 @@ ul.task-list li input[type="checkbox"] {
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
- <span class="menu-text">02-models/models.qmd</span></a>
+            <a href="../02-models/models.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">models</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -393,7 +427,7 @@ ul.task-list li input[type="checkbox"] {
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
             <a href="../03-recipes/recipes.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">SQL Recipes</span></a>
+ <span class="menu-text">recipes.html</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -498,8 +532,136 @@ ul.task-list li input[type="checkbox"] {
 <section id="carwash" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="carwash"><span class="header-section-number">1.1</span> Carwash</h2>
 <p><code>carwash</code> is a fictional self-service carwash business. In this databases, <em>users</em> can either pay per washing <em>session</em> or purchase a <em>subscription</em> that allows a number of services for monthly fee. The carwashes themselves are located in the <em>locations</em> table. Users can also create service <em>tickets</em> which can be handled by <em>employees</em>.</p>
-<p>[[ insert ERD for the carwash database here ]]</p>
-<p>[[ Add interactive sql element here ]]</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-carwash-erd" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-carwash-erd-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-carwash-erd">erDiagram
+    users    ||--o{ subscriptions : has
+    users    ||--o{ vouchers      : holds
+    users    ||--o{ sessions      : visits
+    users    ||--o{ requests      : raises
+    plans    ||--o{ subscriptions : "is for"
+    locations ||--o{ sessions     : "hosts"
+    subscriptions ||--o{ sessions  : covers
+    vouchers ||--o{ sessions      : "redeemed in"
+    employees ||--o{ requests     : answers
+    employees ||--o{ employees    : manages
+
+    users {
+        INTEGER user_id PK
+        VARCHAR first_name
+        VARCHAR last_name
+        VARCHAR email
+        DATE    signup_date
+        DATE    confirmation_date
+        DATE    activation_date
+    }
+    plans {
+        INTEGER plan_id PK
+        VARCHAR plan_name
+        VARCHAR tier
+        DOUBLE  monthly_price
+        INTEGER washes_included
+    }
+    locations {
+        INTEGER location_id PK
+        VARCHAR location_name
+        VARCHAR city
+        VARCHAR country
+        INTEGER n_bays
+        DATE    opened_date
+    }
+    subscriptions {
+        INTEGER subscription_id PK
+        INTEGER user_id FK
+        INTEGER plan_id FK
+        DATE    date_from
+        DATE    date_to
+    }
+    vouchers {
+        INTEGER voucher_id PK
+        VARCHAR code
+        INTEGER user_id FK
+        INTEGER discount_pct
+        DATE    valid_from
+        DATE    valid_to
+        BOOLEAN is_redeemed
+    }
+    sessions {
+        INTEGER session_id PK
+        INTEGER user_id FK
+        INTEGER location_id FK
+        INTEGER subscription_id FK
+        INTEGER voucher_id FK
+        TIMESTAMP started_at
+        TIMESTAMP ended_at
+        INTEGER duration_min
+        DOUBLE  amount_paid
+    }
+    employees {
+        INTEGER employee_id PK
+        VARCHAR first_name
+        VARCHAR last_name
+        VARCHAR email
+        VARCHAR role
+        DATE    hire_date
+        DOUBLE  salary
+        BOOLEAN is_active
+        INTEGER manager_id FK
+    }
+    requests {
+        INTEGER request_id PK
+        INTEGER user_id FK
+        INTEGER employee_id FK
+        VARCHAR category
+        VARCHAR status
+        DATE    submitted_at
+        DATE    resolved_at
+        INTEGER satisfaction
+    }
+    calendar {
+        INTEGER date_key PK
+        DATE    date
+        INTEGER year
+        INTEGER quarter
+        INTEGER month
+        VARCHAR month_name
+        INTEGER week
+        VARCHAR day_of_week
+        INTEGER day_of_month
+        INTEGER day_of_year
+        DATE    start_of_month
+        BOOLEAN is_weekend
+    }
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-carwash-erd-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1.1: The carwash database schema. <code>calendar</code> is a standalone date dimension, joined on date columns rather than by a foreign key. <code>employees</code> is hierarchical via the self-referencing <code>manager_id</code>.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Try it yourself — the query below runs entirely in your browser. Edit it and press <strong>▶ Run</strong> (or <code>Ctrl</code>/<code>Cmd</code>+<code>Enter</code>) to see how <code>users</code>, their <code>subscriptions</code>, and the <code>plans</code> they’re on fit together:</p>
+<div class="interactive-duckdb">
+<div class="sourceCode" id="cb1"><pre class="sourceCode sql interactive carwash code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">select</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  u.user_id,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  u.first_name,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  u.last_name,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  p.plan_name,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  s.date_from,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  s.date_to</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="kw">from</span> users u</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="kw">join</span> subscriptions s <span class="kw">on</span> s.user_id <span class="op">=</span> u.user_id</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="kw">join</span> plans p <span class="kw">on</span> p.plan_id <span class="op">=</span> s.plan_id</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="kw">order</span> <span class="kw">by</span> u.user_id, s.date_from</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="kw">limit</span> <span class="dv">10</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
 </section>
 <section id="stocks" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="stocks"><span class="header-section-number">1.2</span> Stocks</h2>
@@ -611,7 +773,7 @@ ul.task-list li input[type="checkbox"] {
 </div>
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-erd-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;1.1: The cookbook database schema. <code>calendar</code> is a standalone date dimension, joined on date columns rather than by a foreign key.
+Figure&nbsp;1.2: The cookbook database schema. <code>calendar</code> is a standalone date dimension, joined on date columns rather than by a foreign key.
 </figcaption>
 </figure>
 </div>
