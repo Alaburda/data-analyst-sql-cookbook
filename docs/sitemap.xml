@@ -6,11 +6,11 @@
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/00-intro/introduction.html</loc>
-    <lastmod>2026-06-24T21:02:45.113Z</lastmod>
+    <lastmod>2026-06-24T21:59:41.171Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/00-intro/meet-the-data.html</loc>
-    <lastmod>2026-06-24T21:05:04.620Z</lastmod>
+    <lastmod>2026-06-24T21:58:49.084Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/00-intro/meet-the-tools.html</loc>
@@ -21,16 +21,8 @@
     <lastmod>2026-06-24T21:02:45.119Z</lastmod>
   </url>
   <url>
-    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/using-sql-in-r.html</loc>
-    <lastmod>2025-06-27T14:11:59.381Z</lastmod>
-  </url>
-  <url>
-    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/using-sql-in-dbt.html</loc>
-    <lastmod>2026-02-07T19:17:46.012Z</lastmod>
-  </url>
-  <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/selecting-tables.html</loc>
-    <lastmod>2026-06-24T21:02:45.121Z</lastmod>
+    <lastmod>2026-06-24T22:19:09.279Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/joining-tables.html</loc>
@@ -42,11 +34,15 @@
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/filtering-tables.html</loc>
-    <lastmod>2026-06-24T21:02:45.117Z</lastmod>
+    <lastmod>2026-06-24T22:19:11.876Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/structuring-queries.html</loc>
     <lastmod>2026-06-24T21:02:45.121Z</lastmod>
+  </url>
+  <url>
+    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/schemaless-tables.html</loc>
+    <lastmod>2026-06-24T21:02:45.120Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/anti-patterns.html</loc>
@@ -97,23 +93,19 @@
     <lastmod>2026-06-24T21:02:45.137Z</lastmod>
   </url>
   <url>
-    <loc>https://alaburda.github.io/data-analyst-sql-cookbook/misc/goodies.html</loc>
-    <lastmod>2026-06-24T21:02:45.370Z</lastmod>
-  </url>
-  <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/references.html</loc>
     <lastmod>2026-06-24T21:02:45.371Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/02-models/models.html</loc>
-    <lastmod>2026-06-24T21:27:14.235Z</lastmod>
+    <lastmod>2026-06-24T21:58:55.972Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/01-basics/basics.html</loc>
-    <lastmod>2026-06-24T21:02:45.116Z</lastmod>
+    <lastmod>2026-06-24T21:56:34.018Z</lastmod>
   </url>
   <url>
     <loc>https://alaburda.github.io/data-analyst-sql-cookbook/03-recipes/recipes.html</loc>
-    <lastmod>2026-06-24T21:27:04.279Z</lastmod>
+    <lastmod>2026-06-24T21:58:30.451Z</lastmod>
   </url>
 </urlset>

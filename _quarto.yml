@@ -19,13 +19,12 @@ book:
     - part: 01-basics/basics.qmd
       chapters:
         - 01-basics/oltp-vs-olap.qmd
-        - 01-basics/using-sql-in-r.qmd
-        - 01-basics/using-sql-in-dbt.qmd
         - 01-basics/selecting-tables.qmd
         - 01-basics/joining-tables.qmd
         - 01-basics/window-functions.qmd
         - 01-basics/filtering-tables.qmd
         - 01-basics/structuring-queries.qmd
+        - 01-basics/schemaless-tables.qmd
         - 01-basics/anti-patterns.qmd
     - part: 02-models/models.qmd
       chapters:
@@ -42,7 +41,6 @@ book:
         - 03-recipes/finding-gaps-in-ordered-data.qmd
         - 03-recipes/occupancy.qmd
         - 03-recipes/qualifying-events-in-time.qmd
-    - misc/goodies.qmd
     - references.qmd
 
 

@@ -1,12 +1,16 @@
 ---
 title: "Selecting Tables"
+engine: knitr
 filters:
-  - interactive-sql
+  - interactive-duckdb
 databases:
-  - name: db
-    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook-database/main/cookbookdb.sqlite"
+  - name: subscriptions
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/carwash.duckdb"
+    format: duckdb
 ---
 
-# SELECT
-
 This chapter includes a lot of things you can accomplish between the confines of SELECT and FROM statements.
+
+## UNION
+
+UNION and UNION ALL are different - UNION does an implicit DISTINCT after appending the tables, UNION ALL does not.

@@ -2,6 +2,10 @@
 
 The section on recipes is a collection of 
 
+## Acknowledgements
+
+This book stands on the shoulder of giants.
+
 ## AI disclaimer
 
 AI was used in the making of this book. The interactive demos of showing query steps as well as the interactive SQL chunks for running queries have been fully vibe-coded. Database design was a joint effort: some of the code was written by me, some was written by AI. The content of the chapters - the SQL code as well as the written content - were authored by me. I had AI read the contents of the book for suggestions but I ultimately decided on the editorial decisions.

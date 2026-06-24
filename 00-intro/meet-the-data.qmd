@@ -1,5 +1,4 @@
 ---
-title: "Meet the Data"
 engine: knitr
 filters:
   - interactive-duckdb
@@ -8,6 +7,8 @@ databases:
     path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/carwash.duckdb"
     format: duckdb
 ---
+
+# Meet the Data {.unnumbered}
 
 In order to demonstrate all the different ways to query data, multiple sample databases are used throughout the book. Let's meet the data!
 

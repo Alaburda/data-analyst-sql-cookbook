@@ -1,9 +1,7 @@
 ---
-title: "The Basics"
+title: "Basics"
 engine: knitr
 ---
-
-# The Basics
 
 You could find this section in probably any SQL book - feel free to skip it if you feel comfortable with SQL!
 

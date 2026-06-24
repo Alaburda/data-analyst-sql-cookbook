@@ -1,4 +1,6 @@
 ---
+title: "Recipes"
+format: html
 engine: knitr
 ---
 
