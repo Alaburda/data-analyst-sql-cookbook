@@ -5,7 +5,7 @@ filters:
   - interactive-duckdb
 databases:
   - name: subscriptions
-    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/carwas.duckdb"
+    path: "https://raw.githubusercontent.com/Alaburda/data-analyst-sql-cookbook/master/databases/carwash.duckdb"
     format: duckdb
 ---
 

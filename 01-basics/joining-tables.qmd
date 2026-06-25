@@ -273,7 +273,7 @@ viewof antiJoinStepIndex = {
 }
 ```
 
-This is an important implication because your other options are either the IN operator or the WHERE EXISTS clause. The problem with the IN operator is that it's not efficient and the latter is more verbose. The alternating are laid out in the [filtering](03-recipes/filtering.qmd) chapter. 
+This is an important implication because your other options are either the IN operator or the WHERE EXISTS clause. The problem with the IN operator is that it's not efficient and the latter is more verbose. The alternating are laid out in the [filtering](../01-basics/filtering-tables.qmd) chapter.
 
 
 ## Range joins
@@ -317,5 +317,5 @@ Rolling joins are essentially non-equi joins that only return the "closest" row.
 
 These operations are incredibly useful when working with attribution. For example, two customer representatives performed a sale and marked it in the CRM but you need to attribute the sale to the sale that was performed first.  
 
-[[ maybe I could take inspo from R4DS? https://r4ds.hadley.nz/joins.html I LOVE the set theory of joins ]]
+<!-- TODO: maybe I could take inspo from R4DS? https://r4ds.hadley.nz/joins.html I LOVE the set theory of joins -->
 

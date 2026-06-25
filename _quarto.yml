@@ -34,6 +34,7 @@ book:
         - 02-models/ragged-depth-hierarchies.qmd
     - part: 03-recipes/recipes.qmd
       chapters:
+        # - 03-recipes/customer-analytics.qmd
         - 03-recipes/splitting-time-intervals.qmd
         - 03-recipes/querying-intersecting-dates.qmd
         - 03-recipes/pivoting-and-unpivoting.qmd
