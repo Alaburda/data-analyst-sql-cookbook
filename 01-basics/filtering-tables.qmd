@@ -91,7 +91,10 @@ To record missing and unknown values, SQL uses NULLs. NULL by itself is not a da
 
 When using the LIKE statement in a WHERE clause, `*` defines any number of characters. `_` defines a single character. For example, `WHERE name LIKE '_ake'` would capture *Jake* but not *Drake*.
 
+<!-- TODO: finish exercises before publishing
 ## Exercises
 
-1. Write a SQL statement that finds people with the last name [[ come up with something where a good where condition is needed with LIKE]]
-2. [[ Write a SQL statement that does a semi left join ]]
+1. Write a SQL statement that finds people with the last name ___ (come up with something where a good WHERE condition is needed with LIKE)
+2. Write a SQL statement that does a semi/left-anti join
+-->
+

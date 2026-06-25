@@ -22,7 +22,7 @@ con <- dbConnect(duckdb(), "../databases/cookbook.duckdb", read_only = TRUE)
 
 If I only had BI tools and I wanted to show the number of subscriptions that were active for each month, I would be in trouble. In Power BI, I would have to resort to [a multi-line DAX formula](https://community.fabric.microsoft.com/t5/Power-BI-Community-Blog/HR-Analytics-Active-Employee-Hire-and-Termination-trend/ba-p/882970). In Tableau, [the options have 8 steps in them](https://help.salesforce.com/s/articleView?id=001458045&type=1). I couldn't even find a tutorial for Looker. Luckily, Factless Fact Tables sidestep these solutions altogether so that your BI tool only has to do a simple count.
 
-Kimball defines Factless Fact Tables as a [table of dimensional entities coming together at a moment in time](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/factless-fact-table/). Now that's one eldritch definition! In human terms, a factless fact table is a collection of snapshots [[ maybe let's add some sort of universal index that? I define snapshot once and then I can have tooltips across multiple instances? ]] of what was true at a point in time. For example, if I had a yearly subscription, I would have been a subscriber during each of those months of the year. A monthly factless fact table would represent me, as a subscriber, as twelve rows where each row is a different month. 
+Kimball defines Factless Fact Tables as a [table of dimensional entities coming together at a moment in time](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/factless-fact-table/). Now that's one eldritch definition! In human terms, a factless fact table is a collection of snapshots <!-- TODO: maybe let's add some sort of universal index that? I define snapshot once and then I can have tooltips across multiple instances? --> of what was true at a point in time. For example, if I had a yearly subscription, I would have been a subscriber during each of those months of the year. A monthly factless fact table would represent me, as a subscriber, as twelve rows where each row is a different month. 
 
 ## For SCD2-type tables
 
@@ -48,7 +48,7 @@ select * from subscriptions limit 10
 
 Whenever we want to count something, it's best to count it using a fact table. However, subscriptions are a SCD2 type dimension and you want to count whether they existed between the `valid_from` and `valid_to`. Counting becomes trivial if the date range is expanded into their dedicated rows. For example, if I were building a monthly fact table, the first id would be 6 rows and my second id would be 4 rows because they were active subscriptions during those months. In order to build it, it's best to have a calendar table so that we could perform a cross join using a `BETWEEN` statement.
 
-[[ let's do a demo with ojs instead of a gif]]
+<!-- TODO: let's do a demo with ojs instead of a gif -->
 
 ![How a factless fact table explodes intervals into months](../images/factless-fact-table.gif)
 
